@@ -10,6 +10,8 @@ import Database.Persist.Quasi
 -- You can find more information on persistent and how to declare entities
 -- at:
 -- http://www.yesodweb.com/book/persistent/
+type TAppKey = String
+
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)
 
 data ReadMode = FileMetadata | GetContent | Pagination deriving (Show, Eq, Enum)

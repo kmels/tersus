@@ -5,3 +5,8 @@
 /robots.txt RobotsR GET
 
 / HomeR GET POST
+
+-- FILES
+
+/getFile/#Int/#TAppKey/*Texts FileR GET 
+/writeFile/#Int/#TAppKey/*Texts WriteFileR GET POST 

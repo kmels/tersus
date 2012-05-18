@@ -12,9 +12,9 @@ Email
     UniqueEmail email
     deriving
 
-File
+TFile
     filename String
-    parent File Maybe
+    parent TFile Maybe
     permissions [Permission]
     user User
     deriving
