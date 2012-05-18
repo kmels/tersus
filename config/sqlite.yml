@@ -1,0 +1,20 @@
+Default: &defaults
+  database: tersus.sqlite3
+  poolsize: 10
+
+Development:
+  <<: *defaults
+
+Testing:
+  database: tersus_test.sqlite3
+  <<: *defaults
+
+Staging:
+  database: tersus_staging.sqlite3
+  poolsize: 100
+  <<: *defaults
+
+Production:
+  database: tersus_production.sqlite3
+  poolsize: 100
+  <<: *defaults
