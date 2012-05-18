@@ -1,0 +1,18 @@
+#yesod & binaries
+*.swp
+*.hi
+*.o
+client_session_key.aes
+devel-server
+dist
+static/tmp
+
+#haskell-mode 
+cabal-dev
+
+#emacs tags
+TAGS
+
+#db
+*.sqlite3
+
