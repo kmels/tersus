@@ -63,7 +63,7 @@ library
                  , bytestring                    >= 0.9        && < 0.10
                  , text                          >= 0.11       && < 0.12
                  , persistent                    >= 0.9        && < 0.10
-                 , persistent-sqlite     >= 0.9        && < 0.10
+                 , persistent-mongoDB     >= 0.9        && < 0.10
                  , template-haskell
                  , hamlet                        >= 1.0        && < 1.1
                  , shakespeare-css               >= 1.0        && < 1.1
