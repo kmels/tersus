@@ -17,7 +17,7 @@ TFile
     parent TFile Maybe
     permissions [Permission]
     user User
-    deriving
+    deriving 
 
 Permission
     user User
