@@ -13,12 +13,14 @@ Email
     deriving
 
 TFile
-    filename String
-    parent TFile Maybe
-    permissions [Permission]
     user User
-    deriving 
-
+    parentDirectory Double Maybe
+    filename Text
+    content Text Maybe
+    contentType Text Maybe
+    fileType FileType
+    permissions [Permission]
+    
 Permission
     user User
     read Bool

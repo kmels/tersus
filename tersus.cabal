@@ -30,6 +30,7 @@ library
                      Settings.Development
                      Handler.Home
                      Handler.TFile
+                     TFile.OSUtils
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
