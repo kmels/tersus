@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #yesod & binaries
 *.swp
 *.hi
@@ -16,3 +17,11 @@ TAGS
 #db
 *.sqlite3
 
+=======
+dist
+cabal-dev
+*.o
+*.hi
+*.chi
+*.chs.h
+>>>>>>> github/master
