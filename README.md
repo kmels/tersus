@@ -1,4 +1,5 @@
 tersus
 ======
 
-a virtual filesystem to use with js/coffeescript + open source js libraries hub
+a virtual filesystem to use with js/coffeescript + open source js libraries hub.
+
