@@ -25,7 +25,7 @@ import Network.HTTP.Conduit (Manager)
 import qualified Settings
 import qualified Database.Persist.Store
 import Settings.StaticFiles
-import Database.Persist.MongoDB
+import Database.Persist.GenericSql
 import Settings (widgetFile, Extra (..))
 import Model
 import Text.Jasmine (minifym)
@@ -121,7 +121,7 @@ instance Yesod App where
 
 -- How to run database actions.
 instance YesodPersist App where
-    type YesodPersistBackend App = Action
+    type YesodPersistBackend App = SqlPersist
     runDB f = do
         master <- getYesod
         Database.Persist.Store.runPool

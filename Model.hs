@@ -6,8 +6,6 @@ import qualified Data.Text as T
 import Data.Text(Text)
 
 import Database.Persist.Quasi
-import Database.Persist.MongoDB
-import Language.Haskell.TH.Syntax
 
 import Database.Persist.Store(PersistValue(..),SqlType(..))
 
@@ -39,5 +37,5 @@ data TersusResult = TersusResult Int TersusResultCode
 
 data MessageResult = Read | NotRead
 
-share [mkPersist MkPersistSettings { mpsBackend = ConT ''Action }, mkMigrate "migrateAll"]
+share [mkPersist sqlSettings, mkMigrate "migrateAll"]
     $(persistFileWith lowerCaseSettings "config/models")

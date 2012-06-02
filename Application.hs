@@ -44,7 +44,7 @@ makeFoundation :: AppConfig DefaultEnv Extra -> Logger -> IO App
 makeFoundation conf setLogger = do
     manager <- newManager def
     s <- staticSite
-    dbconf <- withYamlEnvironment "config/mongodb.yml" (appEnv conf)
+    dbconf <- withYamlEnvironment "config/postgres.yml" (appEnv conf)
               Database.Persist.Store.loadConfig >>=
               Database.Persist.Store.applyEnv
     p <- Database.Persist.Store.createPoolConfig (dbconf :: Settings.PersistConfig)
