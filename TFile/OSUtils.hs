@@ -6,7 +6,7 @@
 -- This module provides functions to interact with the virtual file system.
 -- They're, when they can, mainly conduits.
 
-module TFile.OSUtils(dbGetFile) where
+module TFile.OSUtils where
 
 import           Foundation
 import           Model
