@@ -21,11 +21,11 @@ instance PathMultiPiece TFilePath where
     fromPathMultiPiece (p:ps) = Just $ TFilePath ([p] ++ ps)
     fromPathMultiPiece _ = Nothing
 
-getFileR :: Int -> TAppKey -> [Text] -> Handler RepHtml
-getFileR userId appKey path = do
+getFileR :: Text -> TAppKey -> [Text] -> Handler RepHtml
+getFileR username appKey path = do
   defaultLayout $ do
     [whamlet|
-     <h1>User id: #{userId}
+     <h1>Username: #{username}
      <h1>AppKey: #{appKey}
      <h1>Path: #{show path}
             |]
@@ -48,19 +48,19 @@ writeFileForm = renderDivs $ FileContent
     <$> areq textField "Content" Nothing
 
 -- This won't really exist after, it is used for testing purposes only.
-getWriteFileR :: Int -> TAppKey -> [Text] -> Handler RepHtml
-getWriteFileR userId appKey path = do
+getWriteFileR :: Username -> TAppKey -> [Text] -> Handler RepHtml
+getWriteFileR username appKey path = do
   --get the form
   (formWidget, enctype) <- generateFormPost writeFileForm
   defaultLayout [whamlet|
-     <h1>Dear user #{userId}, you are going to write content to file #{show path}
-     <form method=post action=@{WriteFileR userId appKey path} enctype=#{enctype}>
+     <h1>Dear user #{username}, you are going to write content to file #{show path}
+     <form method=post action=@{WriteFileR username appKey path} enctype=#{enctype}>
                   ^{formWidget}
                   <input type=submit>
      |]
 
-postWriteFileR :: Int -> TAppKey -> [Text] -> Handler RepHtml
-postWriteFileR userId appKey path = do
+postWriteFileR :: Username -> TAppKey -> [Text] -> Handler RepHtml
+postWriteFileR username appKey path = do
   ((result, widget), enctype) <- runFormPost writeFileForm
   case result of
     FormSuccess fc -> defaultLayout $ do

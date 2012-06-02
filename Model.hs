@@ -13,7 +13,8 @@ import Database.Persist.Store(PersistValue(..),SqlType(..))
 -- You can find more information on persistent and how to declare entities
 -- at:
 -- http://www.yesodweb.com/book/persistent/
-type TAppKey = String
+type TAppKey = Text
+type Username = Text
 
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)
 
