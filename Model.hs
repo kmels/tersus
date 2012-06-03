@@ -15,6 +15,10 @@ import Database.Persist.Store(PersistValue(..),SqlType(..))
 -- http://www.yesodweb.com/book/persistent/
 type TAppKey = Text
 type Username = Text
+type RawPath = Text
+type Path = [Text]
+type Id = Double
+type IdList = [Id]
 
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)
 

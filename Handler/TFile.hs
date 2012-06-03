@@ -21,7 +21,7 @@ instance PathMultiPiece TFilePath where
     fromPathMultiPiece (p:ps) = Just $ TFilePath ([p] ++ ps)
     fromPathMultiPiece _ = Nothing
 
-getFileR :: Text -> TAppKey -> [Text] -> Handler RepHtml
+getFileR :: Text -> TAppKey -> Path -> Handler RepHtml
 getFileR username appKey path = do
   defaultLayout $ do
     [whamlet|
@@ -48,7 +48,7 @@ writeFileForm = renderDivs $ FileContent
     <$> areq textField "Content" Nothing
 
 -- This won't really exist after, it is used for testing purposes only.
-getWriteFileR :: Username -> TAppKey -> [Text] -> Handler RepHtml
+getWriteFileR :: Username -> TAppKey -> Path -> Handler RepHtml
 getWriteFileR username appKey path = do
   --get the form
   (formWidget, enctype) <- generateFormPost writeFileForm
@@ -59,15 +59,30 @@ getWriteFileR username appKey path = do
                   <input type=submit>
      |]
 
-postWriteFileR :: Username -> TAppKey -> [Text] -> Handler RepHtml
+postWriteFileR :: Username -> TAppKey -> Path -> Handler RepHtml
 postWriteFileR username appKey path = do
-  ((result, widget), enctype) <- runFormPost writeFileForm
-  user <- runDB $ getBy $ UniqueNickname $ username
-  case result of
-    FormSuccess fc -> defaultLayout $ do
-      [whamlet|
-       <h1>Lieber #{show $ user}
-       <h1>You wrote: #{show $ fileContentContent fc}
-       <h3>in #{show path}
+  user <- runDB $ getBy $ UniqueNickname $ username --find user by username
+  case user of
+    -- Do we have a user?
+    Just (Entity uid _ ) -> do
+      -- process form
+      ((result, widget), enctype) <- runFormPost writeFileForm
+      --      file <- runDB $ insert $ Email "asdf" (Just "zasdf") (Just "as")
+      --  let file = user >>= \u -> Just $ TFile u
+      case result of
+        FormSuccess fc -> defaultLayout $ do
+          [whamlet|
+           <h1>Lieber #{show $ user}
+           <h1>You wrote: #{show $ fileContentContent fc}
+           <h3>in #{show path}
               |]
-    _ -> defaultLayout [whamlet|<p>Invalid input!|]
+        _ -> defaultLayout [whamlet|<p>Invalid input!|]
+   -- username in url doesn't exist
+    Nothing -> defaultLayout $ do
+        [whamlet|
+         <h1> No user|]
+{-  where
+    -- | Returns a list of this file ancestors.
+    fileAncestors :: Path -> [Maybe Id]
+    fileAncestors xs = let x = 1 in []
+-}
