@@ -13,7 +13,8 @@ import Yesod.Default.Main
 import Yesod.Default.Handlers
 import Yesod.Logger (Logger, logBS, toProduction)
 import Network.Wai.Middleware.RequestLogger (logCallback, logCallbackDev)
-import qualified Database.Persist.Store  
+import qualified Database.Persist.Store
+import Database.Persist.GenericSql (runMigration)
 import Network.HTTP.Conduit (newManager, def)
 
 -- Import all relevant handler modules here.
@@ -48,6 +49,7 @@ makeFoundation conf setLogger = do
               Database.Persist.Store.loadConfig >>=
               Database.Persist.Store.applyEnv
     p <- Database.Persist.Store.createPoolConfig (dbconf :: Settings.PersistConfig)
+    Database.Persist.Store.runPool dbconf (runMigration migrateAll) p
     return $ App conf setLogger s p manager dbconf
 
 -- for yesod devel

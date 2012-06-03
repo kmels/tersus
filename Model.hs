@@ -38,5 +38,4 @@ data TersusResult = TersusResult Int TersusResultCode
 
 data MessageResult = Read | NotRead
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"]
-    $(persistFileWith lowerCaseSettings "config/models")
+share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models")

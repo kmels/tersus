@@ -62,9 +62,11 @@ getWriteFileR username appKey path = do
 postWriteFileR :: Username -> TAppKey -> [Text] -> Handler RepHtml
 postWriteFileR username appKey path = do
   ((result, widget), enctype) <- runFormPost writeFileForm
+  user <- runDB $ getBy $ UniqueNickname $ username
   case result of
     FormSuccess fc -> defaultLayout $ do
       [whamlet|
+       <h1>Lieber #{show $ user}
        <h1>You wrote: #{show $ fileContentContent fc}
        <h3>in #{show path}
               |]

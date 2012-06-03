@@ -138,7 +138,7 @@ instance YesodAuth App where
     logoutDest _ = HomeR
 
     getAuthId creds = runDB $ do
-        x <- getBy $ UniqueUser $ credsIdent creds
+        x <- getBy $ UniqueNickname $ credsIdent creds
         case x of
             Just (Entity uid _) -> return $ Just uid
             Nothing -> do

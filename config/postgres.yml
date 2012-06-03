@@ -1,8 +1,8 @@
 Default: &defaults
   user: tersus
-  password: tersus-pw!
-  host: stelle.kmels.net
-  port: 27017
+  password: tersus!
+  host: localhost
+  port: 5432
   database: tersus
   poolsize: 10
 

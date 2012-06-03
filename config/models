@@ -1,8 +1,8 @@
 User
-    ident Text
+    nickname Text
     password Text Maybe
     apps [TApplication]
-    UniqueUser ident
+    UniqueNickname nickname
     deriving Show Read Eq
 
 Email
