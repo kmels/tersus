@@ -19,6 +19,7 @@ type RawPath = Text
 type Path = [Text]
 type Id = Double
 type IdList = [Id]
+type ApplicationName = Text
 
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)
 
