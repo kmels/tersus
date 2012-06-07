@@ -10,3 +10,9 @@
 
 /getFile/#Username/#TAppKey/*Texts FileR GET 
 /writeFile/#Username/#TAppKey/*Texts WriteFileR GET POST
+
+-- Test msgs
+
+/service/message/inivar InitMVarR GET
+/service/message/setvar SetMVarR GET
+/service/message/recieve MessageR GET

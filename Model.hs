@@ -42,4 +42,10 @@ data TersusResult = TersusResult Int TersusResultCode
 
 data MessageResult = Read | NotRead
 
-share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models")
+share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models") 
+
+-- Represents a app being run by a user
+data AppInstance = AppInstance {username :: String, application :: String} deriving Eq
+
+-- Message = { userSender: User, usersReceiver: [User], appSender: Application, appReceiver: Application, content: String}
+data TMessage = TMessage {userSender :: User, userReciever :: User, appSender :: TApplication, appReciever :: TApplication, content :: Text} deriving Eq
