@@ -90,9 +90,5 @@ postRegisterTAppR = do
 -- | Generates a new random application key (32 bytes)
 -- This one is saved in the database for each application. It is then used as a seed to generate a access_token for a (user,app) combo.
 newAppRandomKey :: IO Text
-newAppRandomKey = do 
-  byteString <- randBytes 32 --generate 32 random bytes
-  let 
-    decodedString = BinaryUTF8.decode $ B.unpack byteString --decode [word8] to utf8
-  return $ T.pack $ decodedString
+newAppRandomKey = (randBytes 32) {-generate 32 random bytes -} >>= \byteString -> return $ T.pack {- String -> Text -} $ BinaryUTF8.decode {-[word8] -> Utf8 String-} $ B.unpack {- ByteString -> [Word8]-} byteString 
   
