@@ -5,13 +5,19 @@
 {-# LANGUAGE TypeFamilies          #-}
 module Handler.TApplication where
 
-import Import
-import Data.Maybe(fromMaybe)
-import Yesod
-import Yesod.Form.Jquery\
+import           Import
+import           Data.Maybe(fromMaybe)
+import           Yesod
+import           Yesod.Form.Jquery\
 
-import Control.Arrow     (first, (&&&), (***))
-import Data.Time.Clock   (getCurrentTime)
+import qualified Codec.Binary.UTF8.String as BinaryUTF8
+
+import qualified Codec.Crypto.AES         as AES
+import           Codec.Crypto.AES.Random(randBytes)
+import           Control.Arrow     (first, (&&&), (***))
+import qualified Data.ByteString          as B
+import           Data.Time.Clock   (getCurrentTime)
+import           qualified Data.Text as T
 --getAppKey =
 
 -- The data type that is expected from registerAppForm
@@ -65,11 +71,28 @@ postRegisterTAppR :: Handler RepHtml
 postRegisterTAppR = do
   ((result, widget), enctype) <- runFormPost registerAppForm
   case result of
-    FormSuccess applike -> do
-      let (appName,(appDescription,(appRepositoryUrl,appContactEmail))) = (appLikeName &&& appLikeDescription &&& appLikeRepositoryURL &&& appLikeContactEmail) applike
-      creationDate <- liftIO getCurrentTime
-      appid <- runDB $ insert $ TApplication appName appDescription appContactEmail appRepositoryUrl creationDate
+    FormSuccess appLike -> do
+      -- get data from the form
+      let 
+        (appName,(appDescription,(appRepositoryUrl,appContactEmail))) = (appLikeName &&& appLikeDescription &&& appLikeRepositoryURL &&& appLikeContactEmail) appLike
+                
+      creationDate <- liftIO getCurrentTime --ask date
+      appKey <- liftIO $ newAppRandomKey  --create a new appkey
+      
+      --insert in database
+      appid <- runDB $ insert $ TApplication appName appDescription appRepositoryUrl appContactEmail creationDate appKey
+      
       defaultLayout $ [whamlet|
-      <h1>Received
+      <h1>Received, your generated key: #{appKey}
        |]
     _ -> defaultLayout $ [whamlet|<p>Invalid input|]
+
+-- | Generates a new random application key (32 bytes)
+-- This one is saved in the database for each application. It is then used as a seed to generate a access_token for a (user,app) combo.
+newAppRandomKey :: IO Text
+newAppRandomKey = do 
+  byteString <- randBytes 32 --generate 32 random bytes
+  let 
+    decodedString = BinaryUTF8.decode $ B.unpack byteString --decode [word8] to utf8
+  return $ T.pack $ decodedString
+  
