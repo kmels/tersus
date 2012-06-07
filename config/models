@@ -10,7 +10,6 @@ Email
     user UserId Maybe
     verkey Text Maybe
     UniqueEmail email
-    deriving
 
 TFile
     user User
@@ -34,6 +33,8 @@ Permission
 TApplication
     name Text
     description Text
-    repositoryUrl Text Maybe
-    location Text
+    repositoryUrl Text Maybe    
+    contactEmail Text
+    creationDate UTCTime
+    appKey Text
     deriving Show Read Eq

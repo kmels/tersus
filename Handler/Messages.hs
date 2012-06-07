@@ -13,6 +13,8 @@ import Data.Aeson as D
 import Data.Text as T
 import Model
 import Model.TMessage
+import Data.Time.Clock (getCurrentTime)
+import System.IO.Unsafe (unsafePerformIO)
 
 -- -- registerUser :: String -> String -> IO ()
 -- registerUser user app = do
@@ -23,7 +25,12 @@ import Model.TMessage
 --              jsonToRepJson $ encode $ TersusResult 3 Import.Success
 
 dummyUser = User (T.pack "neto") (Just (T.pack "1234")) []
-dummyApp = TApplication (T.pack "emacs") (T.pack "dummy") (Just (T.pack "url")) (T.pack "loc")
+
+-- This is a dummy datatype only to show that this works
+-- It will be removed and never used
+-- unsafePerformIO is there just because it's simpler and
+-- this will not be part of tersus
+dummyApp = TApplication (T.pack "emacs") (T.pack "dummy") (Just (T.pack "url")) (T.pack "mail@place.com") (unsafePerformIO getCurrentTime)  (T.pack "appkey")
 
 dummyMsg = TMessage dummyUser dummyUser dummyApp dummyApp (T.pack "Alonso")
 

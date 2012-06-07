@@ -5,8 +5,12 @@
 {-# LANGUAGE TypeFamilies          #-}
 module Handler.TFile where
 
-import           Control.Applicative ((<$>), (<*>))
-import           Data.Text           (Text)
+import qualified Codec.Binary.UTF8.String as UTF8
+import qualified Codec.Crypto.AES         as AES
+import           Control.Applicative      ((<$>), (<*>))
+import qualified Data.ByteString          as B
+import           Data.Text                as T
+import qualified Data.Text.Encoding       as TE
 import           Import
 import           Yesod
 import           Yesod.Form.Jquery
@@ -59,6 +63,29 @@ getWriteFileR username appKey path = do
                   <input type=submit>
      |]
 
+aesUserAppKey :: User -> TAppKey -> AES.Direction -> Maybe T.Text
+aesUserAppKey user appkey dir = do
+  splitIndex <- T.findIndex ((==) ':') $ TE.decodeUtf8 decryptedRawAuth
+  (userNickname,applicationName) <- Just $ B.splitAt splitIndex decryptedRawAuth
+  return $ TE.decodeUtf8 applicationName
+  where
+    decryptedRawAuth :: B.ByteString
+    decryptedRawAuth = let -- in the form of "$usernameNickname:$userApplication"
+      aesKey = B.pack . UTF8.encode $ "01234567890abcdef" --16,24 or 32 byte symmetric key
+      aesIV = B.pack . UTF8.encode $ "tersus>>=lorenzo" -- initialization vector, 16 byte
+      in AES.crypt' AES.CTR aesKey aesIV dir (TE.encodeUtf8 appkey)
+
+-- | Returns the app responsible for the request, from the TAppkey,
+-- this is our security layer used for incoming requests.
+--decryptUserAppAuth :: User -> TAppKey -> B.ByteString
+--decryptUserAppAuth u a = aesUserAppKey u a AES.Decrypt
+
+-- | Generate an app key for a given user and an application name
+-- this will the key that an application will use to make requests
+--encryptUserAppAuth :: User -> ApplicationName -> TAppKey
+--encryptUserAppAuth u a = aesUserAppKey u a AES.Encrypt
+
+  --username = usernameNickname user
 postWriteFileR :: Username -> TAppKey -> Path -> Handler RepHtml
 postWriteFileR username appKey path = do
   user <- runDB $ getBy $ UniqueNickname $ username --find user by username

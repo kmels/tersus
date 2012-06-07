@@ -34,6 +34,7 @@ library
                      Handler.Messages
                      Model.TersusResult
                      Model.TMessage
+                     Handler.TApplication
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -55,6 +56,8 @@ library
                 NoMonomorphismRestriction
 
     build-depends: base                          >= 4          && < 5
+                 , AES                           >= 0.2.8
+                 , time                          >= 1.1.4
                  , yesod-platform                >= 1.0        && < 1.1
                  , yesod                         >= 1.0        && < 1.1
                  , yesod-core                    >= 1.0        && < 1.1
@@ -82,7 +85,9 @@ library
                  , warp                          >= 1.2        && < 1.3
 --added by kmels
                  , Crypto                        >= 4.2.5
-                 , aeson                         >= 0.6.0.0
+                 , utf8-string                   >= 0.3.7
+--added by neto
+                 , aeson                         >= 0.6.0.0                 
 
 executable         tersus
     if flag(library-only)

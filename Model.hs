@@ -1,14 +1,15 @@
 module Model where
 
-import Prelude
-import Yesod
+import           Prelude
+import           Yesod
 import qualified Data.Text as T
-import Data.Text(Text)
+import           Data.Text(Text)
 
-import Database.Persist.Quasi
+import           Database.Persist.Quasi
 
-import Database.Persist.Store(PersistValue(..),SqlType(..))
+import           Database.Persist.Store(PersistValue(..),SqlType(..))
 
+import           Data.Time(UTCTime)
 -- You can define all of your database entities in the entities file.
 -- You can find more information on persistent and how to declare entities
 -- at:
@@ -19,6 +20,7 @@ type RawPath = Text
 type Path = [Text]
 type Id = Double
 type IdList = [Id]
+type ApplicationName = Text
 
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)
 

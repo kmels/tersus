@@ -23,6 +23,7 @@ import Handler.Home
 import Handler.TFile
 import Handler.Messages
 import Data.HashTable as H
+import Handler.TApplication
 
 -- This line actually creates our YesodSite instance. It is the second half
 -- of the call to mkYesodData which occurs in Foundation.hs. Please see
