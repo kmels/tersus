@@ -6,7 +6,11 @@
 
 / HomeR GET POST
 
+-- APPS
+
+/app/register RegisterTAppR GET POST
+
 -- FILES
 
-/getFile/#Username/#TAppKey/*Texts FileR GET 
-/writeFile/#Username/#TAppKey/*Texts WriteFileR GET POST
+/file/get/#Username/#TAppKey/*Texts FileR GET 
+/file/write/#Username/#TAppKey/*Texts WriteFileR GET POST

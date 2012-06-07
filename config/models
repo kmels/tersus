@@ -34,6 +34,8 @@ Permission
 TApplication
     name Text
     description Text
+    contactEmail Text    
     repositoryUrl Text Maybe
-    location Text
+    creationDay Day
+    creationDayTime TimeOfDay
     deriving Show Read Eq
