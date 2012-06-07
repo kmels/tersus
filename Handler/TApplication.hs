@@ -5,29 +5,32 @@
 {-# LANGUAGE TypeFamilies          #-}
 module Handler.TApplication where
 
-import           Import
-import           Yesod
-import           Yesod.Form.Jquery
+import Import
+import Data.Maybe(fromMaybe)
+import Yesod
+import Yesod.Form.Jquery\
 
+import Control.Arrow     (first, (&&&), (***))
+import Data.Time.Clock   (getCurrentTime)
 --getAppKey =
 
 -- The data type that is expected from registerAppForm
 
-data ApplicationLike = ApplicationLike {
-  applicationLikeName :: Text
-  , applicationLikeDescription :: Text
-  , applicationLikeRepositoryURL :: Maybe Text
-  , applicationLikeContactEmail :: Maybe Text
+data AppLike = AppLike {
+  appLikeName :: Text
+  , appLikeDescription :: Text
+  , appLikeRepositoryURL :: Maybe Text
+  , appLikeContactEmail :: Text
 } deriving Show
 
 -- A monadic form
-registerAppForm :: Html -> MForm App App (FormResult ApplicationLike,Widget)
+registerAppForm :: Html -> MForm App App (FormResult AppLike,Widget)
 registerAppForm extra = do
   (nameRes, nameView) <- mreq textField "{-This is not used-}" Nothing
   (descriptionRes, descriptionView) <- mreq textField "{-This is not used-}" Nothing
   (repositoryUrlRes, repositoryUrlView) <- mopt textField "RepositoryURL" Nothing
-  (contactEmailRes, contactEmailView) <- mopt textField "ContactEmail" Nothing
-  let applicationLikeResult = ApplicationLike <$> nameRes <*> descriptionRes <*> repositoryUrlRes <*> contactEmailRes
+  (contactEmailRes, contactEmailView) <- mreq textField "ContactEmail" Nothing
+  let appLikeResult = AppLike <$> nameRes <*> descriptionRes <*> repositoryUrlRes <*> contactEmailRes
   let widget = do
             toWidget [lucius|
             ##{fvId contactEmailView} {
@@ -46,7 +49,7 @@ registerAppForm extra = do
               contact email ^{fvInput contactEmailView}
               <p>
              |]
-  return (applicationLikeResult, widget)
+  return (appLikeResult, widget)
 
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
@@ -57,14 +60,16 @@ getRegisterTAppR = do
                               ^{formWidget}
                               <input type=submit value="Createapp">
                               |]
-
+   
 postRegisterTAppR :: Handler RepHtml
 postRegisterTAppR = do
   ((result, widget), enctype) <- runFormPost registerAppForm
   case result of
-    FormSuccess applike -> defaultLayout $ do
-      [whamlet|
-       <h1>Received
+    FormSuccess applike -> do
+      let (appName,(appDescription,(appRepositoryUrl,appContactEmail))) = (appLikeName &&& appLikeDescription &&& appLikeRepositoryURL &&& appLikeContactEmail) applike
+      creationDate <- liftIO getCurrentTime
+      appid <- runDB $ insert $ TApplication appName appDescription appContactEmail appRepositoryUrl creationDate
+      defaultLayout $ [whamlet|
+      <h1>Received
        |]
-    _ -> defaultLayout [whamlet|<p>Invalid input|]
-
+    _ -> defaultLayout $ [whamlet|<p>Invalid input|]

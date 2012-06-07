@@ -10,7 +10,6 @@ Email
     user UserId Maybe
     verkey Text Maybe
     UniqueEmail email
-    deriving
 
 TFile
     user User
@@ -36,6 +35,5 @@ TApplication
     description Text
     contactEmail Text    
     repositoryUrl Text Maybe
-    creationDay Day
-    creationDayTime TimeOfDay
+    creationDate UTCTime
     deriving Show Read Eq
