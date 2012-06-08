@@ -86,6 +86,7 @@ library
 --added by kmels
                  , Crypto                        >= 4.2.5
                  , utf8-string                   >= 0.3.7
+                 , random                        >= 1.0.1
 --added by neto
                  , aeson                         >= 0.6.0.0                 
 
