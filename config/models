@@ -32,9 +32,11 @@ Permission
 
 TApplication
     name Text
+    identifier Text
     description Text
     repositoryUrl Text Maybe    
     contactEmail Text
     creationDate UTCTime
     appKey Text
+    UniqueIdentifier identifier 
     deriving Show Read Eq

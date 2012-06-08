@@ -14,13 +14,13 @@ import           Data.Time(UTCTime)
 -- You can find more information on persistent and how to declare entities
 -- at:
 -- http://www.yesodweb.com/book/persistent/
-type TAppKey = Text
 type Username = Text
 type RawPath = Text
 type Path = [Text]
 type Id = Double
 type IdList = [Id]
 type ApplicationName = Text
+type AccessToken = Text
 
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)
 

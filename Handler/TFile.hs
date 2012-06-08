@@ -25,7 +25,7 @@ instance PathMultiPiece TFilePath where
     fromPathMultiPiece (p:ps) = Just $ TFilePath ([p] ++ ps)
     fromPathMultiPiece _ = Nothing
 
-getFileR :: Text -> TAppKey -> Path -> Handler RepHtml
+getFileR :: Text -> AccessToken -> Path -> Handler RepHtml
 getFileR username appKey path = do
   defaultLayout $ do
     [whamlet|
@@ -41,29 +41,31 @@ getFileR username appKey path = do
 -- requests coming from REST (i.e. POST)
 --
 --
---Use standard english (to i18n, supply a translation function)
 
-data FileContent = FileContent{
+--Use standard english (to i18n, supply a translation function)
+data WFileLike = WFileLike{
   fileContentContent :: Text
+  , fileLikeAccessToken :: AccessToken
 } deriving Show
 
-writeFileForm :: Html -> MForm App App (FormResult FileContent, Widget)
-writeFileForm = renderDivs $ FileContent
+writeFileForm :: AccessToken -> Html -> MForm App App (FormResult WFileLike, Widget)
+writeFileForm accessToken = renderDivs $ WFileLike
     <$> areq textField "Content" Nothing
+    <*> areq hiddenField "AccessToken" Nothing
 
 -- This won't really exist after, it is used for testing purposes only.
-getWriteFileR :: Username -> TAppKey -> Path -> Handler RepHtml
-getWriteFileR username appKey path = do
+getWriteFileR :: Username -> AccessToken -> Path -> Handler RepHtml
+getWriteFileR username accessToken path = do
   --get the form
-  (formWidget, enctype) <- generateFormPost writeFileForm
+  (formWidget, enctype) <- generateFormPost $ writeFileForm accessToken
   defaultLayout [whamlet|
      <h1>Dear user #{username}, you are going to write content to file #{show path}
-     <form method=post action=@{WriteFileR username appKey path} enctype=#{enctype}>
+     <form method=post action=@{WriteFileR username accessToken path} enctype=#{enctype}>
                   ^{formWidget}
                   <input type=submit>
      |]
 
-aesUserAppKey :: User -> TAppKey -> AES.Direction -> Maybe T.Text
+aesUserAppKey :: User -> AccessToken -> AES.Direction -> Maybe T.Text
 aesUserAppKey user appkey dir = do
   splitIndex <- T.findIndex ((==) ':') $ TE.decodeUtf8 decryptedRawAuth
   (userNickname,applicationName) <- Just $ B.splitAt splitIndex decryptedRawAuth
@@ -75,25 +77,25 @@ aesUserAppKey user appkey dir = do
       aesIV = B.pack . UTF8.encode $ "tersus>>=lorenzo" -- initialization vector, 16 byte
       in AES.crypt' AES.CTR aesKey aesIV dir (TE.encodeUtf8 appkey)
 
--- | Returns the app responsible for the request, from the TAppkey,
+-- | Returns the app responsible for the request, from the AccessToken,
 -- this is our security layer used for incoming requests.
---decryptUserAppAuth :: User -> TAppKey -> B.ByteString
+--decryptUserAppAuth :: User -> AccessToken -> B.ByteString
 --decryptUserAppAuth u a = aesUserAppKey u a AES.Decrypt
 
 -- | Generate an app key for a given user and an application name
 -- this will the key that an application will use to make requests
---encryptUserAppAuth :: User -> ApplicationName -> TAppKey
+--encryptUserAppAuth :: User -> ApplicationName -> AccessToken
 --encryptUserAppAuth u a = aesUserAppKey u a AES.Encrypt
 
   --username = usernameNickname user
-postWriteFileR :: Username -> TAppKey -> Path -> Handler RepHtml
-postWriteFileR username appKey path = do
+postWriteFileR :: Username -> AccessToken -> Path -> Handler RepHtml
+postWriteFileR username accessToken path = do
   user <- runDB $ getBy $ UniqueNickname $ username --find user by username
   case user of
     -- Do we have a user?
     Just (Entity uid _ ) -> do
       -- process form
-      ((result, widget), enctype) <- runFormPost writeFileForm
+      ((result, widget), enctype) <- runFormPost $ writeFileForm accessToken
       --      file <- runDB $ insert $ Email "asdf" (Just "zasdf") (Just "as")
       --  let file = user >>= \u -> Just $ TFile u
       case result of
