@@ -10,8 +10,8 @@
 /app/register RegisterTAppR GET POST
 
 -- FILES
-/file/get/#Username/#TAppKey/*Texts FileR GET 
-/file/write/#Username/#TAppKey/*Texts WriteFileR GET POST
+/file/get/#Username/#AccessToken/*Texts FileR GET 
+/file/write/#Username/#AccessToken/*Texts WriteFileR GET POST
 
 -- MESSAGES
 /service/message/inivar InitMVarR GET

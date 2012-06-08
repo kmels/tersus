@@ -38,4 +38,5 @@ TApplication
     contactEmail Text
     creationDate UTCTime
     appKey Text
+    UniqueIdentifier identifier 
     deriving Show Read Eq
