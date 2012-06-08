@@ -32,6 +32,7 @@ Permission
 
 TApplication
     name Text
+    identifier Text
     description Text
     repositoryUrl Text Maybe    
     contactEmail Text
