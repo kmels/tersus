@@ -21,6 +21,8 @@ import Network.HTTP.Conduit (newManager, def)
 -- Don't forget to add new modules to your cabal file!
 import Handler.Home
 import Handler.TFile
+import Handler.Messages
+import Data.HashTable as H
 import Handler.TApplication
 
 -- This line actually creates our YesodSite instance. It is the second half
@@ -51,7 +53,12 @@ makeFoundation conf setLogger = do
               Database.Persist.Store.applyEnv
     p <- Database.Persist.Store.createPoolConfig (dbconf :: Settings.PersistConfig)
     Database.Persist.Store.runPool dbconf (runMigration migrateAll) p
-    return $ App conf setLogger s p manager dbconf
+    addresses <- H.new (==) hashUserApp
+    mailBoxes <- H.new (==) hashUserApp     
+    return $ App conf setLogger s p manager dbconf addresses mailBoxes
+    where        
+        hashUserApp (AppInstance username application)  = H.hashString $ username ++ application
+
 
 -- for yesod devel
 getApplicationDev :: IO (Int, Application)

@@ -31,6 +31,8 @@ import Model
 import Text.Jasmine (minifym)
 import Web.ClientSession (getKey)
 import Text.Hamlet (hamletFile)
+import qualified Data.HashTable as H
+import Control.Concurrent.MVar
 
 -- | The site argument for your application. This can be a good place to
 -- keep settings and values requiring initialization before your application
@@ -43,6 +45,8 @@ data App = App
     , connPool :: Database.Persist.Store.PersistConfigPool Settings.PersistConfig -- ^ Database connection pool.
     , httpManager :: Manager
     , persistConfig :: Settings.PersistConfig
+    , addresses :: H.HashTable (AppInstance) String -- Address of all user app mailboxes
+    , mailBoxes :: H.HashTable AppInstance (MVar [TMessage]) -- Mailbox of users/apps handled by this Tersus instance
     }
 
 -- Set up i18n messages. See the message folder.
