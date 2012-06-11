@@ -25,6 +25,9 @@ import Handler.Messages
 import Data.HashTable as H
 import Handler.TApplication
 
+-- Import the messaging pipeline that uses CloudHaskell
+import MessagingPipeline.Pipeline
+
 -- This line actually creates our YesodSite instance. It is the second half
 -- of the call to mkYesodData which occurs in Foundation.hs. Please see
 -- the comments there for more details.
@@ -54,7 +57,8 @@ makeFoundation conf setLogger = do
     p <- Database.Persist.Store.createPoolConfig (dbconf :: Settings.PersistConfig)
     Database.Persist.Store.runPool dbconf (runMigration migrateAll) p
     addresses <- H.new (==) hashUserApp
-    mailBoxes <- H.new (==) hashUserApp     
+    mailBoxes <- H.new (==) hashUserApp
+    initPipeline
     return $ App conf setLogger s p manager dbconf addresses mailBoxes
     where        
         hashUserApp (AppInstance username application)  = H.hashString $ username ++ application

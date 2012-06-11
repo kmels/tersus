@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module Model where
 
 import           Prelude
@@ -8,8 +11,11 @@ import           Data.Text(Text)
 import           Database.Persist.Quasi
 
 import           Database.Persist.Store(PersistValue(..),SqlType(..))
+import           Database.Persist.GenericSql.Raw (SqlPersist)
 
 import           Data.Time(UTCTime)
+import qualified Data.Binary as B
+import Data.Typeable.Internal (Typeable)
 -- You can define all of your database entities in the entities file.
 -- You can find more information on persistent and how to declare entities
 -- at:
@@ -50,4 +56,46 @@ share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persist
 data AppInstance = AppInstance {username :: String, application :: String} deriving Eq
 
 -- Message = { userSender: User, usersReceiver: [User], appSender: Application, appReceiver: Application, content: String}
-data TMessage = TMessage {userSender :: User, userReciever :: User, appSender :: TApplication, appReciever :: TApplication, content :: Text} deriving Eq
+data TMessage = TMessage {userSender :: User, userReciever :: User, appSender :: TApplication, appReciever :: TApplication, content :: Text} deriving (Eq, Typeable)
+
+-- Represents a mailbox address, composed from a user and an Application
+data Address = Address {user :: User, app :: TApplication}
+
+class Addressable a where
+      getAppInstance :: a -> AppInstance
+
+instance Addressable TMessage where
+         getAppInstance (TMessage _ (User nickname _ _) _ (TApplication _ id _ _ _ _ _ ) _ ) = AppInstance (T.unpack nickname) (T.unpack id)
+
+instance Addressable Address where
+         getAppInstance (Address (User nickname _ _) (TApplication _ id _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id)
+
+
+instance B.Binary Text where
+         put t = B.put (T.unpack t)
+         get = B.get >>=  return . T.pack
+
+instance B.Binary User where
+         put (User nickname _ _) = B.put (T.unpack nickname)
+         get = do 
+             nickname <- B.get 
+             return $ User (T.pack nickname) Nothing []
+
+instance B.Binary TApplication where
+         put (TApplication name id desc _ email date _) = B.put (name,id,desc,email,show date)
+
+         get = do 
+             (name,id,desc,email,date) <- B.get
+             return $ TApplication name id desc Nothing email (read date :: UTCTime) ""
+
+instance B.Binary TMessage where
+         put (TMessage sender reciever appSender appReciever msg) = B.put (sender
+                                                                        ,reciever
+                                                                        ,appSender
+                                                                        ,appReciever
+                                                                        ,msg)
+
+         get = do
+             (u1,u2,app1,app2,msg) <- B.get
+             return $ TMessage u1 u2 app1 app2 msg
+
