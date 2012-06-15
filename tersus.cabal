@@ -36,6 +36,7 @@ library
                      Model.TMessage
                      Handler.TApplication
                      MessagingPipeline.Pipeline
+                     TersusCluster.Cluster
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -55,6 +56,9 @@ library
                 FlexibleContexts
                 EmptyDataDecls
                 NoMonomorphismRestriction
+                DeriveDataTypeable
+                TypeSynonymInstances
+                FlexibleInstances
 
     build-depends: base                          >= 4          && < 5
                  , AES                           >= 0.2.8
