@@ -58,7 +58,7 @@ makeFoundation conf setLogger = do
     Database.Persist.Store.runPool dbconf (runMigration migrateAll) p
     addresses <- H.new (==) hashUserApp
     mailBoxes <- H.new (==) hashUserApp
-    initPipeline
+    --initPipeline
     return $ App conf setLogger s p manager dbconf addresses mailBoxes
     where        
         hashUserApp (AppInstance username application)  = H.hashString $ username ++ application
