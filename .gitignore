@@ -24,3 +24,5 @@ cabal-dev
 *.chi
 *.chs.h
 
+#misc
+apps/
