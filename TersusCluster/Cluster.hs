@@ -18,7 +18,18 @@ import Control.Concurrent.MVar
 import Settings (parseExtra)
 import Yesod.Default.Config (fromArgs)
 import Yesod.Default.Main (defaultMain)
+import System.Posix.Signals
+import System.Exit
+import qualified Data.Binary as B
+import Data.Typeable.Internal (Typeable)
 
+data TersusClusterSignals = TKill deriving Typeable
+
+instance B.Binary TersusClusterSignals where
+    put TKill = B.put (1 :: Int)
+    get = (B.get :: B.Get Int) >>= \s -> 
+          case s of
+            1 -> return TKill
 
 dummyUser = User (T.pack "neto") (Just (T.pack "1234")) []
 
@@ -60,7 +71,10 @@ createTersusInstance = do addresses <- liftIO $ H.new (==) hashUserApp
 
 -- Function that handles messaging among the multiple Tersus instances
 runTersusMessaging :: H.HashTable (AppInstance) String -> H.HashTable AppInstance (MVar [TMessage]) -> ProcessM ()
-runTersusMessaging _ _ = forever $ return ()
+runTersusMessaging _ _ = receiveWait [killSignal] >> return ()
+
+killSignal :: MatchM TersusClusterSignals ()
+killSignal = match return
 
 -- Will be removed
 createTersusInstance' :: ProcessM ()
@@ -92,11 +106,23 @@ initTersusCluster "T1" = do
                             pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusInstance)))  t2s
                             mapM_ (\p -> send p pids) pids
 
-initTersusClusterDevel "T2" = receiveWait []
+sigTermCatch :: MVar Int -> IO ()
+sigTermCatch mVar = putMVar mVar 1 >>
+                    threadDelay 10000000 >>
+                    exitWith ExitSuccess
+                                
+                    
+
+initTersusClusterDevel "T2" = receiveWait [killSignal] >> return ()
 initTersusClusterDevel "T1" = do peers <- getPeers
                                  t2s <- return $ findPeerByRole peers "T2"
                                  pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusDevelInstance)))  t2s
                                  mapM_ (\p -> send p pids) pids
+                                 killMvar <- liftIO $ newEmptyMVar
+                                 liftIO $ installHandler sigTERM (Catch (sigTermCatch killMvar) ) Nothing
+                                 _ <- liftIO $ takeMVar killMvar
+                                 mapM_ (\p -> send p TKill) pids
+                                 return ()
 
 -- Initialize Tersus in producction mode running on top of CloudHaskell
 tersusProducction :: IO ()
