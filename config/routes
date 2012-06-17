@@ -8,6 +8,7 @@
 
 -- APPS
 /app/register RegisterTAppR GET POST
+/t/#ApplicationIdentifier HomeTApplicationR   GET
 
 -- FILES
 /file/get/#Username/#AccessToken/*Texts FileR GET 
