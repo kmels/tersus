@@ -5,9 +5,10 @@
 {-# LANGUAGE TypeFamilies          #-}
 module Handler.TApplication where
 
-import           Import
 import           Data.Maybe(fromMaybe)
+import           Import
 import           Yesod
+import           Yesod.Auth
 import           Yesod.Form.Jquery\
 
 import qualified Codec.Binary.UTF8.String as BinaryUTF8
@@ -82,6 +83,11 @@ postRegisterTAppR = do
       <h1>Received, your generated key: #{appKey}
        |]
     _ -> defaultLayout $ [whamlet|<p>Invalid input|]
+
+getHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
+getHomeTApplicationR appIdentifier = do
+  maid <- maybeAuthId
+  defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier}|]    
 
 -- | Generate a random String of alphanumerical characters
 -- (a-z, A-Z, and 0-9) of the given length using the given

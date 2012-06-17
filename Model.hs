@@ -23,6 +23,7 @@ type Path = [Text]
 type Id = Double
 type IdList = [Id]
 type ApplicationName = Text
+type ApplicationIdentifier = Text --this has the property that has no spaces in it, it goes in the url.
 type AccessToken = Text
 
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)
