@@ -8,4 +8,4 @@ import Control.Applicative
 import qualified Data.Text as T
 
 instance ToJSON TMessage where
-         toJSON (TMessage userSender userReciever appSender appReciever content) = (J.String content)
+         toJSON (TMessage userSender userReciever appSender appReciever content time) = (J.String content)

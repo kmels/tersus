@@ -35,8 +35,9 @@ library
                      Model.TersusResult
                      Model.TMessage
                      Handler.TApplication
-                     MessagingPipeline.Pipeline
                      TersusCluster.Cluster
+                     TersusCluster.Types
+                     TersusCluster.MessageBackend
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -97,6 +98,7 @@ library
                  , remote                        >= 0.1.1
                  , binary                        >= 0.5.1
                  , mtl                           >= 2.1
+                 , MissingH                      >= 1.1.1.0
 
 executable         tersus
     if flag(library-only)

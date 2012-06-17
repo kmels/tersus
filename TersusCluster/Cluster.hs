@@ -18,49 +18,54 @@ import Control.Concurrent.MVar
 import Settings (parseExtra)
 import Yesod.Default.Config (fromArgs)
 import Yesod.Default.Main (defaultMain)
-
+import Control.Concurrent.Chan
+import Control.Concurrent.MVar
+import Data.Time.Clock (getCurrentTime,UTCTime)
+import Data.Hash.MD5
+import TersusCluster.Types
+import TersusCluster.MessageBackend
 
 dummyUser = User (T.pack "neto") (Just (T.pack "1234")) []
-
+                       
 -- This is a dummy datatype only to show that this works
 -- It will be removed and never used
 -- unsafePerformIO is there just because it's simpler and
 -- this will not be part of tersus
 dummyApp = TApplication (T.pack "emacs") (T.pack "identifier") (T.pack "description dummy") (Just (T.pack "url")) (T.pack "mail@place.com") (unsafePerformIO getCurrentTime)  (T.pack "appkey")
 
-dummyMsg = TMessage dummyUser dummyUser dummyApp dummyApp (T.pack "Alonso")
-
--- Function to match a process id sent from another process
-matchProcesses :: MatchM [ProcessId] ()
-matchProcesses = match return
-
--- Function to match a Message sent from another process                        
-matchTMessage :: MatchM TMessage ()
-matchTMessage = match return
+dummyMsg = TMessage dummyUser dummyUser dummyApp dummyApp (T.pack "Alonso") (unsafePerformIO getCurrentTime)
 
 -- Hash function for a user application combo instance
 hashUserApp (AppInstance username application)  = H.hashString $ username ++ application
 
+-- Produce all the data structures needed to communicate data between Tersusland and Clould Haskell
+initDataStructures :: ProcessM (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,AddressTable,TMessageStatusTable,ProcessId)
+initDataStructures = (liftIO $ H.new (==) hashUserApp) >>= \addresses ->
+                     (liftIO $ H.new (==) hashUserApp) >>= \mailBoxes ->
+                     (liftIO $ H.new (==) H.hashString) >>= \msgStatusTable ->
+                     (liftIO $ newChan) >>= \sendChannel ->
+                     (liftIO $ newChan) >>= \recvChannel ->
+                     (liftIO $ newChan) >>= \actionsChannel ->
+                     getSelfPid >>= \myPid ->
+                     return (sendChannel,recvChannel,actionsChannel,mailBoxes,addresses,msgStatusTable,myPid)
+                                      
+
 -- Process that runs Tersus and Yesod in development mode
 createTersusDevelInstance :: ProcessM ()
-createTersusDevelInstance = do addresses <- liftIO $ H.new (==) hashUserApp
-                               mailBoxes <- liftIO $ H.new (==) hashUserApp
-                               liftIO $ do (port, app) <- getApplicationDev addresses mailBoxes    
-                                           forkIO $ runSettings defaultSettings
-                                                    { settingsPort = port
-                                                    } app
-                               runTersusMessaging addresses mailBoxes
+createTersusDevelInstance = do
+  (sendChannel,recvChannel,actionsChannel,mailBoxes,addresses,msgStatusTable,myPid) <- initDataStructures
+  liftIO $ do (port, app) <- getApplicationDev (sendChannel,recvChannel,actionsChannel,mailBoxes,msgStatusTable,myPid)
+              forkIO $ runSettings defaultSettings
+                         { settingsPort = port
+                         } app
+  runTersusMessaging sendChannel recvChannel actionsChannel mailBoxes addresses msgStatusTable 1
 
 -- Process that runs Tersus and Yesod in producction mode
 createTersusInstance :: ProcessM ()
-createTersusInstance = do addresses <- liftIO $ H.new (==) hashUserApp
-                          mailBoxes <- liftIO $ H.new (==) hashUserApp
-                          liftIO $ forkIO $ defaultMain (fromArgs parseExtra) $ makeApplicationWrapper addresses mailBoxes
-                          runTersusMessaging addresses mailBoxes
-
--- Function that handles messaging among the multiple Tersus instances
-runTersusMessaging :: H.HashTable (AppInstance) String -> H.HashTable AppInstance (MVar [TMessage]) -> ProcessM ()
-runTersusMessaging _ _ = forever $ return ()
+createTersusInstance = do
+  (sendChannel,recvChannel,actionsChannel,mailBoxes,addresses,msgStatusTable,myPid) <- initDataStructures
+  liftIO $ forkIO $ defaultMain (fromArgs parseExtra) $ makeApplicationWrapper (sendChannel,recvChannel,actionsChannel,mailBoxes,msgStatusTable,myPid)
+  runTersusMessaging sendChannel recvChannel actionsChannel mailBoxes addresses msgStatusTable 1
 
 -- Will be removed
 createTersusInstance' :: ProcessM ()
@@ -76,7 +81,7 @@ createTersusInstance' = do
                         rmItem a (x:xs) 
                                | a == x = xs
                                | otherwise = x : (rmItem a xs)
-                        doRecieve = do (TMessage _ _ _ _ msg) <- receiveWait [matchTMessage]
+                        doRecieve = do (TMessage _ _ _ _ msg _) <- receiveWait [matchTMessage]
                                        say $ "I got: " ++ (T.unpack msg)
 --
 

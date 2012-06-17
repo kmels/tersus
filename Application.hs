@@ -18,17 +18,16 @@ import qualified Database.Persist.Store
 import Database.Persist.GenericSql (runMigration)
 import Network.HTTP.Conduit (newManager, def)
 
+-- CloudHaskell stuff
+import TersusCluster.Types
+import Remote (ProcessId)
+
 -- Import all relevant handler modules here.
 -- Don't forget to add new modules to your cabal file!
 import Handler.Home
 import Handler.TFile
 import Handler.Messages
-import Data.HashTable as H 
 import Handler.TApplication
-import Control.Concurrent.MVar
-
--- Import the messaging pipeline that uses CloudHaskell
-import MessagingPipeline.Pipeline
 
 -- This line actually creates our YesodSite instance. It is the second half
 -- of the call to mkYesodData which occurs in Foundation.hs. Please see
@@ -36,16 +35,16 @@ import MessagingPipeline.Pipeline
 mkYesodDispatch "App" resourcesApp
 
 -- Wrapper that reverses the parameters of makeApplication function from Application.hs
-makeApplicationWrapper :: H.HashTable (AppInstance) String -> H.HashTable AppInstance (MVar [TMessage]) -> AppConfig DefaultEnv Extra -> Logger -> IO Application
-makeApplicationWrapper addresses mailBoxes conf logger = makeApplication conf logger addresses mailBoxes
+makeApplicationWrapper :: (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,ProcessId) -> AppConfig DefaultEnv Extra -> Logger -> IO Application
+makeApplicationWrapper env conf logger = makeApplication conf logger env
 
 -- This function allocates resources (such as a database connection pool),
 -- performs initialization and creates a WAI application. This is also the
 -- place to put your migrate statements to have automatic database
 -- migrations handled by Yesod.
-makeApplication :: AppConfig DefaultEnv Extra -> Logger -> H.HashTable (AppInstance) String -> H.HashTable AppInstance (MVar [TMessage]) -> IO Application
-makeApplication conf logger addresses mailBoxes = do
-    foundation <- makeFoundation conf setLogger addresses mailBoxes
+makeApplication :: AppConfig DefaultEnv Extra -> Logger -> (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,ProcessId) -> IO Application
+makeApplication conf logger env = do
+    foundation <- makeFoundation conf setLogger env
     app <- toWaiAppPlain $ foundation
     return $ logWare app
   where
@@ -53,8 +52,8 @@ makeApplication conf logger addresses mailBoxes = do
     logWare   = if development then logCallbackDev (logBS setLogger)
                                else logCallback    (logBS setLogger)
 
-makeFoundation :: AppConfig DefaultEnv Extra -> Logger -> H.HashTable (AppInstance) String -> H.HashTable AppInstance (MVar [TMessage]) -> IO App
-makeFoundation conf setLogger addresses mailBoxes = do
+makeFoundation :: AppConfig DefaultEnv Extra -> Logger -> (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,ProcessId) -> IO App
+makeFoundation conf setLogger (sendChannel,recvChannel,actionsChannel,mailBoxes,statusTable,processId) = do
     manager <- newManager def
     s <- staticSite
     dbconf <- withYamlEnvironment "config/postgres.yml" (appEnv conf)
@@ -62,16 +61,13 @@ makeFoundation conf setLogger addresses mailBoxes = do
               Database.Persist.Store.applyEnv
     p <- Database.Persist.Store.createPoolConfig (dbconf :: Settings.PersistConfig)
     Database.Persist.Store.runPool dbconf (runMigration migrateAll) p    
-    return $ App conf setLogger s p manager dbconf addresses mailBoxes
-
-hashUserApp (AppInstance username application)  = H.hashString $ username ++ application
+    return $ App conf setLogger s p manager dbconf sendChannel recvChannel actionsChannel mailBoxes statusTable processId
 
 -- for yesod devel
-getApplicationDev :: H.HashTable (AppInstance) String -> H.HashTable AppInstance (MVar [TMessage]) -> IO (Int, Application)
-getApplicationDev addresses mailBoxes= do    
-    defaultDevelApp loader $ makeAppWrapper addresses mailBoxes
+getApplicationDev :: (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,ProcessId) -> IO (Int, Application)
+getApplicationDev env= do    
+    defaultDevelApp loader $ makeApplicationWrapper env
   where
-    makeAppWrapper a m x y = makeApplication x y a m
     loader = loadConfig (configSettings Development)
         { csParseExtra = parseExtra
         }

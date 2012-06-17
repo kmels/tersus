@@ -31,8 +31,8 @@ import Model
 import Text.Jasmine (minifym)
 import Web.ClientSession (getKey)
 import Text.Hamlet (hamletFile)
-import qualified Data.HashTable as H
-import Control.Concurrent.MVar
+import TersusCluster.Types
+import Remote (ProcessId)
 
 -- | The site argument for your application. This can be a good place to
 -- keep settings and values requiring initialization before your application
@@ -45,8 +45,20 @@ data App = App
     , connPool :: Database.Persist.Store.PersistConfigPool Settings.PersistConfig -- ^ Database connection pool.
     , httpManager :: Manager
     , persistConfig :: Settings.PersistConfig
-    , addresses :: H.HashTable (AppInstance) String -- Address of all user app mailboxes
-    , mailBoxes :: H.HashTable AppInstance (MVar [TMessage]) -- Mailbox of users/apps handled by this Tersus instance
+    -- Channel for writing messages that should be sent
+    , getSendChannel :: TMessageQueue
+    -- Channel for writing the messages that were delivered, 
+    -- note that is used to indicate that a mesage was removed from the mailbox and dlivered
+    , getDeliveryChannel :: TMessageQueue 
+    -- Channel to write events occuring in tersus, such as user opening
+    -- a app or closing it
+    , getActionsChannel :: ActionsChannel 
+    -- Hash table with all the mailboxes
+    , getMailBoxes :: MailBoxTable
+    -- Table where the result of each message is written
+    , getStatusTable :: TMessageStatusTable
+    -- CloudHaskell process where Tersus is running
+    , getProcessId :: ProcessId
     }
 
 -- Set up i18n messages. See the message folder.
