@@ -10,3 +10,8 @@ $nothing
         <a href=@{AuthR LoginR}>Go to the login page
 
 <h2> Applications!
+
+Available applications:
+<ul>
+    $forall Entity _ tapp <- tapps
+        <li><a href="/t/#{tApplicationIdentifier tapp}"> #{tApplicationName tapp} </a>

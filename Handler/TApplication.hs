@@ -5,9 +5,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 module Handler.TApplication where
 
-import           Data.Maybe(fromMaybe)
 import           Import
-import           Yesod
 import           Yesod.Auth
 import           Yesod.Form.Jquery\
 

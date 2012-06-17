@@ -52,7 +52,7 @@ makeApplication conf logger addresses mailBoxes = do
     setLogger = if development then logger else toProduction logger
     logWare   = if development then logCallbackDev (logBS setLogger)
                                else logCallback    (logBS setLogger)
-
+                               
 makeFoundation :: AppConfig DefaultEnv Extra -> Logger -> H.HashTable (AppInstance) String -> H.HashTable AppInstance (MVar [TMessage]) -> IO App
 makeFoundation conf setLogger addresses mailBoxes = do
     manager <- newManager def
