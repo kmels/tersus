@@ -6,20 +6,14 @@ module Handler.Messages where
 
 --Description: Functions to handle the messaging system of Tersus.
 
-import           Control.Concurrent (MVar, isEmptyMVar, modifyMVar_, newEmptyMVar, putMVar, takeMVar)
-import           Data.Aeson         as D
-import           Data.HashTable     as H
-import           Data.Text          as T
-import           Data.Time.Clock    (getCurrentTime)
+import           Data.Aeson                 as D
 import           Import
-import           Model
-import           Model.TMessage
-import           Model.TersusResult
-import           System.IO.Unsafe   (unsafePerformIO)
 import           MessagingPipeline.Pipeline
-                
+import           Model.TersusResult         ()
+
 
 -- Dummy test functions, will not exist in future releases
+getInitMVarR :: Handler RepJson
 getInitMVarR = do
             master <- getYesod
             liftIO $ createMailbox master $ Address dummyUser dummyApp
@@ -34,5 +28,5 @@ getMessageR = do
 getSetMVarR :: Handler RepJson
 getSetMVarR = do
             master <- getYesod
-            liftIO $ writeMessage master dummyMsg
+            _ <- liftIO $ writeMessage master dummyMsg
             jsonToRepJson $ encode $ TersusResult 3 Import.Success
