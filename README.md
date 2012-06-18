@@ -4,7 +4,7 @@ tersus
 a virtual filesystem to use with js/coffeescript + open source js libraries hub.
 
 Coding style
-=======
+======
  * Comment every top level function (particularly exported funtions), and provide a type signature.
  * Use Haddock syntax in the comments (see below).
  * Code should be compilable with ghc-options: -Wall -Werror set in the tersus.cabal file. There should be no warnings.
