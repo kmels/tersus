@@ -33,6 +33,7 @@ library
                      TFile.FilesystemUtils
                      Handler.Messages
                      Model.TersusResult
+                     Model.TersusResultCode
                      Model.TMessage
                      Handler.TApplication
                      MessagingPipeline.Pipeline

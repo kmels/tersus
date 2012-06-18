@@ -3,7 +3,6 @@
 module Handler.Home where
 
 import           Import
-import           Yesod
 import           Yesod.Auth
 
 -- This is a handler function for the GET request method on the HomeR

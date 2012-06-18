@@ -8,7 +8,6 @@ import           Data.Text(Text)
 import           Database.Persist.Quasi
 
 import           Database.Persist.Store(PersistValue(..),SqlType(..))
-import           Database.Persist.GenericSql.Raw (SqlPersist)
 
 import           Data.Time(UTCTime)
 import qualified Data.Binary as B
@@ -63,10 +62,10 @@ class Addressable a where
       getAppInstance :: a -> AppInstance
 
 instance Addressable TMessage where
-         getAppInstance (TMessage _ (User nickname _ _) _ (TApplication _ id _ _ _ _ _ ) _ ) = AppInstance (T.unpack nickname) (T.unpack id)
+         getAppInstance (TMessage _ (User nickname _ _) _ (TApplication _ id' _ _ _ _ _ ) _ ) = AppInstance (T.unpack nickname) (T.unpack id')
 
 instance Addressable Address where
-         getAppInstance (Address (User nickname _ _) (TApplication _ id _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id)
+         getAppInstance (Address (User nickname _ _) (TApplication _ id' _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id')
 
 
 instance B.Binary Text where
@@ -80,17 +79,17 @@ instance B.Binary User where
              return $ User (T.pack nickname) Nothing []
 
 instance B.Binary TApplication where
-         put (TApplication name id desc _ email date _) = B.put (name,id,desc,email,show date)
+         put (TApplication name id' desc _ email date _) = B.put (name,id',desc,email,show date)
 
          get = do 
-             (name,id,desc,email,date) <- B.get
-             return $ TApplication name id desc Nothing email (read date :: UTCTime) ""
+             (name,id',desc,email,date) <- B.get
+             return $ TApplication name id' desc Nothing email (read date :: UTCTime) ""
 
 instance B.Binary TMessage where
-         put (TMessage sender reciever appSender appReciever msg) = B.put (sender
-                                                                        ,reciever
-                                                                        ,appSender
-                                                                        ,appReciever
+         put (TMessage sender receiver appSender' appReceiver msg) = B.put (sender
+                                                                        ,receiver
+                                                                        ,appSender'
+                                                                        ,appReceiver
                                                                         ,msg)
 
          get = do

@@ -1,14 +1,10 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Model.TersusResult where
 
-import Import
-import Data.Aeson as J
-import Control.Monad
-import Data.Functor
-import Control.Applicative
-import qualified Data.Text as T
-
-instance ToJSON TersusResultCode where
-         toJSON Import.Success = (J.String (T.pack "Success"))
+import           Data.Aeson             as J
+import qualified Data.Text              as T
+import           Import
+import           Model.TersusResultCode ()
 
 instance ToJSON TersusResult where
          toJSON (TersusResult httpStatusCode tersusCode) = J.object [(T.pack "httpStatusCode") .= httpStatusCode,

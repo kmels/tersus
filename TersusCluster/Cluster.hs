@@ -10,13 +10,12 @@ import           Data.HashTable as H
 import           Data.Text as T
 import           Data.Time.Clock (getCurrentTime)
 import           Data.Typeable.Internal (Typeable)
-import           GHC.Int(Int32(..))
+import           Data.Int(Int32)
 import           Model
-import           Model.TMessage
 import           Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsPort)
 import           Prelude
 import           Remote
-import           Remote.Call (mkClosureRec, mkClosure)
+import           Remote.Call (mkClosure)
 import           Settings (parseExtra)
 import           System.Exit
 import           System.IO.Unsafe (unsafePerformIO)
@@ -31,15 +30,20 @@ instance B.Binary TersusClusterSignals where
     get = (B.get :: B.Get Int) >>= \s -> 
           case s of
             1 -> return TKill
-
+            --TODO fix this, I added this expresion to avoid warnings
+            _ -> return TKill
+            
+dummyUser :: User
 dummyUser = User (T.pack "neto") (Just (T.pack "1234")) []
 
 -- This is a dummy datatype only to show that this works
 -- It will be removed and never used
 -- unsafePerformIO is there just because it's simpler and
 -- this will not be part of tersus
+dummyApp :: TApplication
 dummyApp = TApplication (T.pack "emacs") (T.pack "identifier") (T.pack "description dummy") (Just (T.pack "url")) (T.pack "mail@place.com") (unsafePerformIO getCurrentTime)  (T.pack "appkey")
 
+dummyMsg :: TMessage
 dummyMsg = TMessage dummyUser dummyUser dummyApp dummyApp (T.pack "Alonso")
 
 -- Function to match a process id sent from another process
@@ -51,7 +55,8 @@ matchTMessage :: MatchM TMessage ()
 matchTMessage = match return
 
 -- Hash function for a user application combo instance
-hashUserApp (AppInstance username' app')  = H.hashString $ username' ++ app' -- 
+hashUserApp :: AppInstance -> Int32
+hashUserApp (AppInstance username' app')  = H.hashString $ username' ++ app'
 
 -- Process that runs Tersus and Yesod in development mode
 createTersusDevelInstance :: ProcessM ()

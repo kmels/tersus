@@ -1,11 +1,8 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Model.TMessage where
 
-import Import
-import Data.Aeson as J
-import Control.Monad
-import Data.Functor
-import Control.Applicative
-import qualified Data.Text as T
+import           Data.Aeson as J
+import           Import
 
 instance ToJSON TMessage where
-         toJSON (TMessage userSender userReciever appSender appReciever content) = (J.String content)
+         toJSON (TMessage _ _ _ _ content') = (J.String content')
