@@ -9,9 +9,9 @@ module Handler.Messages where
 import           Data.Aeson                 as D
 import           Import
 import           MessagingPipeline.Pipeline
+import           Model                      (TMessage(..))
+import           Model.TMessage
 import           Model.TersusResult         ()
-
-
 -- Dummy test functions, will not exist in future releases
 getInitMVarR :: Handler RepJson
 getInitMVarR = do
