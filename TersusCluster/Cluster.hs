@@ -22,6 +22,8 @@ import           System.IO.Unsafe (unsafePerformIO)
 import           System.Posix.Signals
 import           Yesod.Default.Config (fromArgs)
 import           Yesod.Default.Main (defaultMain)
+import System.Directory (doesFileExist)
+import Remote.Process (forkProcess)
 
 data TersusClusterSignals = TKill deriving Typeable
 
@@ -65,7 +67,7 @@ createTersusDevelInstance = do addresses <- liftIO $ H.new (==) hashUserApp
                                _ <- liftIO $ do (port, tAppInstance) <- getApplicationDev addresses mailBoxes    
                                                 forkIO $ runSettings defaultSettings
                                                     { settingsPort = port
-                                                    } tAppInstance
+                                                    } tAppInstance                               
                                runTersusMessaging addresses mailBoxes
 
 -- Process that runs Tersus and Yesod in producction mode
@@ -108,10 +110,10 @@ remotable ['createTersusInstance,'createTersusDevelInstance]
 -- Functions to initialize all the tersus nodes and distribute the ProcessId of such nodes
 -- Development and producction version of the function
 initTersusCluster :: String -> ProcessM ()
-initTersusCluster "T2" = receiveWait []
+--initTersusCluster "T2" = receiveWait []
 initTersusCluster "T1" = do 
                             peers <- getPeers
-                            t2s <- return $ findPeerByRole peers "T2"
+                            t2s <- return $ findPeerByRole peers "T1"
                             pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusInstance)))  t2s
                             mapM_ (\p -> send p pids) pids
 initTersusCluster _ = return ()
@@ -124,18 +126,30 @@ sigTermCatch mVar = putMVar mVar 1 >>
                     
 -- TODO: Add description of what this function does
 initTersusClusterDevel :: String -> ProcessM ()
-initTersusClusterDevel "T2" = receiveWait [killSignal] >> return ()
+--initTersusClusterDevel "T2" = receiveWait [killSignal] >> return ()
 initTersusClusterDevel "T1" = do peers <- getPeers
-                                 t2s <- return $ findPeerByRole peers "T2"
-                                 pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusDevelInstance)))  t2s
-                                 mapM_ (\p -> send p pids) pids
+                                 t2s <- return $ findPeerByRole peers "T1"
+                                 --pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusDevelInstance)))  t2s
+                                 --mapM_ (\p -> send p pids) pids
+                                 pid <- forkProcess $ createTersusDevelInstance
                                  killMvar <- liftIO $ newEmptyMVar
                                  _ <- liftIO $ installHandler sigTERM (Catch (sigTermCatch killMvar) ) Nothing
+                                 _ <- liftIO $ forkIO $ loop killMvar
                                  _ <- liftIO $ takeMVar killMvar
-                                 mapM_ (\p -> send p TKill) pids
+                                 mapM_ (\p -> send p TKill) [pid]
                                  return ()
 initTersusClusterDevel _ = return()
 
+
+loop :: MVar Int -> IO ()
+loop var = do
+  threadDelay 100000
+  e <- doesFileExist "dist/devel-terminate"
+  if e then putMVar var 1 >> threadDelay 10000000000 >> terminateDevel else loop var
+  
+terminateDevel :: IO ()
+terminateDevel = exitSuccess
+     
 -- Initialize Tersus in producction mode running on top of CloudHaskell
 tersusProducction :: IO ()
 tersusProducction = do 
@@ -146,6 +160,6 @@ tersusProducction = do
 -- Initialize Tersus in development mode running on top of CloudHaskell
 tersusDevel :: IO ()
 tersusDevel = do 
-  _ <- forkIO $ remoteInit (Just "config/servers") [TersusCluster.Cluster.__remoteCallMetaData] initTersusClusterDevel
-  remoteInit (Just "config/servers2") [TersusCluster.Cluster.__remoteCallMetaData] initTersusClusterDevel
+  remoteInit (Just "config/servers") [TersusCluster.Cluster.__remoteCallMetaData] initTersusClusterDevel
+  --remoteInit (Just "config/servers2") [TersusCluster.Cluster.__remoteCallMetaData] initTersusClusterDevel
   return ()
