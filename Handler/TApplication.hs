@@ -5,12 +5,12 @@
 {-# LANGUAGE TypeFamilies          #-}
 module Handler.TApplication where
 
-import           Control.Arrow   ((&&&))
-import qualified Data.Text       as T
-import           Data.Time.Clock (getCurrentTime)
+import           Control.Arrow            ((&&&))
+import qualified Data.Text                as T
+import           Data.Time.Clock          (getCurrentTime)
+import           Handler.TApplication.Git (pullChanges)
 import           Import
-
-import           System.Random   (newStdGen, randomRs)
+import           System.Random            (newStdGen, randomRs)
 
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
@@ -77,7 +77,12 @@ postRegisterTAppR = do
 getHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
 getHomeTApplicationR appIdentifier = do
 --  _ <- maybeAuthId
-  defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier}|]
+  appMbe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
+  case appMbe of
+    Just (Entity _ app') -> do
+      _ <- liftIO $ pullChanges app'
+      defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier}|]
+    _ -> error "Not implemented yet; app doesn't exist"
 
 -- | Generate a random String of alphanumerical characters
 -- (a-z, A-Z, and 0-9) of the given length using the given
