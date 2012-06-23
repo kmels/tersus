@@ -6,38 +6,51 @@ module Handler.Messages where
 
 --Description: Functions to handle the messaging system of Tersus.
 
-import           Control.Concurrent (MVar, isEmptyMVar, modifyMVar_, newEmptyMVar, putMVar, takeMVar)
-import           Data.Aeson         as D
-import           Data.HashTable     as H
-import           Data.Text          as T
-import           Data.Time.Clock    (getCurrentTime)
-import           Import
-import           Model
-import           Model.TMessage
-import           Model.TersusResult
-import           System.IO.Unsafe   (unsafePerformIO)
+import Data.Aeson as D
+import Data.HashTable as H
+import Data.Text as T
+import Import
+import Model
+import Model.TMessage
+import Model.TersusResult
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
 import TersusCluster.Types
 import Data.Maybe (fromJust)
-
+import System.IO.Unsafe (unsafePerformIO)
+import Data.Time.Clock (getCurrentTime)
+import Control.Monad (mapM)
 
 -- Deliver a message, block until it's delivery
--- status is known
+-- status is known. The delivery status will be
+-- writen on the MVar which is returned by
+-- queueMessage once the destinatary creates
+-- a receive request. The status MVar is deleted
+-- after the message delivery
+deliverTMessage :: TMessage -> GHandler sub App MessageResult
 deliverTMessage message = do 
                         master <- getYesod
                         channel <- return $ getSendChannel master
-                        pid <- return $ getProcessId master
+                        port <- return $ getSendPort master
                         statusTable <- return $ getStatusTable master
-                        status <- liftIO $ queueMessage statusTable channel (message,pid)
-                        return $ liftIO $ takeMVar status
+                        status <- liftIO $ queueMessage statusTable channel (message,port)
+                        --Todo: exception handling if the message
+                        --is never received. A timeout or something
+                        --similar. Also if the request is 
+                        --aborted, the MVar should be removed
+                        result <- liftIO $ takeMVar status
+                        liftIO $ H.delete statusTable (generateHash message)
+                        return result
 
--- Add a message to the message queue channel
+-- Add a message to the privided message queue channel. Create a
+-- MVar to write the status code of the received message and
+-- Save that MVar in the message status table so the receive request
+-- can write the status once the message is processed
 queueMessage :: TMessageStatusTable -> TMessageQueue -> TMessageEnvelope -> IO (MVar MessageResult)
-queueMessage statusTable channel (message,pid) = do                            
-                              writeChan channel (message,pid)
+queueMessage statusTable channel (message,port) = do 
                               status <- newEmptyMVar
-                              H.insert statusTable (generateHash message) status
+                              H.insert statusTable (generateHash message) status                                                            
+                              writeChan channel (message,port)
                               return status
                               
 
@@ -46,6 +59,7 @@ queueMessage statusTable channel (message,pid) = do
 -- Note that a pattern match failure should not happe. If it happens it means
 -- that the app key generaiton method is not secure
 -- receieveMessage :: Address -> IO [TMessage]
+receiveMessages :: Addressable a => a -> GHandler sub App [TMessageEnvelope]
 receiveMessages address = do
                 master <- getYesod
                 mailBoxes <- return $ getMailBoxes master                
@@ -55,20 +69,27 @@ receiveMessages address = do
                 liftIO $ mapM_ (writeChan deliveryChan) messages
                 return messages
 
--- Dummy test functions, will not exist in future releases
-getInitMVarR = do
-            -- master <- getYesod
-            -- liftIO $ createMailbox master $ Address dummyUser dummyApp
-            jsonToRepJson $ encode $ TersusResult 3 Import.Success
 
-getMessageR :: Handler RepJson
-getMessageR = do
-            -- master <- getYesod
-            -- Just msgs <- liftIO $ retrieveMessages master $ Address dummyUser dummyApp
-            jsonToRepJson $ encode ("tmp resp" :: String) --msgs
+-- TEsting funcitons
+getSendMessageR :: Handler RepJson
+getSendMessageR = do
+  resp <- deliverTMessage dummyMsg
+  jsonToRepJson $ encode $ (show resp)
 
-getSetMVarR :: Handler RepJson
-getSetMVarR = do
-            -- master <- getYesod
-            -- liftIO $ writeMessage master dummyMsg
-            jsonToRepJson $ encode $ TersusResult 3 Import.Success
+getRecvMessageR :: Handler RepJson
+getRecvMessageR = do
+  msgs <- receiveMessages dummyAddress
+  msgs' <- mapM (\(msg,_) -> return msg) msgs
+  jsonToRepJson $ encode $ msgs'
+
+dummyUser = User (T.pack "neto") (Just (T.pack "1234")) []
+                       
+-- This is a dummy datatype only to show that this works
+-- It will be removed and never used
+-- unsafePerformIO is there just because it's simpler and
+-- this will not be part of tersus
+dummyApp = TApplication (T.pack "emacs") (T.pack "identifier") (T.pack "description dummy") (Just (T.pack "url")) (T.pack "mail@place.com") (unsafePerformIO getCurrentTime)  (T.pack "appkey")
+
+dummyMsg = TMessage dummyUser dummyUser dummyApp dummyApp (T.pack "Alonso") (unsafePerformIO getCurrentTime)
+
+dummyAddress = Address dummyUser dummyApp

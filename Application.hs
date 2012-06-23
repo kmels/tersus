@@ -20,7 +20,6 @@ import Network.HTTP.Conduit (newManager, def)
 
 -- CloudHaskell stuff
 import TersusCluster.Types
-import Remote (ProcessId)
 
 -- Import all relevant handler modules here.
 -- Don't forget to add new modules to your cabal file!
@@ -35,14 +34,15 @@ import Handler.TApplication
 mkYesodDispatch "App" resourcesApp
 
 -- Wrapper that reverses the parameters of makeApplication function from Application.hs
-makeApplicationWrapper :: (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,ProcessId) -> AppConfig DefaultEnv Extra -> Logger -> IO Application
+-- This wrapper is generally used to init Tersus from CloudHaskell
+makeApplicationWrapper :: (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> AppConfig DefaultEnv Extra -> Logger -> IO Application
 makeApplicationWrapper env conf logger = makeApplication conf logger env
 
 -- This function allocates resources (such as a database connection pool),
 -- performs initialization and creates a WAI application. This is also the
 -- place to put your migrate statements to have automatic database
 -- migrations handled by Yesod.
-makeApplication :: AppConfig DefaultEnv Extra -> Logger -> (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,ProcessId) -> IO Application
+makeApplication :: AppConfig DefaultEnv Extra -> Logger -> (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO Application
 makeApplication conf logger env = do
     foundation <- makeFoundation conf setLogger env
     app <- toWaiAppPlain $ foundation
@@ -52,8 +52,8 @@ makeApplication conf logger env = do
     logWare   = if development then logCallbackDev (logBS setLogger)
                                else logCallback    (logBS setLogger)
 
-makeFoundation :: AppConfig DefaultEnv Extra -> Logger -> (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,ProcessId) -> IO App
-makeFoundation conf setLogger (sendChannel,recvChannel,actionsChannel,mailBoxes,statusTable,processId) = do
+makeFoundation :: AppConfig DefaultEnv Extra -> Logger -> (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO App
+makeFoundation conf setLogger (sendChannel,recvChannel,actionsChannel,mailBoxes,statusTable,aSendPort) = do
     manager <- newManager def
     s <- staticSite
     dbconf <- withYamlEnvironment "config/postgres.yml" (appEnv conf)
@@ -61,10 +61,10 @@ makeFoundation conf setLogger (sendChannel,recvChannel,actionsChannel,mailBoxes,
               Database.Persist.Store.applyEnv
     p <- Database.Persist.Store.createPoolConfig (dbconf :: Settings.PersistConfig)
     Database.Persist.Store.runPool dbconf (runMigration migrateAll) p    
-    return $ App conf setLogger s p manager dbconf sendChannel recvChannel actionsChannel mailBoxes statusTable processId
+    return $ App conf setLogger s p manager dbconf sendChannel recvChannel actionsChannel mailBoxes statusTable aSendPort
 
 -- for yesod devel
-getApplicationDev :: (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,ProcessId) -> IO (Int, Application)
+getApplicationDev :: (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO (Int, Application)
 getApplicationDev env= do    
     defaultDevelApp loader $ makeApplicationWrapper env
   where

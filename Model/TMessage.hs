@@ -3,9 +3,7 @@ module Model.TMessage where
 import Import
 import Data.Aeson as J
 import Control.Monad
-import Data.Functor
-import Control.Applicative
-import qualified Data.Text as T
 
+-- Instance to convert a message into it's json representation
 instance ToJSON TMessage where
-         toJSON (TMessage userSender userReciever appSender appReciever content time) = (J.String content)
+         toJSON (TMessage sender receiver senderApp receiverApp msgBody timestamp) = (J.String msgBody)

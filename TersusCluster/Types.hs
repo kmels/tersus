@@ -15,19 +15,58 @@ type THashCode = String
 -- and un-registration of User/App Instances, for example
 -- if we get two register requests and one un-register request
 -- the app should remain registered
-type TersusProcessM = (ProcessId,THashCode)
 
--- type TMessageChannel = TChan (TMessage, TMVar (MessageResult))
-type TMessageEnvelope = (TMessage,ProcessId)
+-- Contains a Tersus Messages packed with the port to which
+-- acknowledgements for this message shuld be sent
+type TMessageEnvelope = (TMessage,SendPort (THashCode,MessageResult))
+
+-- Envelope for sending message results. The 
+-- hash code of this envelope is the hash code
+-- produced from the messages for which this result is sent.
+-- This hash code can be used to determine the message that
+-- should be acknowledge with the MessageResult
+type MessageResultEnvelope = (THashCode,MessageResult)
+
+-- The send/receive port of the channel for messages
+type MessageSendPort = SendPort TMessageEnvelope
+type MessageRecvPort = ReceivePort TMessageEnvelope
+type MessagingPorts = (MessageSendPort,MessageRecvPort)
+
+-- The send/receive port of the channel for message acknowledgements
+type AcknowledgementSendPort = SendPort MessageResultEnvelope
+type AcknowledgementRecvPort = ReceivePort MessageResultEnvelope
+type AcknowledgementPorts = (AcknowledgementSendPort,AcknowledgementRecvPort)
+
+
+-- This type represents the address of a TersusCluster for
+-- message delivery. Also has a hash code which will be used
+-- to determine how to register and unregister addresses
+type TersusProcessM = (SendPort TMessageEnvelope,THashCode)
+
+-- HashTable indexed by appInstances that contains all
+-- known AppInstances with their address
 type AddressTable = HashTable (AppInstance) TersusProcessM
+
+-- Channel that will be used to communicate what is happening with
+-- the AppInstances
 type ActionsChannel = Chan (AppInstanceActions)
+
+-- Contains all the Mailboxes for the AppInstances running in this
+-- TersusCluster. 
 type MailBoxTable = HashTable AppInstance (MVar [TMessageEnvelope])
+
+-- Contains a table where the status of each message send from
+-- AppInstances of this server are written once they are
+-- acknowledge by the target TersusCluster
 type TMessageStatusTable = HashTable THashCode (MVar (MessageResult))
 type TMessageQueue = Chan TMessageEnvelope
 
+-- Represents the datatypse for which a hashcode can be computed
 class Hashable a where
       generateHash :: a -> THashCode
 
+-- Implementation of the hashcode generation mechanisms of 
+-- TersusMessages
 instance Hashable TMessage where
          generateHash msg = let
                       TMessage u1 u2 a1 a2 body time= msg

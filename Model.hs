@@ -50,7 +50,7 @@ data TersusResult = TersusResult Int TersusResultCode
 
 -- Update the function msgResultNums as well since it's used to 
 -- convert the result into binary data
-data MessageResult = Delivered | ENoAppInstance  deriving (Show, Eq, Enum)
+data MessageResult = Delivered | ENoAppInstance  deriving (Show, Eq, Enum, Typeable)
 msgResultsNums = [(1,Delivered),(2,ENoAppInstance)]
 
 share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models") 
@@ -73,6 +73,8 @@ data Address = Address {user :: User, app :: TApplication}
 data AppInstanceActions = Init AppInstance | Terminate AppInstance
 
 -- Typeclass that represents the datatypes that can be used to address a User/App instance
+-- basically getAppInstance is a function that given a object, it generates an addres
+-- which is used as index to obtain it's mailbox from the MailBox table
 class Addressable a where
       getAppInstance :: a -> AppInstance
 

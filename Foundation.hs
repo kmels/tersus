@@ -32,7 +32,6 @@ import Text.Jasmine (minifym)
 import Web.ClientSession (getKey)
 import Text.Hamlet (hamletFile)
 import TersusCluster.Types
-import Remote (ProcessId)
 
 -- | The site argument for your application. This can be a good place to
 -- keep settings and values requiring initialization before your application
@@ -58,7 +57,7 @@ data App = App
     -- Table where the result of each message is written
     , getStatusTable :: TMessageStatusTable
     -- CloudHaskell process where Tersus is running
-    , getProcessId :: ProcessId
+    , getSendPort :: AcknowledgementSendPort
     }
 
 -- Set up i18n messages. See the message folder.
