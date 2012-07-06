@@ -28,6 +28,10 @@ import TersusCluster.MessageBackend
 import GHC.Int
 import System.Directory (doesFileExist, removeFile)
 import System.Exit (exitSuccess)
+import Control.Concurrent (MVar,takeMVar,putMVar)
+import Remote.Process (forkProcess)
+import System.Posix.Signals (sigTERM,signalProcess)
+import System.Posix.Process (getProcessID)
 
 dummyUser = User (T.pack "neto") (Just (T.pack "1234")) []
                        
@@ -75,20 +79,21 @@ createTersusDevelInstance = do
   (sChannel,rChannel,aChannel,mailBoxes,addresses,msgStatusTable,(mSendPort,mRecvPort),(aSendPort,aRecvPort)) <- initDataStructures
 --  testMailBox <- liftIO $ newEmptyMVar
   _ <- runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) sChannel rChannel aChannel mailBoxes addresses msgStatusTable 1
+
+-- Temporary initialization of the addresBook while appinstance registration is not possible
   _ <- liftIO $ H.insert addresses (getAppInstance dummyAddress) (mSendPort,"dummyHash")
---  liftIO $ H.insert mailBoxes(getAppInstance dummyAddress) testMailBox
---  liftIO $ H.insert addresses (getAppInstance dummyAddress) (mSendPort,"")
+----------------------------
+
   liftIO $ do (port, app) <- getApplicationDev (sChannel,rChannel,aChannel,mailBoxes,msgStatusTable,aSendPort)
-              forkIO $ runSettings defaultSettings
-                            { settingsPort = port
-                            } app
-  liftIO $ loop
+              runSettings defaultSettings
+                              { settingsPort = port
+                              } app
 
 loop :: IO ()
 loop = do
   threadDelay 100000
   e <- doesFileExist "dist/devel-terminate"
-  if e then terminateDevel else loop
+  if e then  getProcessID >>= signalProcess sigTERM else loop
 
 terminateDevel :: IO ()
 terminateDevel = exitSuccess
@@ -108,32 +113,35 @@ remotable ['createTersusInstance,'createTersusDevelInstance]
 -- Functions to initialize all the tersus nodes and distribute the ProcessId of such nodes
 -- Development and producction version of the function
 initTersusCluster :: String -> ProcessM ()
-initTersusCluster "T2" = receiveWait []
 initTersusCluster "T1" = do 
                             peers <- getPeers
-                            t2s <- return $ findPeerByRole peers "T2"
+                            t2s <- return $ findPeerByRole peers "T1"
                             pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusInstance)))  t2s
                             mapM_ (\p -> send p pids) pids
+                            receiveWait []
+initTersusCluster _ = return ()
 
 initTersusClusterDevel :: String -> ProcessM ()
-initTersusClusterDevel "T2" = receiveWait []
 initTersusClusterDevel "T1" = do peers <- getPeers
-                                 t2s <- return $ findPeerByRole peers "T2"
-                                 pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusDevelInstance)))  t2s
-                                 mapM_ (\p -> send p pids) pids
+                                 -- t2s <- return $ findPeerByRole peers "T1"
+                                 -- pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusDevelInstance)))  t2s
+                                 -- mapM_ (\p -> send p pids) pids
+                                 forkProcess createTersusDevelInstance
+                                 liftIO $ loop
+                                 return ()
+
+initTersusClusterDevel _ = return ()
 
 -- Initialize Tersus in producction mode running on top of CloudHaskell
 -- called by main
 tersusProducction :: IO ()
 tersusProducction = do 
-  _ <- forkIO $ remoteInit (Just "config/servers") [TersusCluster.Cluster.__remoteCallMetaData] initTersusCluster
-  remoteInit (Just "config/servers2") [TersusCluster.Cluster.__remoteCallMetaData] initTersusCluster
+  remoteInit (Just "config/servers") [TersusCluster.Cluster.__remoteCallMetaData] initTersusCluster
   return ()
 
 -- Initialize Tersus in development mode running on top of CloudHaskell
 -- called by main
 tersusDevel :: IO ()
 tersusDevel = do 
-  _ <- forkIO $ remoteInit (Just "config/servers") [TersusCluster.Cluster.__remoteCallMetaData] initTersusClusterDevel
-  remoteInit (Just "config/servers2") [TersusCluster.Cluster.__remoteCallMetaData] initTersusClusterDevel
+  remoteInit (Just "config/servers") [TersusCluster.Cluster.__remoteCallMetaData] initTersusClusterDevel
   return ()
