@@ -87,6 +87,9 @@ createTersusDevelInstance = do
                               { settingsPort = port
                               } app
 
+-- Function for Tersus devel that constantly checks if
+-- the source changed and kills Tersus if the case
+-- is so.
 loop :: IO ()
 loop = do
   threadDelay 100000
@@ -120,6 +123,9 @@ initTersusCluster "T1" = do
 
 initTersusCluster _ = return ()
 
+-- ProcessM function that initializes a single tersus node in development
+-- mode. This Function uses forkProcess to fork a ProcessM instance with
+-- Tersus running.
 initTersusClusterDevel :: String -> ProcessM ()
 initTersusClusterDevel "T1" = do 
   -- peers <- getPeers
