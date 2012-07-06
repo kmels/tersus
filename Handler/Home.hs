@@ -1,7 +1,9 @@
-{-# LANGUAGE TupleSections, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 module Handler.Home where
 
-import Import
+import           Import
+import           Yesod.Auth
 
 -- This is a handler function for the GET request method on the HomeR
 -- resource pattern. All of your resource patterns are defined in
@@ -12,6 +14,13 @@ import Import
 -- inclined, or create a single monolithic file.
 getHomeR :: Handler RepHtml
 getHomeR = do
+    maid <- maybeAuthId
+    tapps <- runDB $ selectList [] [Desc TApplicationIdentifier]
+    defaultLayout $ do
+      aDomId <- lift newIdent
+      setTitle "Welcome To Yesod!"
+      $(widgetFile "homepage")
+{-do
     (formWidget, formEnctype) <- generateFormPost sampleForm
     let submission = Nothing :: Maybe (FileInfo, Text)
         handlerName = "getHomeR" :: Text
@@ -31,7 +40,7 @@ postHomeR = do
     defaultLayout $ do
         aDomId <- lift newIdent
         setTitle "Welcome To Yesod!"
-        $(widgetFile "homepage")
+        $(widgetFile "homepage")-}
 
 sampleForm :: Form (FileInfo, Text)
 sampleForm = renderDivs $ (,)

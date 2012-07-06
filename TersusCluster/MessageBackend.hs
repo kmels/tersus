@@ -14,13 +14,12 @@ import Control.Monad (forever)
 import Remote.Process (forkProcess)
 import Remote
 import TersusCluster.Types
-import Model (TMessage,MessageResult(Delivered,ENoAppInstance),getAppInstance,getSendAppInstance)
+import Model (MessageResult(Delivered,ENoAppInstance),getAppInstance,getSendAppInstance)
 import Data.HashTable as H
-import TersusCluster.Types
 import Control.Monad.Trans (liftIO)
 import Control.Concurrent.STM.TMVar (TMVar, putTMVar, isEmptyTMVar,takeTMVar)
-import Control.Concurrent.STM.TChan (TChan, readTChan)
-import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TChan (readTChan)
+import Control.Concurrent.STM (atomically, STM)
 import Data.Array.IO (readArray)
 
 -- Function that handles messaging among the multiple Tersus instances
@@ -123,6 +122,7 @@ messageReceiveService mRecvPort mailBoxes = forever $ receiveChannel mRecvPort >
                                       empty <- isEmptyTMVar mBox
                                       if empty then putTMVar mBox [envelope] else modifyTMVar mBox (\msgs -> return (envelope:msgs))
 
+modifyTMVar :: TMVar a -> (a -> STM a) -> STM ()
 modifyTMVar var f = do
                 val <- takeTMVar var
                 val' <- f val

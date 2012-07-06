@@ -9,7 +9,6 @@ import           Data.Text(Text)
 import           Database.Persist.Quasi
 
 import           Database.Persist.Store(PersistValue(..),SqlType(..))
-import           Database.Persist.GenericSql.Raw (SqlPersist)
 
 import           Data.Time(UTCTime)
 import qualified Data.Binary as B
@@ -26,7 +25,9 @@ type Path = [Text]
 type Id = Double
 type IdList = [Id]
 type ApplicationName = Text
+type ApplicationIdentifier = Text --this has the property that has no spaces in it, it goes in the url.
 type AccessToken = Text
+type UrlK = Text
 
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)
 
@@ -51,6 +52,11 @@ data TersusResult = TersusResult Int TersusResultCode
 -- Update the function msgResultNums as well since it's used to 
 -- convert the result into binary data
 data MessageResult = Delivered | ENoAppInstance  deriving (Show, Eq, Enum, Typeable)
+
+
+-- Mapping from MessageResults to integers so they can be 
+-- serealized and sent through cloudhaskell
+msgResultsNums :: [(Int,MessageResult)]
 msgResultsNums = [(1,Delivered),(2,ENoAppInstance)]
 
 share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models") 
@@ -63,7 +69,7 @@ data TMessage = TMessage {userSender :: User,
                          userReciever :: User, 
                          appSender :: TApplication, 
                          appReciever :: TApplication,
-                         content :: Text, 
+                         content :: Text,
                          time :: UTCTime} deriving (Eq, Typeable)
 
 -- Represents a mailbox address, composed from a user and an Application
@@ -82,13 +88,13 @@ class InvAddressable a where
     getSendAppInstance :: a -> AppInstance
 
 instance InvAddressable TMessage where
-    getSendAppInstance (TMessage (User nickname _ _) _ (TApplication _ id _ _ _ _ _ ) _ _ _) = AppInstance (T.unpack nickname) (T.unpack id)
+    getSendAppInstance (TMessage (User nickname _ _) _ (TApplication _ appId _ _ _ _ _ ) _ _ _) = AppInstance (T.unpack nickname) (T.unpack appId)
 
 instance Addressable TMessage where
-         getAppInstance (TMessage _ (User nickname _ _) _ (TApplication _ id _ _ _ _ _ ) _ _) = AppInstance (T.unpack nickname) (T.unpack id)
+         getAppInstance (TMessage _ (User nickname _ _) _ (TApplication _ appId _ _ _ _ _ ) _ _) = AppInstance (T.unpack nickname) (T.unpack appId)
 
 instance Addressable Address where
-         getAppInstance (Address (User nickname _ _) (TApplication _ id _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id)
+         getAppInstance (Address (User nickname _ _) (TApplication _ id' _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id')
 
 
 instance B.Binary Text where
@@ -102,26 +108,26 @@ instance B.Binary User where
              return $ User (T.pack nickname) Nothing []
 
 instance B.Binary TApplication where
-         put (TApplication name id desc _ email date _) = B.put (name,id,desc,email,show date)
+         put (TApplication name id' desc _ email date _) = B.put (name,id',desc,email,show date)
 
          get = do 
-             (name,id,desc,email,date) <- B.get
-             return $ TApplication name id desc Nothing email (read date :: UTCTime) ""
+             (name,id',desc,email,date) <- B.get
+             return $ TApplication name id' desc Nothing email (read date :: UTCTime) ""
 
 instance B.Binary TMessage where
-         put (TMessage sender reciever appSender appReciever msg time) = B.put (sender
-                                                                        ,reciever
-                                                                        ,appSender
-                                                                        ,appReciever
-                                                                        ,msg
-                                                                        ,time)
+         put (TMessage sender receiver appSender' appReceiver msg sendTime) = B.put (sender
+                                                                                ,receiver
+                                                                                ,appSender'
+                                                                                ,appReceiver
+                                                                                ,msg
+                                                                                ,sendTime)
 
          get = do
-             (u1,u2,app1,app2,msg,time) <- B.get
-             return $ TMessage u1 u2 app1 app2 msg time
+             (u1,u2,app1,app2,msg,sendTime) <- B.get
+             return $ TMessage u1 u2 app1 app2 msg sendTime
 
 instance B.Binary UTCTime where
-         put time = B.put $ show time
+         put timeStamp = B.put $ show timeStamp
          get = do B.get >>= return . read
 
 -- Utility functions to convert message results into binary data
@@ -140,5 +146,5 @@ instance B.Binary MessageResult where
          get = B.get >>= \num -> return $ getNumMsgResult num
 
 instance B.Binary AppInstance where
-    put (AppInstance user app) = B.put (user,app)
-    get = do B.get >>= \(user,app) -> return (AppInstance user app)
+    put (AppInstance username' app') = B.put (username',app')
+    get = do B.get >>= \(username',app') -> return (AppInstance username' app')

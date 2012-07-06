@@ -10,28 +10,28 @@ import Data.Aeson as D
 import Data.HashTable as H
 import Data.Text as T
 import Import
-import Model
-import Model.TMessage
-import Model.TersusResult
+import Model()
+import Model.TMessage()
+import Model.TersusResult()
 import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM.TMVar
-import Control.Concurrent.STM (atomically,newEmptyTMVar,takeTMVar,putTMVar,modifyTVar,newTVar)
+import Control.Concurrent.STM (atomically,modifyTVar,newTVar)
 import TersusCluster.Types
 import Data.Maybe (fromJust)
 import System.IO.Unsafe (unsafePerformIO)
 import Data.Time.Clock (getCurrentTime)
 import Control.Monad (mapM)
-import Data.List (find)
 import Data.Array.MArray
 import Data.Array.IO (IOArray)
 
+bufferSize :: Int
 bufferSize = 20
 
 -- Create a buffer which an app instance uses to queue messages
 -- for delivery. This function should be called whenever a
 -- user starts an application
 createMessageDeliveryBuffer :: AppInstance -> GHandler sub App ()
-createMessageDeliveryBuffer app = do
+createMessageDeliveryBuffer appInstance = do
   master <- getYesod
   statusTable <- return $ getStatusTable master
   (statusVars,availableBuff,mappings) <- liftIO $ atomically $ do 
@@ -42,7 +42,7 @@ createMessageDeliveryBuffer app = do
                                            return (statusVars',availableBuff',mappings)
   varsArray <- liftIO $ (newArray_ (0,bufferSize) :: IO (IOArray Int (TMVar MessageResult)))
   liftIO $ mapM_ (\(i,var) -> writeArray varsArray i var) statusVars
-  liftIO $ H.insert statusTable app (mappings,varsArray,availableBuff)
+  liftIO $ H.insert statusTable appInstance (mappings,varsArray,availableBuff)
 
 
 createMessageMailBox :: AppInstance -> GHandler sub App ()
@@ -77,24 +77,27 @@ deliverTMessage appInstance message = do
                         status <- liftIO $ queueMessage msgBuffer channel (message,port)
                         waitMessage appInstance (generateHash message)
 
+
+-- Given an appInstance and the hashcode of a particular message,
+-- blocks until the delivery status of the message is known
 waitMessage :: AppInstance -> THashCode -> GHandler sub App MessageResult
 waitMessage appInstance hashCode = do
   master <- getYesod
   statusTable <- return $ getStatusTable master
   Just (mappings,statusVars,availableBuff) <- liftIO $ H.lookup statusTable appInstance
   -- Todo: Error Handling for Maybe monad
-  Just (_,index) <- liftIO $ lookupIndex hashCode mappings
-  statusVar <- liftIO $ readArray statusVars index
+  Just (_,msgIndex) <- liftIO $ lookupIndex hashCode mappings
+  statusVar <- liftIO $ readArray statusVars msgIndex
   liftIO $ atomically $ do
     result <- takeTMVar statusVar
-    map <- modifyTVar mappings (rmHash hashCode)
-    writeTChan availableBuff (index,statusVar)
+    mapping <- modifyTVar mappings (rmHash hashCode)
+    writeTChan availableBuff (msgIndex,statusVar)
     return result
 
   where
-    rmHash hash ((hash',index):t) 
+    rmHash hash ((hash',msgIndex):t) 
            | hash == hash' = t
-           | otherwise = (hash',index) : (rmHash hash t)
+           | otherwise = (hash',msgIndex) : (rmHash hash t)
     rmHash hash _ = []                          
                          
 
@@ -104,13 +107,13 @@ waitMessage appInstance hashCode = do
 -- can write the status once the message is processed
 queueMessage :: TMessageSendBuff -> TMessageQueue -> TMessageEnvelope -> IO (TMVar MessageResult)
 queueMessage msgBuffer channel (message,port) = atomically $ do                                                    
-                                                    (index,statusVar) <- readTChan availableBuffs
-                                                    modifyTVar mappings (addIndex index)
+                                                    (msgIndex,statusVar) <- readTChan availableBuffs
+                                                    modifyTVar mappings (addIndex msgIndex)
                                                     writeTChan channel (message,port)
                                                     return statusVar
                                                   where
                                                     (mappings,_,availableBuffs) = msgBuffer
-                                                    addIndex index indexes = (generateHash message,index):indexes
+                                                    addIndex msgIndex indexes = (generateHash message,msgIndex):indexes
                                                     
 
 -- Get a list of all messages, block until at least one message has arrived

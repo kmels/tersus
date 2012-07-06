@@ -12,11 +12,8 @@ import Data.Hash.MD5
 import Data.Text as T
 import Control.Concurrent.STM.TVar (readTVar,TVar)
 import Control.Concurrent.STM (atomically)
-import Data.Array.MArray
 import Data.Array.IO
 import qualified Data.List as L
-import Data.Typeable.Internal (Typeable)
-import Data.Binary (Binary)
 
 type THashCode = String
 
@@ -86,13 +83,13 @@ class Hashable a where
 -- TersusMessages
 instance Hashable TMessage where
          generateHash msg = let
-                      TMessage u1 u2 a1 a2 body time= msg
+                      TMessage u1 u2 a1 a2 body msgTime= msg
                       User un1 _ _ = u1
                       User un2 _ _ = u2
                       TApplication _ id1 _ _ _ _ _ = a1
-                      TApplication _ id2 _ _ _ _ _ = a1
+                      TApplication _ id2 _ _ _ _ _ = a2
                       in
-                        md5s $ Str ((show time) ++ (T.unpack $ T.concat [un1,un2,id1,id2,body]))
+                        md5s $ Str ((show msgTime) ++ (T.unpack $ T.concat [un1,un2,id1,id2,body]))
 
 lookupIndex :: THashCode -> TVar [(THashCode,Int)] -> IO (Maybe (THashCode,Int))
 lookupIndex hashCode mappings = do

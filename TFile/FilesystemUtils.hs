@@ -10,13 +10,11 @@ module TFile.FilesystemUtils(
 --  fileAncestors
   ) where
 
-import           Data.List
-import           Foundation
-import           Model
-import           Prelude
-import           Yesod
-
-import qualified Data.Text  as T
+--import           Data.List
+--import           Foundation
+--import           Model
+--import           Prelude
+--import           Yesod
 
 -- | Returns a list of this file ancestors.
 --fileAncestors :: Path -> [Maybe Id]
@@ -32,5 +30,5 @@ pathId p = do
 -}
 
 -- | Converts a list that represents a path to a simple Text
-rawPath :: Path -> RawPath
-rawPath xs = T.intercalate (T.pack "/") xs
+--rawPath :: Path -> RawPath
+--rawPath xs = T.intercalate (T.pack "/") xs

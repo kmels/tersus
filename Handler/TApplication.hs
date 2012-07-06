@@ -5,21 +5,12 @@
 {-# LANGUAGE TypeFamilies          #-}
 module Handler.TApplication where
 
+import           Control.Arrow            ((&&&))
+import qualified Data.Text                as T
+import           Data.Time.Clock          (getCurrentTime)
+import           Handler.TApplication.Git (pullChanges)
 import           Import
-import           Data.Maybe(fromMaybe)
-import           Yesod
-import           Yesod.Form.Jquery\
-
-import qualified Codec.Binary.UTF8.String as BinaryUTF8
-
-import qualified Codec.Crypto.AES         as AES
-import           Codec.Crypto.AES.Random(randBytes)
-import           Control.Arrow     (first, (&&&), (***))
-import qualified Data.ByteString          as B
-import           Data.Time.Clock   (getCurrentTime)
-import qualified Data.Text as T
-
-import           System.Random(newStdGen,randomRs)
+import           System.Random            (newStdGen, randomRs)
 
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
@@ -45,7 +36,7 @@ registerAppForm extra = do
             width: 3em;
             }|]
             [whamlet|#{extra}
-              <p> App name: # ^{fvInput nameView}              
+              <p> App name: # ^{fvInput nameView}
               <p> Url: ^{fvInput identifierView}
               <p> Description: : ^{fvInput descriptionView}
               <p> If open source, repository url is: ^{fvInput repositoryUrlView} #
@@ -62,26 +53,36 @@ getRegisterTAppR = do
                               ^{formWidget}
                               <input type=submit value="Createapp">
                               |]
-   
+
 postRegisterTAppR :: Handler RepHtml
 postRegisterTAppR = do
-  ((result, widget), enctype) <- runFormPost registerAppForm
+  ((result, _), _) <- runFormPost registerAppForm
   case result of
     FormSuccess appLike -> do
       -- get data from the form
-      let 
+      let
         (appName,(appDescription,(appRepositoryUrl,(appContactEmail,appIdentifier)))) = (appLikeName &&& appLikeDescription &&& appLikeRepositoryURL &&& appLikeContactEmail &&& appLikeIdentifier) appLike
-                
+
       creationDate <- liftIO getCurrentTime --ask date
-      appKey <- liftIO $ newAppRandomKey  --create a new appkey      
-      
+      appKey <- liftIO $ newAppRandomKey  --create a new appkey
+
       --insert in database
-      appid <- runDB $ insert $ TApplication appName appIdentifier appDescription appRepositoryUrl appContactEmail creationDate appKey
-      
+      _ <- runDB $ insert $ TApplication appName appIdentifier appDescription appRepositoryUrl appContactEmail creationDate appKey
+
       defaultLayout $ [whamlet|
       <h1>Received, your generated key: #{appKey}
        |]
     _ -> defaultLayout $ [whamlet|<p>Invalid input|]
+
+getHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
+getHomeTApplicationR appIdentifier = do
+--  _ <- maybeAuthId
+  appMbe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
+  case appMbe of
+    Just (Entity _ app') -> do
+      _ <- liftIO $ pullChanges app'
+      defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier}|]
+    _ -> error "Not implemented yet; app doesn't exist"
 
 -- | Generate a random String of alphanumerical characters
 -- (a-z, A-Z, and 0-9) of the given length using the given
@@ -90,7 +91,7 @@ getRandomText :: Int -> IO Text
 getRandomText n = do
   stdgen <- liftIO newStdGen
   return $ T.pack $ take n $ map toChar (randomRs (0, 61) stdgen) --32 chars
-  where 
+  where
     toChar i
       | i < 26 = toEnum $ i + fromEnum 'A'
       | i < 52 = toEnum $ i + fromEnum 'a' - 26

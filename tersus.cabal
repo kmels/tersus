@@ -25,16 +25,18 @@ library
                      Foundation
                      Import
                      Model
+                     Model.TersusResult
+                     Model.TersusResultCode
+                     Model.TMessage
                      Settings
                      Settings.StaticFiles
                      Settings.Development
-                     Handler.Home
-                     Handler.TFile
                      TFile.FilesystemUtils
+                     Handler.Home
                      Handler.Messages
-                     Model.TersusResult
-                     Model.TMessage
                      Handler.TApplication
+                     Handler.TApplication.Git
+                     Handler.TFile
                      TersusCluster.Cluster
                      TersusCluster.Types
                      TersusCluster.MessageBackend
@@ -86,13 +88,15 @@ library
                  , monad-control                 >= 0.3        && < 0.4
                  , wai-extra                     >= 1.2        && < 1.3
                  , yaml                          >= 0.7        && < 0.8
-                 , http-conduit                  >= 1.4        && < 1.5
+                 , http-conduit                  >= 1.4        && < 1.5        
                  , directory                     >= 1.1        && < 1.2
                  , warp                          >= 1.2        && < 1.3
 --added by kmels
                  , Crypto                        >= 4.2.5
                  , utf8-string                   >= 0.3.7
                  , random                        >= 1.0.1
+                 , process-conduit               >= 0.4.1
+                 , conduit                       >= 0.4.2
 --added by neto
                  , aeson                         >= 0.6.0.0                 
                  , remote                        >= 0.1.1

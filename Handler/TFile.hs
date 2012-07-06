@@ -7,13 +7,10 @@ module Handler.TFile where
 
 import qualified Codec.Binary.UTF8.String as UTF8
 import qualified Codec.Crypto.AES         as AES
-import           Control.Applicative      ((<$>), (<*>))
 import qualified Data.ByteString          as B
 import           Data.Text                as T
 import qualified Data.Text.Encoding       as TE
 import           Import
-import           Yesod
-import           Yesod.Form.Jquery
 
 {- Handler methods for operations on files. -}
 
@@ -26,10 +23,10 @@ instance PathMultiPiece TFilePath where
     fromPathMultiPiece _ = Nothing
 
 getFileR :: Text -> AccessToken -> Path -> Handler RepHtml
-getFileR username appKey path = do
+getFileR username' appKey path = do
   defaultLayout $ do
     [whamlet|
-     <h1>Username: #{username}
+     <h1>Username: #{username'}
      <h1>AppKey: #{appKey}
      <h1>Path: #{show path}
             |]
@@ -49,26 +46,26 @@ data WFileLike = WFileLike{
 } deriving Show
 
 writeFileForm :: AccessToken -> Html -> MForm App App (FormResult WFileLike, Widget)
-writeFileForm accessToken = renderDivs $ WFileLike
+writeFileForm _ = renderDivs $ WFileLike --TODO Implement security
     <$> areq textField "Content" Nothing
     <*> areq hiddenField "AccessToken" Nothing
 
 -- This won't really exist after, it is used for testing purposes only.
 getWriteFileR :: Username -> AccessToken -> Path -> Handler RepHtml
-getWriteFileR username accessToken path = do
+getWriteFileR username' accessToken path = do
   --get the form
   (formWidget, enctype) <- generateFormPost $ writeFileForm accessToken
   defaultLayout [whamlet|
-     <h1>Dear user #{username}, you are going to write content to file #{show path}
-     <form method=post action=@{WriteFileR username accessToken path} enctype=#{enctype}>
+     <h1>Dear user #{username'}, you are going to write content to file #{show path}
+     <form method=post action=@{WriteFileR username' accessToken path} enctype=#{enctype}>
                   ^{formWidget}
                   <input type=submit>
      |]
 
 aesUserAppKey :: User -> AccessToken -> AES.Direction -> Maybe T.Text
-aesUserAppKey user appkey dir = do
+aesUserAppKey _ appkey dir = do
   splitIndex <- T.findIndex ((==) ':') $ TE.decodeUtf8 decryptedRawAuth
-  (userNickname,applicationName) <- Just $ B.splitAt splitIndex decryptedRawAuth
+  (_,applicationName) <- Just $ B.splitAt splitIndex decryptedRawAuth
   return $ TE.decodeUtf8 applicationName
   where
     decryptedRawAuth :: B.ByteString
@@ -89,19 +86,19 @@ aesUserAppKey user appkey dir = do
 
   --username = usernameNickname user
 postWriteFileR :: Username -> AccessToken -> Path -> Handler RepHtml
-postWriteFileR username accessToken path = do
-  user <- runDB $ getBy $ UniqueNickname $ username --find user by username
-  case user of
+postWriteFileR username' accessToken path = do
+  user' <- runDB $ getBy $ UniqueNickname $ username' --find user by username
+  case user' of
     -- Do we have a user?
-    Just (Entity uid _ ) -> do
+    Just (Entity _ _ ) -> do
       -- process form
-      ((result, widget), enctype) <- runFormPost $ writeFileForm accessToken
+      ((result, _), _) <- runFormPost $ writeFileForm accessToken
       --      file <- runDB $ insert $ Email "asdf" (Just "zasdf") (Just "as")
       --  let file = user >>= \u -> Just $ TFile u
       case result of
         FormSuccess fc -> defaultLayout $ do
           [whamlet|
-           <h1>Lieber #{show $ user}
+           <h1>Dear #{show $ user'}
            <h1>You wrote: #{show $ fileContentContent fc}
            <h3>in #{show path}
               |]

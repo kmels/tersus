@@ -17,28 +17,27 @@ import Control.Monad.Trans (liftIO)
 import Data.HashTable as H
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsPort)
 import Application
-import Control.Concurrent.MVar 
 import Settings (parseExtra)
 import Yesod.Default.Config (fromArgs)
 import Yesod.Default.Main (defaultMain)
 import Control.Concurrent.STM (newTChan,atomically)
-import Control.Concurrent.STM.TChan (TChan)
 import TersusCluster.Types
 import TersusCluster.MessageBackend
 import GHC.Int
-import System.Directory (doesFileExist, removeFile)
 import System.Exit (exitSuccess)
-import Control.Concurrent (MVar,takeMVar,putMVar)
 import Remote.Process (forkProcess)
 import System.Posix.Signals (sigTERM,signalProcess)
 import System.Posix.Process (getProcessID)
-
+import System.Directory (doesFileExist)
+            
+dummyUser :: User
 dummyUser = User (T.pack "neto") (Just (T.pack "1234")) []
                        
 -- This is a dummy datatype only to show that this works
 -- It will be removed and never used
 -- unsafePerformIO is there just because it's simpler and
 -- this will not be part of tersus
+dummyApp :: TApplication
 dummyApp = TApplication (T.pack "emacs") (T.pack "identifier") (T.pack "description dummy") (Just (T.pack "url")) (T.pack "mail@place.com") (unsafePerformIO getCurrentTime)  (T.pack "appkey")
 
 dummyMsg = TMessage dummyUser dummyUser dummyApp dummyApp (T.pack "Alonso") (unsafePerformIO getCurrentTime)
@@ -68,7 +67,6 @@ initDataStructures = (liftIO $ H.new (==) hashUserApp) >>= \addresses ->
                      newChannel >>= \messagePorts ->
                      newChannel >>= \acknowledgementPorts ->
                      return (sChannel,rChannel,aChannel,mailBoxes,addresses,msgStatusTable,messagePorts,acknowledgementPorts)
-                                      
 
 -- Process that runs Tersus and Yesod in development mode
 -- This is what yesod devel executes
@@ -103,8 +101,8 @@ terminateDevel = exitSuccess
 createTersusInstance :: ProcessM ()
 createTersusInstance = do
   (sChannel,rChannel,aChannel,mailBoxes,addresses,msgStatusTable,(mSendPort,mRecvPort),(aSendPort,aRecvPort)) <- initDataStructures
-  liftIO $ forkIO $ defaultMain (fromArgs parseExtra) $ makeApplicationWrapper (sChannel,rChannel,aChannel,mailBoxes,msgStatusTable,aSendPort)
-  runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) sChannel rChannel aChannel mailBoxes addresses msgStatusTable 1
+  _ <- liftIO $ forkIO $ defaultMain (fromArgs parseExtra) $ makeApplicationWrapper (sChannel,rChannel,aChannel,mailBoxes,msgStatusTable,aSendPort)
+  _ <- runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) sChannel rChannel aChannel mailBoxes addresses msgStatusTable 1
   return ()
 
 -- Make the functions that initialize a tersus process remotable
@@ -114,21 +112,23 @@ remotable ['createTersusInstance,'createTersusDevelInstance]
 -- Development and producction version of the function
 initTersusCluster :: String -> ProcessM ()
 initTersusCluster "T1" = do 
-                            peers <- getPeers
-                            t2s <- return $ findPeerByRole peers "T1"
-                            pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusInstance)))  t2s
-                            mapM_ (\p -> send p pids) pids
-                            receiveWait []
+  peers <- getPeers
+  t2s <- return $ findPeerByRole peers "T1"
+  pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusInstance)))  t2s
+  mapM_ (\p -> send p pids) pids
+  receiveWait []
+
 initTersusCluster _ = return ()
 
 initTersusClusterDevel :: String -> ProcessM ()
-initTersusClusterDevel "T1" = do peers <- getPeers
-                                 -- t2s <- return $ findPeerByRole peers "T1"
-                                 -- pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusDevelInstance)))  t2s
-                                 -- mapM_ (\p -> send p pids) pids
-                                 forkProcess createTersusDevelInstance
-                                 liftIO $ loop
-                                 return ()
+initTersusClusterDevel "T1" = do 
+  -- peers <- getPeers
+  -- t2s <- return $ findPeerByRole peers "T1"
+  -- pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusDevelInstance)))  t2s
+  -- mapM_ (\p -> send p pids) pids
+  forkProcess createTersusDevelInstance
+  liftIO $ loop
+  return ()
 
 initTersusClusterDevel _ = return ()
 

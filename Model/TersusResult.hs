@@ -1,8 +1,9 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Model.TersusResult where
+
 
 import Import
 import Data.Aeson as J
-import Control.Applicative
 import qualified Data.Text as T
 
 instance ToJSON TersusResultCode where

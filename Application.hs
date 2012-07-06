@@ -6,17 +6,18 @@ module Application
     , makeApplicationWrapper
     ) where
 
-import Import
-import Settings
-import Yesod.Auth
-import Yesod.Default.Config
-import Yesod.Default.Main
-import Yesod.Default.Handlers
-import Yesod.Logger (Logger, logBS, toProduction)
-import Network.Wai.Middleware.RequestLogger (logCallback, logCallbackDev)
+import           Data.Int()
+import           Database.Persist.GenericSql (runMigration)
 import qualified Database.Persist.Store
-import Database.Persist.GenericSql (runMigration)
-import Network.HTTP.Conduit (newManager, def)
+import           Import
+import           Network.HTTP.Conduit (newManager, def)
+import           Network.Wai.Middleware.RequestLogger (logCallback, logCallbackDev)
+import           Settings
+import           Yesod.Auth
+import           Yesod.Default.Config
+import           Yesod.Default.Handlers
+import           Yesod.Default.Main
+import           Yesod.Logger (Logger, logBS, toProduction)
 
 -- CloudHaskell stuff
 import TersusCluster.Types

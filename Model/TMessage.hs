@@ -1,8 +1,8 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Model.TMessage where
 
 import Import
 import Data.Aeson as J
-import Control.Monad
 
 -- Instance to convert a message into it's json representation
 instance ToJSON TMessage where
