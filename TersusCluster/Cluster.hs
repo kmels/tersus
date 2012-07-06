@@ -21,7 +21,8 @@ import Control.Concurrent.MVar
 import Settings (parseExtra)
 import Yesod.Default.Config (fromArgs)
 import Yesod.Default.Main (defaultMain)
-import Control.Concurrent.Chan
+import Control.Concurrent.STM (newTChan,atomically)
+import Control.Concurrent.STM.TChan (TChan)
 import TersusCluster.Types
 import TersusCluster.MessageBackend
 import GHC.Int
@@ -56,10 +57,10 @@ hashUserApp (AppInstance name tApplication)  = H.hashString $ name ++ tApplicati
 initDataStructures :: ProcessM (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,AddressTable,TMessageStatusTable,MessagingPorts,AcknowledgementPorts)
 initDataStructures = (liftIO $ H.new (==) hashUserApp) >>= \addresses ->
                      (liftIO $ H.new (==) hashUserApp) >>= \mailBoxes ->
-                     (liftIO $ H.new (==) H.hashString) >>= \msgStatusTable ->
-                     (liftIO $ newChan) >>= \sChannel ->
-                     (liftIO $ newChan) >>= \rChannel ->
-                     (liftIO $ newChan) >>= \aChannel ->
+                     (liftIO $ H.new (==) hashUserApp) >>= \msgStatusTable ->
+                     (liftIO $ atomically $ newTChan) >>= \sChannel ->
+                     (liftIO $ atomically $ newTChan) >>= \rChannel ->
+                     (liftIO $ atomically $ newTChan) >>= \aChannel ->
                      newChannel >>= \messagePorts ->
                      newChannel >>= \acknowledgementPorts ->
                      return (sChannel,rChannel,aChannel,mailBoxes,addresses,msgStatusTable,messagePorts,acknowledgementPorts)
@@ -72,10 +73,11 @@ initDataStructures = (liftIO $ H.new (==) hashUserApp) >>= \addresses ->
 createTersusDevelInstance :: ProcessM ()
 createTersusDevelInstance = do
   (sChannel,rChannel,aChannel,mailBoxes,addresses,msgStatusTable,(mSendPort,mRecvPort),(aSendPort,aRecvPort)) <- initDataStructures
-  testMailBox <- liftIO $ newEmptyMVar
+--  testMailBox <- liftIO $ newEmptyMVar
   _ <- runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) sChannel rChannel aChannel mailBoxes addresses msgStatusTable 1
-  liftIO $ H.insert mailBoxes(getAppInstance dummyAddress) testMailBox
-  liftIO $ H.insert addresses (getAppInstance dummyAddress) (mSendPort,"")
+  _ <- liftIO $ H.insert addresses (getAppInstance dummyAddress) (mSendPort,"dummyHash")
+--  liftIO $ H.insert mailBoxes(getAppInstance dummyAddress) testMailBox
+--  liftIO $ H.insert addresses (getAppInstance dummyAddress) (mSendPort,"")
   liftIO $ do (port, app) <- getApplicationDev (sChannel,rChannel,aChannel,mailBoxes,msgStatusTable,aSendPort)
               forkIO $ runSettings defaultSettings
                             { settingsPort = port

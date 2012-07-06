@@ -99,6 +99,8 @@ library
                  , binary                        >= 0.5.1
                  , mtl                           >= 2.1
                  , MissingH                      >= 1.1.1.0
+                 , array                         >= 0.4.0.0
+                 , stm                           >= 2.3
 
 executable         tersus
     if flag(library-only)

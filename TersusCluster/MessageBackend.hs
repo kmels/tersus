@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ImpredicativeTypes #-}
 module TersusCluster.MessageBackend where
 
 -- Tersus Message Backend
@@ -12,12 +14,14 @@ import Control.Monad (forever)
 import Remote.Process (forkProcess)
 import Remote
 import TersusCluster.Types
-import Model (TMessage,MessageResult(Delivered,ENoAppInstance),getAppInstance)
+import Model (TMessage,MessageResult(Delivered,ENoAppInstance),getAppInstance,getSendAppInstance)
 import Data.HashTable as H
 import TersusCluster.Types
 import Control.Monad.Trans (liftIO)
-import Control.Concurrent.MVar (MVar, putMVar, modifyMVar_,isEmptyMVar)
-import Control.Concurrent.Chan (Chan, readChan)
+import Control.Concurrent.STM.TMVar (TMVar, putTMVar, isEmptyTMVar,takeTMVar)
+import Control.Concurrent.STM.TChan (TChan, readTChan)
+import Control.Concurrent.STM (atomically)
+import Data.Array.IO (readArray)
 
 -- Function that handles messaging among the multiple Tersus instances
 -- There are various services that work together to provide messaging
@@ -44,10 +48,13 @@ dispatchMessageAcknowledgementService :: AcknowledgementRecvPort -> TMessageStat
 dispatchMessageAcknowledgementService aRecvPort messageStatusTable = forever $ receiveChannel aRecvPort >>= dispatchAcknowledgement 
     where
       dispatchAcknowledgement :: MessageResultEnvelope -> ProcessM ()
-      dispatchAcknowledgement (hashCode,result) = do
-        statusVar <- liftIO $ H.lookup messageStatusTable hashCode
-        case statusVar of
-          Just statusVar' -> liftIO $ putMVar statusVar' result
+      dispatchAcknowledgement (hashCode,result,address) = do
+        Just (mappings,statusVars,availableBuff) <- liftIO $ H.lookup messageStatusTable address
+        -- add error handling
+        (Just (_,index)) <- liftIO $ lookupIndex hashCode mappings
+        statusVar <- liftIO $ readArray statusVars index
+        case (Just statusVar) of
+          Just statusVar' -> liftIO $ atomically $ putTMVar statusVar' result
           Nothing -> return () -- Todo: log, this shouldn't happen. Means that a message acknowledgement was received from a message never sent
 
 -- Start numThreads concurrent Message Acknowledgement Services
@@ -61,8 +68,8 @@ initMessageAcknowledgementService recvChan numThreads = mapM (\_ -> forkProcess 
 -- status to the Node from where this message came.
 messageAcknowledgementService :: TMessageQueue -> ProcessM ()
 messageAcknowledgementService recvChan = forever $ do 
-                                           (msg,aPort) <- liftIO $ readChan recvChan
-                                           sendChannel aPort (generateHash msg, Delivered)
+                                           (msg,aPort) <- liftIO $ atomically $ readTChan recvChan
+                                           sendChannel aPort (generateHash msg, Delivered , getSendAppInstance msg)
 
 -- Start numThreads concurrent Message Delivery Services
 initMessageDeliveryService :: TMessageQueue -> AddressTable -> Int -> ProcessM [ProcessId]
@@ -78,7 +85,7 @@ initMessageDeliveryService sendQueue addresses numThreads = mapM (\_ -> forkProc
 messageDeliveryService :: TMessageQueue -> AddressTable -> ProcessM () 
 messageDeliveryService sendQueue addresses = forever $ do
                                                  liftIO $ putStrLn "Running deliver service"
-                                                 (msg,aPort) <- liftIO $ readChan sendQueue
+                                                 (msg,aPort) <- liftIO $ atomically $ readTChan sendQueue
                                                  destPort <- liftIO $ H.lookup addresses $ getAppInstance msg
                                                  deliverMsg (msg,aPort) destPort
     where
@@ -89,7 +96,7 @@ messageDeliveryService sendQueue addresses = forever $ do
       -- the sender
       deliverMsg :: TMessageEnvelope -> Maybe TersusProcessM -> ProcessM ()
       deliverMsg envelope (Just (destPort,_)) = sendChannel destPort envelope >> return ()
-      deliverMsg (msg,aPort) _ =  sendChannel aPort (generateHash msg,ENoAppInstance) >> return ()
+      deliverMsg (msg,aPort) _ =  sendChannel aPort (generateHash msg,ENoAppInstance,getSendAppInstance msg) >> return ()
 
 -- Create numThreads concurrent Message Receive Services
 initMessageReceiveService :: MessageRecvPort -> MailBoxTable -> Int -> ProcessM [ProcessId]
@@ -110,8 +117,13 @@ messageReceiveService mRecvPort mailBoxes = forever $ receiveChannel mRecvPort >
         mBox <- liftIO $ H.lookup mailBoxes addr
         case mBox of
           Just mBox' -> liftIO $ insertMessage mBox' (msg,aSendPort)
-          Nothing -> sendChannel aSendPort (generateHash msg, ENoAppInstance) >> return ()
-      insertMessage :: MVar [TMessageEnvelope] -> TMessageEnvelope -> IO ()
-      insertMessage mBox envelope= do 
-        empty <- isEmptyMVar mBox 
-        if empty then putMVar mBox [envelope] else modifyMVar_ mBox (\msgs -> return (envelope:msgs))
+          Nothing -> sendChannel aSendPort (generateHash msg, ENoAppInstance, getSendAppInstance msg) >> return ()
+      insertMessage :: TMVar [TMessageEnvelope] -> TMessageEnvelope -> IO ()
+      insertMessage mBox envelope = atomically $ do 
+                                      empty <- isEmptyTMVar mBox
+                                      if empty then putTMVar mBox [envelope] else modifyTMVar mBox (\msgs -> return (envelope:msgs))
+
+modifyTMVar var f = do
+                val <- takeTMVar var
+                val' <- f val
+                putTMVar var (val')

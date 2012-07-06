@@ -56,7 +56,7 @@ msgResultsNums = [(1,Delivered),(2,ENoAppInstance)]
 share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models") 
 
 -- Represents a app being run by a user
-data AppInstance = AppInstance {username :: String, application :: String} deriving Eq
+data AppInstance = AppInstance {username :: String, application :: String} deriving (Eq,Typeable)
 
 -- Message = { userSender: User, usersReceiver: [User], appSender: Application, appReceiver: Application, content: String}
 data TMessage = TMessage {userSender :: User, 
@@ -77,6 +77,12 @@ data AppInstanceActions = Init AppInstance | Terminate AppInstance
 -- which is used as index to obtain it's mailbox from the MailBox table
 class Addressable a where
       getAppInstance :: a -> AppInstance
+
+class InvAddressable a where
+    getSendAppInstance :: a -> AppInstance
+
+instance InvAddressable TMessage where
+    getSendAppInstance (TMessage (User nickname _ _) _ (TApplication _ id _ _ _ _ _ ) _ _ _) = AppInstance (T.unpack nickname) (T.unpack id)
 
 instance Addressable TMessage where
          getAppInstance (TMessage _ (User nickname _ _) _ (TApplication _ id _ _ _ _ _ ) _ _) = AppInstance (T.unpack nickname) (T.unpack id)
@@ -132,3 +138,7 @@ getNumMsgResult num = let (_,m) = fromJust $ find (\(num',_) -> num' == num) msg
 instance B.Binary MessageResult where
          put msg = B.put $ getMsgResultNum msg
          get = B.get >>= \num -> return $ getNumMsgResult num
+
+instance B.Binary AppInstance where
+    put (AppInstance user app) = B.put (user,app)
+    get = do B.get >>= \(user,app) -> return (AppInstance user app)
