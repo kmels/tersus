@@ -28,6 +28,8 @@ library
                      Model.TersusResult
                      Model.TersusResultCode
                      Model.TMessage
+                     Model.User
+                     Model.TApplication
                      Settings
                      Settings.StaticFiles
                      Settings.Development

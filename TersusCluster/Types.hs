@@ -131,9 +131,11 @@ type TersusClusterList = TVar [NotificationsSendPort]
 
 -- Binary instance for Tersus notification so
 -- the notifications can be sent throughout Cloud Haskell
+-- Please use positive numbers
 instance B.Binary TersusNotification where
     put (Initialized appInstance (msgSendPort,hash)) = B.put (1 :: Int) >> B.put (appInstance,(msgSendPort,hash))
     put (Closed (appInstance,hash)) = B.put (2 :: Int) >> B.put (appInstance,hash)
+    put NotificationUnknown = B.put (-1 :: Int) -- No reason to be sent, but will be matched anyway
                                             
     get = do
       notificationNum <- (B.get :: B.Get Int)

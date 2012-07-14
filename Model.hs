@@ -108,11 +108,11 @@ instance B.Binary User where
              return $ User (T.pack nickname) Nothing []
 
 instance B.Binary TApplication where
-         put (TApplication name id' desc _ email date _) = B.put (name,id',desc,email,show date)
+         put (TApplication name id' desc _ email date appKey) = B.put (name,id',desc,email,show date,appKey)
 
          get = do 
-             (name,id',desc,email,date) <- B.get
-             return $ TApplication name id' desc Nothing email (read date :: UTCTime) ""
+             (name,id',desc,email,date,appKey) <- B.get
+             return $ TApplication name id' desc Nothing email (read date :: UTCTime) appKey
 
 instance B.Binary TMessage where
          put (TMessage sender receiver appSender' appReceiver msg sendTime) = B.put (sender
