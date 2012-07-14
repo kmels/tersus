@@ -8,7 +8,6 @@ module Handler.Messages where
 
 import Data.Aeson as D
 import Data.HashTable as H
-import Data.Text as T
 import Import
 import Model()
 import Model.TMessage()
@@ -18,14 +17,13 @@ import Control.Concurrent.STM.TMVar
 import Control.Concurrent.STM (atomically,modifyTVar,newTVar)
 import TersusCluster.Types
 import Data.Maybe (fromJust)
-import System.IO.Unsafe (unsafePerformIO)
-import Data.Time.Clock (getCurrentTime)
 import Control.Monad (mapM)
 import Data.Array.MArray
 import Data.Array.IO (IOArray)
+import TersusCluster.DummyImports
 
 bufferSize :: Int
-bufferSize = 20
+bufferSize = 2
 
 -- Create a buffer which an app instance uses to queue messages
 -- for delivery. This function should be called whenever a
@@ -35,7 +33,7 @@ createMessageDeliveryBuffer appInstance = do
   master <- getYesod
   statusTable <- return $ getStatusTable master
   (statusVars,availableBuff,mappings) <- liftIO $ atomically $ do 
-                                           statusVars' <- mapM (\i -> (newEmptyTMVar >>= \v -> return (i,v))) [0 .. bufferSize]
+                                           statusVars' <- mapM (\i -> (newEmptyTMVar >>= \v -> return (i,v))) [0 .. (bufferSize - 1)]
                                            availableBuff' <- newTChan
                                            mapM_ (writeTChan availableBuff') statusVars'
                                            mappings <- newTVar []
@@ -53,10 +51,19 @@ createMessageMailBox appInstance = do
   liftIO $ H.insert mailBoxes appInstance mailBox
   return ()
 
+registerApplication :: AppInstance -> GHandler sub App ()
+registerApplication appInstance = do
+  master <- getYesod  
+  nChannel <- return $ getNotificationsChannel master
+  sPort <- return $ getSendPort master
+  liftIO $ atomically $ writeTChan nChannel (Initialized' appInstance)
+  return ()
+
 initApplication :: AppInstance -> GHandler sub App ()
 initApplication appInstance = do
   createMessageDeliveryBuffer appInstance
   createMessageMailBox appInstance
+  registerApplication appInstance
   return ()
   
 
@@ -133,7 +140,7 @@ receiveMessages appInstance = do
                 return messages
 
 
--- TEsting funcitons
+-- TEsting funcitons 
 getSendMessageR :: Handler RepJson
 getSendMessageR = do
   resp <- deliverTMessage (getAppInstance dummyAddress) dummyMsg
@@ -141,23 +148,13 @@ getSendMessageR = do
 
 getRecvMessageR :: Handler RepJson
 getRecvMessageR = do
-  msgs <- receiveMessages (getAppInstance dummyAddress)
+  msgs <- receiveMessages (getAppInstance dummyAddress2)
   msgs' <- mapM (\(msg,_) -> return msg) msgs
   jsonToRepJson $ encode $ msgs'
 
 getInitMessagesR :: Handler RepJson
 getInitMessagesR = do
   initApplication $ getAppInstance dummyAddress
+  initApplication $ getAppInstance dummyAddress2
   jsonToRepJson $ encode $ ("Done" :: String)
 
-dummyUser = User (T.pack "neto") (Just (T.pack "1234")) []
-                       
--- This is a dummy datatype only to show that this works
--- It will be removed and never used
--- unsafePerformIO is there just because it's simpler and
--- this will not be part of tersus
-dummyApp = TApplication (T.pack "emacs") (T.pack "identifier") (T.pack "description dummy") (Just (T.pack "url")) (T.pack "mail@place.com") (unsafePerformIO getCurrentTime)  (T.pack "appkey")
-
-dummyMsg = TMessage dummyUser dummyUser dummyApp dummyApp (T.pack "Alonso") (unsafePerformIO getCurrentTime)
-
-dummyAddress = Address dummyUser dummyApp

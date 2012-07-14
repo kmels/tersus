@@ -14,6 +14,8 @@ import Control.Concurrent.STM.TVar (readTVar,TVar)
 import Control.Concurrent.STM (atomically)
 import Data.Array.IO
 import qualified Data.List as L
+import qualified Data.Binary as B
+import Data.Typeable.Internal (Typeable)
 
 type THashCode = String
 
@@ -57,10 +59,6 @@ type TersusProcessM = (SendPort TMessageEnvelope,THashCode)
 -- known AppInstances with their address
 type AddressTable = HashTable (AppInstance) TersusProcessM
 
--- Channel that will be used to communicate what is happening with
--- the AppInstances
-type ActionsChannel = TChan (AppInstanceActions)
-
 -- Contains all the Mailboxes for the AppInstances running in this
 -- TersusCluster. 
 type MailBoxTable = HashTable AppInstance (TMVar [TMessageEnvelope])
@@ -95,3 +93,51 @@ lookupIndex :: THashCode -> TVar [(THashCode,Int)] -> IO (Maybe (THashCode,Int))
 lookupIndex hashCode mappings = do
   mapping <- atomically $ readTVar mappings :: IO [(THashCode,Int)]
   return $ L.find (\(h,_) -> h == hashCode) mapping
+
+
+type NotificationsSendPort = SendPort [TersusNotification]
+type NotificationsRecvPort = ReceivePort [TersusNotification]
+type NotificationsPorts = (NotificationsSendPort,NotificationsRecvPort)
+
+-- Notifications about the ongoing activity in Tersus Application instances
+-- this usually means an application is started and an application is stopped
+-- since is possible that an application is started on a server, then stopped
+-- then started on another server before all theese notifications are dispatched
+-- to all tersus clusters (althogh unlikely) we add a random hash code which
+-- will be used to match the notifications
+-- Note that this type is used by Cloud Haskell for communication since it
+-- has information which is abstracted away to Yesod, the
+-- Yesod side user the TersusSimpleNotification
+data TersusNotification = Initialized AppInstance (MessageSendPort,THashCode)
+                        | Closed (AppInstance,THashCode)
+                        | NotificationUnknown deriving (Typeable)
+
+
+-- The Application Instance notifications for activities that they
+-- undergo. Usually to indicate an app was initialized by a 
+-- user or stopped. This datatype is used in the Yesod
+-- side since it's much simpler than the TersusNotification which
+-- is used by CloudHaskell
+data TersusSimpleNotification = Initialized' AppInstance
+                              | Closed' AppInstance
+
+
+-- Channel that will be used to communicate what is happening with
+-- the AppInstances
+type NotificationsChannel = TChan TersusSimpleNotification
+
+
+type TersusClusterList = TVar [NotificationsSendPort]
+
+-- Binary instance for Tersus notification so
+-- the notifications can be sent throughout Cloud Haskell
+instance B.Binary TersusNotification where
+    put (Initialized appInstance (msgSendPort,hash)) = B.put (1 :: Int) >> B.put (appInstance,(msgSendPort,hash))
+    put (Closed (appInstance,hash)) = B.put (2 :: Int) >> B.put (appInstance,hash)
+                                            
+    get = do
+      notificationNum <- (B.get :: B.Get Int)
+      case notificationNum of
+        1 -> B.get >>= \(appInstance,(msgSendPort,hash)) -> return $ Initialized appInstance (msgSendPort,hash)
+        2 -> B.get >>= \(appInstance,hash) -> return $ Closed (appInstance,hash)
+        _ -> return NotificationUnknown

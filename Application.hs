@@ -36,14 +36,14 @@ mkYesodDispatch "App" resourcesApp
 
 -- Wrapper that reverses the parameters of makeApplication function from Application.hs
 -- This wrapper is generally used to init Tersus from CloudHaskell
-makeApplicationWrapper :: (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> AppConfig DefaultEnv Extra -> Logger -> IO Application
+makeApplicationWrapper :: (TMessageQueue,TMessageQueue,NotificationsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> AppConfig DefaultEnv Extra -> Logger -> IO Application
 makeApplicationWrapper env conf logger = makeApplication conf logger env
 
 -- This function allocates resources (such as a database connection pool),
 -- performs initialization and creates a WAI application. This is also the
 -- place to put your migrate statements to have automatic database
 -- migrations handled by Yesod.
-makeApplication :: AppConfig DefaultEnv Extra -> Logger -> (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO Application
+makeApplication :: AppConfig DefaultEnv Extra -> Logger -> (TMessageQueue,TMessageQueue,NotificationsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO Application
 makeApplication conf logger env = do
     foundation <- makeFoundation conf setLogger env
     app <- toWaiAppPlain $ foundation
@@ -53,7 +53,7 @@ makeApplication conf logger env = do
     logWare   = if development then logCallbackDev (logBS setLogger)
                                else logCallback    (logBS setLogger)
 
-makeFoundation :: AppConfig DefaultEnv Extra -> Logger -> (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO App
+makeFoundation :: AppConfig DefaultEnv Extra -> Logger -> (TMessageQueue,TMessageQueue,NotificationsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO App
 makeFoundation conf setLogger (sendChannel,recvChannel,actionsChannel,mailBoxes,statusTable,aSendPort) = do
     manager <- newManager def
     s <- staticSite
@@ -65,7 +65,7 @@ makeFoundation conf setLogger (sendChannel,recvChannel,actionsChannel,mailBoxes,
     return $ App conf setLogger s p manager dbconf sendChannel recvChannel actionsChannel mailBoxes statusTable aSendPort
 
 -- for yesod devel
-getApplicationDev :: (TMessageQueue,TMessageQueue,ActionsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO (Int, Application)
+getApplicationDev :: (TMessageQueue,TMessageQueue,NotificationsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO (Int, Application)
 getApplicationDev env= do    
     defaultDevelApp loader $ makeApplicationWrapper env
   where

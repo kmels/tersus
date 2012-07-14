@@ -18,4 +18,3 @@
 /service/message/receive RecvMessageR GET
 /service/message/send SendMessageR GET
 /service/message/init InitMessagesR GET
-

@@ -131,15 +131,26 @@ instance B.Binary UTCTime where
          get = do B.get >>= return . read
 
 -- Utility functions to convert message results into binary data
-getMsgResultNum :: MessageResult -> Int
-getMsgResultNum msg = let (n,_) = fromJust $ find (\(_,msg') -> msg' == msg) msgResultsNums
-                      in
-                        n
+
+getObjNum :: Eq a => [(Int,a)] -> a -> Int
+getObjNum objs obj = let (n,_) = fromJust 
+                                 $ find (\(_,obj') -> obj' == obj) objs
+                     in
+                       n
                       
+getNumObj :: Eq a => [(Int,a)] -> Int -> a
+getNumObj objs num = let (_,obj) = fromJust 
+                                   $ find (\(num',_) -> num' == num) objs
+                     in
+                       obj
+
+
+getMsgResultNum :: MessageResult -> Int
+getMsgResultNum = getObjNum msgResultsNums
+
 getNumMsgResult :: Int -> MessageResult
-getNumMsgResult num = let (_,m) = fromJust $ find (\(num',_) -> num' == num) msgResultsNums
-                      in
-                        m
+getNumMsgResult = getNumObj msgResultsNums
+
 
 instance B.Binary MessageResult where
          put msg = B.put $ getMsgResultNum msg
