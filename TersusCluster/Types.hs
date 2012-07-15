@@ -127,7 +127,7 @@ type NotificationsChannel = TChan TersusSimpleNotification
 -- Mutable variable that holds a list of all Tersus instances
 -- to whom the registration of a new app instance should
 -- be informed.
-type TersusClusterList = TVar [NotificationsSendPort]
+type TersusClusterList = TVar [(NotificationsSendPort,ProcessId)]
 
 tersusClusterRole :: String
 tersusClusterRole = "T1"

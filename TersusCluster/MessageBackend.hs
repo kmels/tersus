@@ -11,7 +11,7 @@ module TersusCluster.MessageBackend where
 
 import Prelude
 import Control.Monad (forever)
-import Remote.Process (forkProcess)
+import Remote.Process (forkProcess,ptry)
 import Remote
 import TersusCluster.Types
 import Model (MessageResult(Delivered,ENoAppInstance),getAppInstance,getSendAppInstance)
@@ -23,7 +23,8 @@ import Control.Concurrent.STM.TVar (readTVar,modifyTVar)
 import Control.Concurrent.STM (atomically, STM)
 import Data.Array.IO (readArray)
 import Control.Monad (foldM)
-
+import Data.Either ( Either(..) )
+import qualified Data.List as L
 
 -- This is the name that the process used to establish communication with other
 -- Tersus instances will be called.
@@ -45,6 +46,16 @@ runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvP
   _ <- forkProcess $ processBinderService nSendPort clusterList
   return []
 
+-- Process that registers new tersus instances once they are started and
+-- ready to start messaging. The registration process is as follows:
+-- 1. A tersus instance is created and starts the processBinderService (PBS).
+-- 2. The PBS gets a list of all nodes and sends it's processId and it's corresponding notifications port
+-- 3. When a NotificatiionsPort is received, this port is registered in the list of Nodes, therefore
+-- notifications about applications in this Node are communicated to the newly created node.
+-- 4. When a processId is received, this indicates that this process is requesting the NotificationsPort
+-- of the process, therefore the port is sent so the process can start notifing about the activities in the 
+-- of the applications running in that Node.
+-- Note: The PBS has a special name for other nodes to query. This name is held in the value of processBinderName
 processBinderService :: NotificationsSendPort -> TersusClusterList -> ProcessM ()
 processBinderService nSendPort clusterList = do
   nameSet processBinderName
@@ -55,17 +66,31 @@ processBinderService nSendPort clusterList = do
   forever receiveSendChannels
 
     where
-      maybeSendPid (Just pid) = send pid nSendPort
+      maybeSendPid (Just pid) = do
+        myPid <- getSelfPid
+        send pid nSendPort
+        if pid == myPid then return () else send pid myPid
       -- This case would indicate that a node has been initialized but the processBinderService is not started yet
       -- So it will be ignored since the other cluster will register this cluster once it's processBinderService
       -- is started.
       maybeSendPid Nothing = return ()
-      addTersusSendPort :: NotificationsSendPort -> [NotificationsSendPort] -> [NotificationsSendPort]
+
+      addTersusSendPort :: (NotificationsSendPort,ProcessId) -> [(NotificationsSendPort,ProcessId)] -> [(NotificationsSendPort,ProcessId)]
       addTersusSendPort nSendPort' sendPorts = nSendPort' : sendPorts
-      sendPortMatcher :: MatchM () ()
-      sendPortMatcher = match (\nSendPort' -> liftIO $ atomically $ modifyTVar clusterList $ addTersusSendPort nSendPort')
-      receiveSendChannels = receiveWait [sendPortMatcher]
+
+      handleNotificationsPortRegistration :: (NotificationsSendPort,ProcessId) -> ProcessM ()
+      handleNotificationsPortRegistration nSendPort' = liftIO $ atomically $ modifyTVar clusterList $ addTersusSendPort nSendPort'
+
+      handleNodeRegistration :: ProcessId -> ProcessM ()
+      handleNodeRegistration pid = do
+        myPid <- getSelfPid
+        if myPid == pid then return () else send pid (nSendPort,myPid)
       
+      receiveSendChannels = receiveWait [match handleNodeRegistration, match handleNotificationsPortRegistration]
+
+
+
+
 
 -- Forks the given Process (proc) numThread times and returns a list with the process id of the forked processes
 forkProcFun :: Int -> ProcessM () -> ProcessM [ProcessId]
@@ -112,8 +137,7 @@ notificationsService msgSendPort clusterList notificationsChan = forever $ do
                                                        -- new clusters become available. It could be configured to be updated
                                                        -- every particular defined period
                                                        clusters <- liftIO $ atomically $ readTVar clusterList 
-                                                       mapM_ (\clusterPort-> sendChannel clusterPort notifications) clusters
-                                                       return ()
+                                                       mapM_ (sendNotifications notifications) clusters
     where
       -- Try to read at most n notifications from the notifications channel
       -- note that this function takes constant time to execute and dosen't break
@@ -132,6 +156,20 @@ notificationsService msgSendPort clusterList notificationsChan = forever $ do
       packNotification :: TersusSimpleNotification -> TersusNotification
       packNotification (Initialized' appInstance) = Initialized appInstance (msgSendPort,"HashLoco")
       packNotification (Closed' appInstance) = Closed (appInstance,"HashLoco")
+      
+      -- Transmit the notification to a particular node, if that node is no longer available
+      -- it's removed from the list using exception handling
+      sendNotifications :: [TersusNotification] -> (NotificationsSendPort,ProcessId) -> ProcessM ()
+      sendNotifications notifications (nSendPort',pid) = (ptry (sendChannel nSendPort' notifications)) >>= \result ->
+                                                         case result of
+                                                           Left (TransmitException a) -> liftIO $ atomically $ modifyTVar clusterList $ deleteNode pid
+                                                           _ -> return ()
+
+deleteNode :: Eq b => b -> [(a,b)] -> [(a,b)]
+deleteNode _ [] = []
+deleteNode pid ((nSendPort,pid'):t) 
+    | pid == pid' = deleteNode pid t
+    | otherwise = (nSendPort,pid') : (deleteNode pid t)
 
 -- Start numThreads concurrent Message Acknowledgement Dispatch Services
 initDispatchMessageAcknowledgementService :: AcknowledgementRecvPort -> TMessageStatusTable -> Int -> ProcessM [ProcessId]
@@ -186,7 +224,12 @@ messageDeliveryService sendQueue addresses = forever $ do
                                                  liftIO $ putStrLn "Running deliver service"
                                                  (msg,aPort) <- liftIO $ atomically $ readTChan sendQueue
                                                  destPort <- liftIO $ H.lookup addresses $ getAppInstance msg
-                                                 deliverMsg (msg,aPort) destPort
+                                                 -- Try transmitting the message
+                                                 sendRes <- ptry $ deliverMsg (msg,aPort) destPort
+                                                 case sendRes of
+                                                   -- Error sending the message on the send port of the receiver app instance
+                                                   Left (TransmitException a) -> (liftIO $ H.delete addresses $ getAppInstance msg) >> deliverMsg (msg,aPort) Nothing
+                                                   Right () -> return ()
     where
       -- This function is given the port where the message is delivered
       -- obtained from the address table. If no port exists, it means
