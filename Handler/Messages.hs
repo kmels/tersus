@@ -79,11 +79,14 @@ deliverTMessage appInstance message = do
                         channel <- return $ getSendChannel master
                         port <- return $ getSendPort master
                         statusTable <- return $ getStatusTable master
-                        -- Todo: properly process the maybe
-                        Just msgBuffer <- liftIO $ H.lookup statusTable appInstance
-                        status <- liftIO $ queueMessage msgBuffer channel (message,port)
-                        waitMessage appInstance (generateHash message)
+                        msgBuffer <- liftIO $ H.lookup statusTable appInstance
+                        writeMsgInBuffer channel port  msgBuffer
 
+                        where
+                          writeMsgInBuffer _ _ Nothing = return EInvalidAppKey
+                          writeMsgInBuffer channel port (Just msgBuffer) = do
+                                        status <- liftIO $ queueMessage msgBuffer channel (message,port)
+                                        waitMessage appInstance (generateHash message)                                        
 
 -- Given an appInstance and the hashcode of a particular message,
 -- blocks until the delivery status of the message is known
@@ -91,22 +94,29 @@ waitMessage :: AppInstance -> THashCode -> GHandler sub App MessageResult
 waitMessage appInstance hashCode = do
   master <- getYesod
   statusTable <- return $ getStatusTable master
-  Just (mappings,statusVars,availableBuff) <- liftIO $ H.lookup statusTable appInstance
-  -- Todo: Error Handling for Maybe monad
-  Just (_,msgIndex) <- liftIO $ lookupIndex hashCode mappings
-  statusVar <- liftIO $ readArray statusVars msgIndex
-  liftIO $ atomically $ do
-    result <- takeTMVar statusVar
-    mapping <- modifyTVar mappings (rmHash hashCode)
-    writeTChan availableBuff (msgIndex,statusVar)
-    return result
+  msgBuffer <- liftIO $ H.lookup statusTable appInstance
+  liftIO $ hashCodeLookup msgBuffer
 
   where
     rmHash hash ((hash',msgIndex):t) 
            | hash == hash' = t
            | otherwise = (hash',msgIndex) : (rmHash hash t)
-    rmHash hash _ = []                          
-                         
+    rmHash hash _ = []
+    -- Lookup the hashcode in the message buffer if such
+    -- buffer could be obtained from the app key
+    hashCodeLookup Nothing = return EInvalidAppKey
+    hashCodeLookup (Just (mappings,statusVars,availableBuff)) = let
+                                       readMsgStatus Nothing = return EInvalidHashCode
+                                       readMsgStatus (Just (_,msgIndex)) = do
+                                                                  statusVar <- readArray statusVars msgIndex
+                                                                  atomically $ do
+                                                                           result <- takeTMVar statusVar
+                                                                           mapping <- modifyTVar mappings (rmHash hashCode)
+                                                                           writeTChan availableBuff (msgIndex,statusVar)
+                                                                           return result
+                                  in 
+                                    lookupIndex hashCode mappings >>= readMsgStatus
+                 
 
 -- Add a message to the privided message queue channel. Create a
 -- MVar to write the status code of the received message and
@@ -132,6 +142,7 @@ receiveMessages appInstance = do
                 master <- getYesod
                 mailBoxes <- return $ getMailBoxes master                
                 deliveryChan <- return $ getDeliveryChannel master
+                -- Todo: what happens if the appInstance dosent exist? What should be returned?
                 mailBox <- liftIO (H.lookup mailBoxes appInstance >>= return . fromJust)
                 messages <- liftIO $ atomically $ do 
                                 messages' <- takeTMVar mailBox
@@ -155,6 +166,10 @@ getRecvMessageR = do
 getInitMessagesR :: Handler RepJson
 getInitMessagesR = do
   initApplication $ getAppInstance dummyAddress
+  jsonToRepJson $ encode $ ("Done" :: String)
+
+getInitMessagesR2 :: Handler RepJson
+getInitMessagesR2 = do
   initApplication $ getAppInstance dummyAddress2
   jsonToRepJson $ encode $ ("Done" :: String)
 

@@ -19,10 +19,16 @@ import Data.HashTable as H
 import Control.Monad.Trans (liftIO)
 import Control.Concurrent.STM.TMVar (TMVar, putTMVar, isEmptyTMVar,takeTMVar)
 import Control.Concurrent.STM.TChan (readTChan,isEmptyTChan)
-import Control.Concurrent.STM.TVar (readTVar)
+import Control.Concurrent.STM.TVar (readTVar,modifyTVar)
 import Control.Concurrent.STM (atomically, STM)
 import Data.Array.IO (readArray)
 import Control.Monad (foldM)
+
+
+-- This is the name that the process used to establish communication with other
+-- Tersus instances will be called.
+processBinderName :: String
+processBinderName = "TersusProcessBinder"
 
 -- Function that handles messaging among the multiple Tersus instances
 -- There are various services that work together to provide messaging
@@ -36,7 +42,30 @@ runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvP
   _ <- initMessageAcknowledgementService recvChan numThreads
   _ <- initNotificationsService mSendPort clusterList notificationsChan numThreads
   _ <- initNotificationsDispatchService addresses nRecvPort numThreads
+  _ <- forkProcess $ processBinderService nSendPort clusterList
   return []
+
+processBinderService :: NotificationsSendPort -> TersusClusterList -> ProcessM ()
+processBinderService nSendPort clusterList = do
+  nameSet processBinderName
+  peers <- getPeers
+  t2s <- return $ findPeerByRole peers tersusClusterRole
+  pids <- mapM (\peer -> nameQuery peer processBinderName) t2s
+  mapM_ (\pid -> maybeSendPid pid) pids
+  forever receiveSendChannels
+
+    where
+      maybeSendPid (Just pid) = send pid nSendPort
+      -- This case would indicate that a node has been initialized but the processBinderService is not started yet
+      -- So it will be ignored since the other cluster will register this cluster once it's processBinderService
+      -- is started.
+      maybeSendPid Nothing = return ()
+      addTersusSendPort :: NotificationsSendPort -> [NotificationsSendPort] -> [NotificationsSendPort]
+      addTersusSendPort nSendPort' sendPorts = nSendPort' : sendPorts
+      sendPortMatcher :: MatchM () ()
+      sendPortMatcher = match (\nSendPort' -> liftIO $ atomically $ modifyTVar clusterList $ addTersusSendPort nSendPort')
+      receiveSendChannels = receiveWait [sendPortMatcher]
+      
 
 -- Forks the given Process (proc) numThread times and returns a list with the process id of the forked processes
 forkProcFun :: Int -> ProcessM () -> ProcessM [ProcessId]

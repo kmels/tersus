@@ -51,13 +51,13 @@ data TersusResult = TersusResult Int TersusResultCode
 
 -- Update the function msgResultNums as well since it's used to 
 -- convert the result into binary data
-data MessageResult = Delivered | ENoAppInstance  deriving (Show, Eq, Enum, Typeable)
+data MessageResult = Delivered | ENoAppInstance | EInvalidAppKey | EBufferFull | EInvalidHashCode  deriving (Show, Eq, Enum, Typeable)
 
 
 -- Mapping from MessageResults to integers so they can be 
 -- serealized and sent through cloudhaskell
 msgResultsNums :: [(Int,MessageResult)]
-msgResultsNums = [(1,Delivered),(2,ENoAppInstance)]
+msgResultsNums = [(1,Delivered),(2,ENoAppInstance),(3,EInvalidAppKey),(4,EBufferFull),(5,EInvalidHashCode)]
 
 share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models") 
 

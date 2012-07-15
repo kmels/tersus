@@ -48,8 +48,6 @@ type MessageSendPort = SendPort TMessageEnvelope
 type MessageRecvPort = ReceivePort TMessageEnvelope
 type MessagingPorts = (MessageSendPort,MessageRecvPort)
 
-
-
 -- This type represents the address of a TersusCluster for
 -- message delivery. Also has a hash code which will be used
 -- to determine how to register and unregister addresses
@@ -126,8 +124,13 @@ data TersusSimpleNotification = Initialized' AppInstance
 -- the AppInstances
 type NotificationsChannel = TChan TersusSimpleNotification
 
-
+-- Mutable variable that holds a list of all Tersus instances
+-- to whom the registration of a new app instance should
+-- be informed.
 type TersusClusterList = TVar [NotificationsSendPort]
+
+tersusClusterRole :: String
+tersusClusterRole = "T1"
 
 -- Binary instance for Tersus notification so
 -- the notifications can be sent throughout Cloud Haskell

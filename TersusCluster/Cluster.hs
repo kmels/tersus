@@ -50,7 +50,7 @@ initDataStructures = (liftIO $ H.new (==) hashUserApp) >>= \addresses ->
                      newChannel >>= \messagePorts ->
                      newChannel >>= \acknowledgementPorts ->
                      newChannel >>= \(nSendPort,nRecvPort) ->
-                     (liftIO $ atomically $ newTVar [nSendPort]) >>= \clusterList ->
+                     (liftIO $ atomically $ newTVar []) >>= \clusterList ->
                      return (sChannel,rChannel,nChannel,mailBoxes,addresses,msgStatusTable,messagePorts,acknowledgementPorts,(nSendPort,nRecvPort),clusterList)
 
 -- Process that runs Tersus and Yesod in development mode
@@ -97,9 +97,10 @@ remotable ['createTersusInstance,'createTersusDevelInstance]
 initTersusCluster :: String -> ProcessM ()
 initTersusCluster "T1" = do 
   peers <- getPeers
-  t2s <- return $ findPeerByRole peers "T1"
+--  t2s <- return $ findPeerByRole peers tersusClusterRole
+  t2s <- getSelfNode >>= return . return
   pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusInstance)))  t2s
-  mapM_ (\p -> send p pids) pids
+--  mapM_ (\p -> send p pids) pids
   receiveWait []
 
 initTersusCluster _ = return ()
@@ -110,7 +111,8 @@ initTersusCluster _ = return ()
 initTersusClusterDevel :: String -> ProcessM ()
 initTersusClusterDevel "T1" = do 
   peers <- getPeers
-  t2s <- return $ findPeerByRole peers "T1"
+  -- t2s <- return $ findPeerByRole peers tersusClusterRole
+  t2s <- getSelfNode >>= return . return
   pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusDevelInstance)))  t2s
   -- mapM_ (\p -> send p pids) pids
   -- forkProcess createTersusDevelInstance
