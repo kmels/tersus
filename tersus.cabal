@@ -40,10 +40,10 @@ library
                      Handler.TApplication.Git
                      Handler.TFile
                      Tersus.AccessKeys
-                     TersusCluster.Cluster
-                     TersusCluster.Types
-                     TersusCluster.MessageBackend
-                     TersusCluster.DummyImports		     
+                     Tersus.Cluster
+                     Tersus.Cluster.Types
+                     Tersus.Cluster.MessageBackend
+                     Tersus.Cluster.DummyImports		     
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT

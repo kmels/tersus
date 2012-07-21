@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ImpredicativeTypes #-}
-module TersusCluster.MessageBackend where
+module Tersus.Cluster.MessageBackend where
 
 -- Tersus Message Backend
 -- Author: Ernesto Rodriguez
@@ -13,7 +13,7 @@ import Prelude
 import Control.Monad (forever)
 import Remote.Process (forkProcess,ptry)
 import Remote
-import TersusCluster.Types
+import Tersus.Cluster.Types
 import Model (MessageResult(Delivered,ENoAppInstance),getAppInstance,getSendAppInstance)
 import Data.HashTable as H
 import Control.Monad.Trans (liftIO)

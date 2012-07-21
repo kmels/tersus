@@ -1,4 +1,4 @@
-module TersusCluster.DummyImports where
+module Tersus.Cluster.DummyImports where
 
 import Data.Text as T
 import Model

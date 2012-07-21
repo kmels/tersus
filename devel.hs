@@ -1,6 +1,6 @@
 {-# LANGUAGE PackageImports #-}
 -- import "tersus" Application (getApplicationDev)
-import "tersus" TersusCluster.Cluster (tersusDevel)
+import "tersus" Tersus.Cluster (tersusDevel)
 
 main :: IO ()
 main = do

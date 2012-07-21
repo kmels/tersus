@@ -20,7 +20,7 @@ import           Yesod.Default.Main
 import           Yesod.Logger (Logger, logBS, toProduction)
 
 -- CloudHaskell stuff
-import TersusCluster.Types
+import Tersus.Cluster.Types
 
 -- Import all relevant handler modules here.
 -- Don't forget to add new modules to your cabal file!

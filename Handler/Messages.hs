@@ -15,12 +15,12 @@ import Model.TersusResult()
 import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM.TMVar
 import Control.Concurrent.STM (atomically,modifyTVar,newTVar)
-import TersusCluster.Types
+import Tersus.Cluster.Types
 import Data.Maybe (fromJust)
 import Control.Monad (mapM)
 import Data.Array.MArray
 import Data.Array.IO (IOArray)
-import TersusCluster.DummyImports
+import Tersus.Cluster.DummyImports
 
 bufferSize :: Int
 bufferSize = 2

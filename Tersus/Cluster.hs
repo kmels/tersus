@@ -1,4 +1,4 @@
-module TersusCluster.Cluster where
+module Tersus.Cluster where
 
 -- Cluster
 -- Author: ERnesto Rodriguez
@@ -18,8 +18,8 @@ import Settings (parseExtra)
 import Yesod.Default.Config (fromArgs)
 import Yesod.Default.Main (defaultMain)
 import Control.Concurrent.STM (newTChan,atomically)
-import TersusCluster.Types
-import TersusCluster.MessageBackend
+import Tersus.Cluster.Types
+import Tersus.Cluster.MessageBackend
 import GHC.Int
 import System.Exit (exitSuccess)
 import System.Posix.Signals (sigTERM,signalProcess)
@@ -125,12 +125,12 @@ initTersusClusterDevel _ = return ()
 -- called by main
 tersusProducction :: IO ()
 tersusProducction = do 
-  remoteInit (Just "config/servers") [TersusCluster.Cluster.__remoteCallMetaData] initTersusCluster
+  remoteInit (Just "config/servers") [Tersus.Cluster.__remoteCallMetaData] initTersusCluster
   return ()
 
 -- Initialize Tersus in development mode running on top of CloudHaskell
 -- called by main
 tersusDevel :: IO ()
 tersusDevel = do 
-  remoteInit (Just "config/servers") [TersusCluster.Cluster.__remoteCallMetaData] initTersusClusterDevel
+  remoteInit (Just "config/servers") [Tersus.Cluster.__remoteCallMetaData] initTersusClusterDevel
   return ()

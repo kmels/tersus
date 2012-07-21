@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ImpredicativeTypes #-}
-module TersusCluster.Types where
+module Tersus.Cluster.Types where
 
 import Prelude
 import Remote
