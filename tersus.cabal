@@ -39,6 +39,7 @@ library
                      Handler.TApplication
                      Handler.TApplication.Git
                      Handler.TFile
+                     Tersus.AccessKeys
                      TersusCluster.Cluster
                      TersusCluster.Types
                      TersusCluster.MessageBackend

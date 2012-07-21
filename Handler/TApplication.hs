@@ -10,7 +10,8 @@ import qualified Data.Text                as T
 import           Data.Time.Clock          (getCurrentTime)
 import           Handler.TApplication.Git (pullChanges)
 import           Import
-import           System.Random            (newStdGen, randomRs)
+import           Yesod.Auth
+import           Tersus.AccessKeys
 
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
@@ -64,7 +65,7 @@ postRegisterTAppR = do
         (appName,(appDescription,(appRepositoryUrl,(appContactEmail,appIdentifier)))) = (appLikeName &&& appLikeDescription &&& appLikeRepositoryURL &&& appLikeContactEmail &&& appLikeIdentifier) appLike
 
       creationDate <- liftIO getCurrentTime --ask date
-      appKey <- liftIO $ newAppRandomKey  --create a new appkey
+      appKey <- liftIO $ newRandomKey 32  --create a new appkey
 
       --insert in database
       _ <- runDB $ insert $ TApplication appName appIdentifier appDescription appRepositoryUrl appContactEmail creationDate appKey
@@ -76,28 +77,17 @@ postRegisterTAppR = do
 
 getHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
 getHomeTApplicationR appIdentifier = do
---  _ <- maybeAuthId
+  maybeUserId <- maybeAuthId
   appMbe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
+  
   case appMbe of
     Just (Entity _ app') -> do
-      _ <- liftIO $ pullChanges app'
-      defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier}|]
+      _ <- liftIO $ pullChanges app'      
+      case maybeUserId of
+        Just userId -> defaultLayout $ do 
+          accessKey <- liftIO $ newRandomAccessKey (T.pack "usernickname") (tApplicationName app')
+          $(widgetFile "TApplication/application-root")
+        Nothing -> defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier} 
+                                                <p>Welcome stranger: |]
     _ -> error "Not implemented yet; app doesn't exist"
-
--- | Generate a random String of alphanumerical characters
--- (a-z, A-Z, and 0-9) of the given length using the given
--- random number generator. (Copied from hidden module Yesod.Internal.Request)
-getRandomText :: Int -> IO Text
-getRandomText n = do
-  stdgen <- liftIO newStdGen
-  return $ T.pack $ take n $ map toChar (randomRs (0, 61) stdgen) --32 chars
-  where
-    toChar i
-      | i < 26 = toEnum $ i + fromEnum 'A'
-      | i < 52 = toEnum $ i + fromEnum 'a' - 26
-      | otherwise = toEnum $ i + fromEnum '0' - 52
-
-
--- | Generatate a 32-length random alphanumerical text.  This one is saved in the database for each application. It is then used as a seed to generate a access_token for a (user,app) combo.
-newAppRandomKey :: IO Text
-newAppRandomKey = getRandomText 32
+      
