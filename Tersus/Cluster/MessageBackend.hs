@@ -21,6 +21,7 @@ import Control.Concurrent.STM.TMVar (TMVar, putTMVar, isEmptyTMVar,takeTMVar)
 import Control.Concurrent.STM.TChan (readTChan,isEmptyTChan)
 import Control.Concurrent.STM.TVar (readTVar,modifyTVar)
 import Control.Concurrent.STM (atomically, STM)
+import Control.Concurrent.MVar (MVar,takeMVar,putMVar,newEmptyMVar)
 import Data.Array.IO (readArray)
 import Control.Monad (foldM)
 import Data.Either ( Either(..) )
@@ -43,8 +44,16 @@ runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvP
   _ <- initMessageAcknowledgementService recvChan numThreads
   _ <- initNotificationsService mSendPort clusterList notificationsChan numThreads
   _ <- initNotificationsDispatchService addresses nRecvPort numThreads
-  _ <- forkProcess $ processBinderService nSendPort clusterList
+  _ <- initProcessBinderService nSendPort clusterList
   return []
+
+initProcessBinderService :: NotificationsSendPort -> TersusClusterList -> ProcessM [ProcessId]
+initProcessBinderService nSendPort clusterList = do
+  initLock <- liftIO $ newEmptyMVar
+  p <- forkProcess $ processBinderService nSendPort clusterList initLock
+  liftIO $ takeMVar initLock
+  return [p]
+  
 
 -- Process that registers new tersus instances once they are started and
 -- ready to start messaging. The registration process is as follows:
@@ -56,13 +65,16 @@ runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvP
 -- of the process, therefore the port is sent so the process can start notifing about the activities in the 
 -- of the applications running in that Node.
 -- Note: The PBS has a special name for other nodes to query. This name is held in the value of processBinderName
-processBinderService :: NotificationsSendPort -> TersusClusterList -> ProcessM ()
-processBinderService nSendPort clusterList = do
+processBinderService :: NotificationsSendPort -> TersusClusterList -> MVar Int -> ProcessM ()
+processBinderService nSendPort clusterList lock = do
   nameSet processBinderName
   peers <- getPeers
   t2s <- return $ findPeerByRole peers tersusClusterRole
   pids <- mapM (\peer -> nameQuery peer processBinderName) t2s
+  myPid <- getSelfPid
+  handleNotificationsPortRegistration (nSendPort,myPid)
   mapM_ (\pid -> maybeSendPid pid) pids
+  liftIO $ putMVar lock 1
   forever receiveSendChannels
 
     where
@@ -83,7 +95,7 @@ processBinderService nSendPort clusterList = do
 
       handleNodeRegistration :: ProcessId -> ProcessM ()
       handleNodeRegistration pid = do
-        myPid <- getSelfPid
+        myPid <- getSelfPid        
         if myPid == pid then return () else send pid (nSendPort,myPid)
       
       receiveSendChannels = receiveWait [match handleNodeRegistration, match handleNotificationsPortRegistration]
@@ -137,7 +149,7 @@ notificationsService msgSendPort clusterList notificationsChan = forever $ do
                                                        -- new clusters become available. It could be configured to be updated
                                                        -- every particular defined period
                                                        clusters <- liftIO $ atomically $ readTVar clusterList 
-                                                       mapM_ (sendNotifications notifications) clusters
+                                                       mapM_ (sendNotifications notifications clusterList) clusters
     where
       -- Try to read at most n notifications from the notifications channel
       -- note that this function takes constant time to execute and dosen't break
@@ -157,13 +169,14 @@ notificationsService msgSendPort clusterList notificationsChan = forever $ do
       packNotification (Initialized' appInstance) = Initialized appInstance (msgSendPort,"HashLoco")
       packNotification (Closed' appInstance) = Closed (appInstance,"HashLoco")
       
-      -- Transmit the notification to a particular node, if that node is no longer available
-      -- it's removed from the list using exception handling
-      sendNotifications :: [TersusNotification] -> (NotificationsSendPort,ProcessId) -> ProcessM ()
-      sendNotifications notifications (nSendPort',pid) = (ptry (sendChannel nSendPort' notifications)) >>= \result ->
-                                                         case result of
-                                                           Left (TransmitException a) -> liftIO $ atomically $ modifyTVar clusterList $ deleteNode pid
-                                                           _ -> return ()
+
+-- Transmit the notification to a particular node, if that node is no longer available
+-- it's removed from the list using exception handling
+sendNotifications :: [TersusNotification] -> TersusClusterList -> (NotificationsSendPort,ProcessId) -> ProcessM ()
+sendNotifications notifications clusterList (nSendPort',pid) = (ptry (sendChannel nSendPort' notifications)) >>= \result ->
+                                                               case result of
+                                                                 Left (TransmitException a) -> liftIO $ atomically $ modifyTVar clusterList $ deleteNode pid
+                                                                 _ -> return ()
 
 deleteNode :: Eq b => b -> [(a,b)] -> [(a,b)]
 deleteNode _ [] = []

@@ -9,6 +9,7 @@ import Prelude
 import Control.Concurrent (forkIO,threadDelay)
 import Remote
 import Remote.Call (mkClosure)
+import Remote.Process (forkProcess)
 import Model
 import Control.Monad.Trans (liftIO)
 import Data.HashTable as H
@@ -26,6 +27,8 @@ import System.Posix.Signals (sigTERM,signalProcess)
 import System.Posix.Process (getProcessID)
 import System.Directory (doesFileExist)
 import Control.Concurrent.STM.TVar (newTVar)
+import Tersus.Cluster.TersusService (makeTersusService)
+import Tersus.Cluster.TersusServiceApp (tersusServiceApp)
 
 -- Hash function for a user application combo instance
 hashUserApp :: AppInstance -> GHC.Int.Int32
@@ -62,7 +65,7 @@ createTersusDevelInstance = do
   (sChannel,rChannel,aChannel,mailBoxes,addresses,msgStatusTable,(mSendPort,mRecvPort),(aSendPort,aRecvPort),(nSendPort,nRecvPort),clusterList) <- initDataStructures
 
   _ <- runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvPort) sChannel rChannel aChannel mailBoxes addresses clusterList msgStatusTable 1
-
+  _ <- forkProcess $ makeTersusService tersusServiceApp sChannel clusterList
   liftIO $ do (port, app') <- getApplicationDev (sChannel,rChannel,aChannel,mailBoxes,msgStatusTable,aSendPort)
               runSettings defaultSettings
                               { settingsPort = port

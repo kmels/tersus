@@ -5,6 +5,7 @@ import Model
 import System.IO.Unsafe (unsafePerformIO)
 import Data.Time.Clock (getCurrentTime)
 import Data.Maybe (Maybe(Just))
+import Tersus.Cluster.TersusServiceApp (tersusServiceUser,tersusServiceApp')
 
 
 -- This is a dummy datatype only to show that this works
@@ -22,8 +23,10 @@ dummyApp = TApplication (T.pack "emacs") (T.pack "identifier") (T.pack "descript
 
 dummyApp2 = TApplication (T.pack "vi") (T.pack "idvi") (T.pack "description dummy") (Just (T.pack "url")) (T.pack "mail@place.com") (unsafePerformIO getCurrentTime)  (T.pack "appkey2")
 
-dummyMsg = TMessage dummyUser dummyUser2 dummyApp dummyApp2 (T.pack "Alonso") (unsafePerformIO getCurrentTime)
+dummyMsg = TMessage dummyUser tersusServiceUser dummyApp tersusServiceApp' (T.pack "Alonso") (unsafePerformIO getCurrentTime)
 
 dummyAddress = Address dummyUser dummyApp
 
 dummyAddress2 = Address dummyUser2 dummyApp2
+
+tersusServiceAppAddr = Address tersusServiceUser tersusServiceApp'

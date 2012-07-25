@@ -43,7 +43,9 @@ library
                      Tersus.Cluster
                      Tersus.Cluster.Types
                      Tersus.Cluster.MessageBackend
-                     Tersus.Cluster.DummyImports		     
+                     Tersus.Cluster.DummyImports
+                     Tersus.Cluster.TersusService
+                     Tersus.Cluster.TersusServiceApp
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -110,6 +112,7 @@ library
                  , array                         >= 0.4.0.0
                  , stm                           >= 2.3
                  , unix                          >= 2.5
+                 , transformers                  >= 0.3
 
 executable         tersus
     if flag(library-only)

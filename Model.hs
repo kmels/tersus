@@ -62,7 +62,7 @@ msgResultsNums = [(1,Delivered),(2,ENoAppInstance),(3,EInvalidAppKey),(4,EBuffer
 share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models") 
 
 -- Represents a app being run by a user
-data AppInstance = AppInstance {username :: String, application :: String} deriving (Eq,Typeable)
+data AppInstance = AppInstance {username :: String, application :: String} deriving (Eq,Typeable,Show)
 
 -- Message = { userSender: User, usersReceiver: [User], appSender: Application, appReceiver: Application, content: String}
 data TMessage = TMessage {userSender :: User, 

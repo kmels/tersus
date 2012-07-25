@@ -117,7 +117,7 @@ data TersusNotification = Initialized AppInstance (MessageSendPort,THashCode)
 -- side since it's much simpler than the TersusNotification which
 -- is used by CloudHaskell
 data TersusSimpleNotification = Initialized' AppInstance
-                              | Closed' AppInstance
+                              | Closed' AppInstance deriving Show
 
 
 -- Channel that will be used to communicate what is happening with

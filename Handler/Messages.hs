@@ -159,7 +159,7 @@ getSendMessageR = do
 
 getRecvMessageR :: Handler RepJson
 getRecvMessageR = do
-  msgs <- receiveMessages (getAppInstance dummyAddress2)
+  msgs <- receiveMessages (getAppInstance dummyAddress)
   msgs' <- mapM (\(msg,_) -> return msg) msgs
   jsonToRepJson $ encode $ msgs'
 
@@ -168,8 +168,8 @@ getInitMessagesR = do
   initApplication $ getAppInstance dummyAddress
   jsonToRepJson $ encode $ ("Done" :: String)
 
-getInitMessagesR2 :: Handler RepJson
-getInitMessagesR2 = do
-  initApplication $ getAppInstance dummyAddress2
-  jsonToRepJson $ encode $ ("Done" :: String)
+-- getInitMessagesR2 :: Handler RepJson
+-- getInitMessagesR2 = do
+--   initApplication $ getAppInstance dummyAddress2
+--   jsonToRepJson $ encode $ ("Done" :: String)
 
