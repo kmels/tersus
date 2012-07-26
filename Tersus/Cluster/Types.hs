@@ -1,21 +1,21 @@
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE RankNTypes         #-}
 module Tersus.Cluster.Types where
 
-import Prelude
-import Remote
-import Data.HashTable
-import Control.Concurrent.STM.TChan
-import Control.Concurrent.STM.TMVar
-import Model
-import Data.Hash.MD5
-import Data.Text as T
-import Control.Concurrent.STM.TVar (readTVar,TVar)
-import Control.Concurrent.STM (atomically)
-import Data.Array.IO
-import qualified Data.List as L
-import qualified Data.Binary as B
-import Data.Typeable.Internal (Typeable)
+import           Control.Concurrent.STM       (atomically)
+import           Control.Concurrent.STM.TChan
+import           Control.Concurrent.STM.TMVar
+import           Control.Concurrent.STM.TVar  (TVar, readTVar)
+import           Data.Array.IO
+import qualified Data.Binary                  as B
+import           Data.Hash.MD5
+import           Data.HashTable
+import qualified Data.List                    as L
+import           Data.Text                    as T
+import           Data.Typeable.Internal       (Typeable)
+import           Model
+import           Prelude
+import           Remote
 
 type THashCode = String
 
@@ -24,7 +24,7 @@ type THashCode = String
 -- if we get two register requests and one un-register request
 -- the app should remain registered
 
--- Envelope for sending message results. The 
+-- Envelope for sending message results. The
 -- hash code of this envelope is the hash code
 -- produced from the messages for which this result is sent.
 -- This hash code can be used to determine the message that
@@ -58,7 +58,7 @@ type TersusProcessM = (SendPort TMessageEnvelope,THashCode)
 type AddressTable = HashTable (AppInstance) TersusProcessM
 
 -- Contains all the Mailboxes for the AppInstances running in this
--- TersusCluster. 
+-- TersusCluster.
 type MailBoxTable = HashTable AppInstance (TMVar [TMessageEnvelope])
 
 -- Contains a table where the status of each message send from
@@ -75,13 +75,13 @@ type AcknowledgementQueue = TChan (TMessageEnvelope,AppInstance)
 class Hashable a where
       generateHash :: a -> THashCode
 
--- Implementation of the hashcode generation mechanisms of 
+-- Implementation of the hashcode generation mechanisms of
 -- TersusMessages
 instance Hashable TMessage where
          generateHash msg = let
                       TMessage u1 u2 a1 a2 body msgTime= msg
-                      User un1 _ _ = u1
-                      User un2 _ _ = u2
+                      User un1 _ _ _ = u1
+                      User un2 _ _ _ = u2
                       TApplication _ id1 _ _ _ _ _ = a1
                       TApplication _ id2 _ _ _ _ _ = a2
                       in
@@ -112,7 +112,7 @@ data TersusNotification = Initialized AppInstance (MessageSendPort,THashCode)
 
 
 -- The Application Instance notifications for activities that they
--- undergo. Usually to indicate an app was initialized by a 
+-- undergo. Usually to indicate an app was initialized by a
 -- user or stopped. This datatype is used in the Yesod
 -- side since it's much simpler than the TersusNotification which
 -- is used by CloudHaskell
@@ -139,7 +139,7 @@ instance B.Binary TersusNotification where
     put (Initialized appInstance (msgSendPort,hash)) = B.put (1 :: Int) >> B.put (appInstance,(msgSendPort,hash))
     put (Closed (appInstance,hash)) = B.put (2 :: Int) >> B.put (appInstance,hash)
     put NotificationUnknown = B.put (-1 :: Int) -- No reason to be sent, but will be matched anyway
-                                            
+
     get = do
       notificationNum <- (B.get :: B.Get Int)
       case notificationNum of

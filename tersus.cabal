@@ -101,6 +101,8 @@ library
                  , random                        >= 1.0.1
                  , process-conduit               >= 0.4.1
                  , conduit                       >= 0.4.2
+                 , split                         >= 0.1.4.3
+                 , base16-bytestring             >= 0.1.1.4
 --added by neto
                  , aeson                         >= 0.6.0.0                 
                  , remote                        >= 0.1.1

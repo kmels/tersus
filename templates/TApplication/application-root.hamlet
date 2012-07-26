@@ -1,11 +1,11 @@
 <h1> #{appIdentifier}
 
 $maybe _ <- maybeUserId
-    <p>You are logged in. 
+    <p>Welcome #{show user} You are logged in.
         <a href=@{AuthR LogoutR}>Logout
     <p>Your (or a possible) access key for this application is: #{accessKey}
+$maybe (a,b) <- nonEncryptedAccessKey
+    <p>Decrypted is: #{a},#{b}
 $nothing
     <p>Welcome stranger
         <a href=@{AuthR LoginR}>Login
-
-

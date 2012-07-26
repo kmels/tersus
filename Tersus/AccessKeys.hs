@@ -1,39 +1,61 @@
 module Tersus.AccessKeys where
 
-import           Import
-import           System.Random            (newStdGen, randomRs)
 import qualified Codec.Binary.UTF8.String as UTF8
 import qualified Codec.Crypto.AES         as AES
 import qualified Data.ByteString          as B
+import           Data.ByteString.Base16   as Base16
+import           Data.Char                (chr, ord)
+import           Data.List.Split          (splitOn)
 import           Data.Text                as T
 import qualified Data.Text.Encoding       as TE
-import           Data.Char(chr)
+import           Data.Word                (Word8)
+import           Import
+import           System.Random            (newStdGen, randomRs)
 
--- decrypts
---aesUserAppKey :: User -> AccessToken -> AES.Direction -> Maybe T.Text
---aesUserAppKey _ appkey dir = do
-  --splitIndex <- T.findIndex ((==) ':') $ TE.decodeUtf8 decrypteLEdRawAuth
-  --(_,applicationName) <- Just $ B.splitAt splitIndex decryptedRawAuth
-  --return $ TE.decodeUtf8 applicationName
-aes :: T.Text -> AES.Direction -> B.ByteString
-aes message dir = 
+
+-- | Converts UTF8 text to a Bytestring
+textToBytestring :: T.Text -> B.ByteString
+textToBytestring = B.pack . UTF8.encode . T.unpack
+
+-- | Converts bytestring to a UTF8 text
+bytestringToText :: B.ByteString -> T.Text
+bytestringToText = T.pack . UTF8.decode . B.unpack
+
+-- | Encrypts or decrypts a bytestring to a bytestring with the AES (Advanced Encryption Standard) algorithm
+aes :: B.ByteString -> AES.Direction -> B.ByteString
+aes data' dir =
   let
     aesKey = B.pack . UTF8.encode $ "01234567890abcde" --16,24 or 32 byte symmetric key
     aesIV = B.pack . UTF8.encode $ "tersus>>=lorenzo" -- initialization vector, 16 byte
-  --in T.pack $ UTF8.decode $ B.unpack $ AES.crypt' AES.CTR aesKey aesIV dir (B.pack $ UTF8.encode $ T.unpack $ message)
-    in AES.crypt' AES.CTR aesKey aesIV dir (TE.encodeUtf8 message)
+    in AES.crypt' AES.CTR aesKey aesIV dir data' --run AES
 
--- | Generate a random access key for a given user nickname and an application name
--- this will the key that an application will use to make requests
-newRandomAccessKey :: Username -> ApplicationName -> IO AccessToken
-newRandomAccessKey user appName = do
+-- | Extract a UserNickname and a ApplicationIdentifier from a hexadecimal access key
+decomposeAccessKey :: AccessToken -> Maybe (Username,ApplicationIdentifier)
+decomposeAccessKey accessToken = do
+  case (Data.List.Split.splitOn ":" encodedAuth) of
+    [random,nickname,appname] -> Just (T.pack nickname,T.pack appname)
+    _ -> Nothing
+  where
+    decodedAccessKey :: B.ByteString
+    --Let's don't care about invalid (we're using fst) chars, since the decrypted key must have the right structure anyway
+    decodedAccessKey = fst $ Base16.decode $ textToBytestring accessToken
+    encodedAuth :: String -- if valid, a string of the form "usernickname:ramdomstr:appname"
+    encodedAuth = T.unpack $ bytestringToText $ aes decodedAccessKey AES.Decrypt
+
+-- | Returns the app responsible for the request, from the AccessToken,
+-- this is our security layer used for incoming requests.
+-- TODO: Ernesto. What signature must this function have?
+
+-- | Given a username and an application name, this function generates a new hexagesimal (base 16) random string.
+newHexRandomAccessKey :: Username -> ApplicationIdentifier -> IO AccessToken
+newHexRandomAccessKey user appIdentifier = do
   randomText <- newRandomKey 16
   let
     sep = T.pack ":"
-    encodedAuth = user `append` sep `append` randomText `append` sep `append` appName
-    keyBinary = aes encodedAuth AES.Encrypt 
-    wordToChr = chr . fromEnum
-    in return $ T.pack $ Import.map wordToChr $ B.unpack keyBinary
+    encodedAuth = randomText `append` sep `append` user `append` sep `append` appIdentifier
+    randomHexBytestring = Base16.encode $ aes (textToBytestring encodedAuth) AES.Encrypt --ByteString cypher (encrypted by AES)
+  return $ bytestringToText randomHexBytestring
+
 
 -- | Generate a n-length random alphanumerical text.
 -- The text contains the caracter sets (a-z, A-Z, and 0-9)

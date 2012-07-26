@@ -10,8 +10,8 @@ import qualified Data.Text                as T
 import           Data.Time.Clock          (getCurrentTime)
 import           Handler.TApplication.Git (pullChanges)
 import           Import
-import           Yesod.Auth
 import           Tersus.AccessKeys
+import           Yesod.Auth
 
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
@@ -77,17 +77,17 @@ postRegisterTAppR = do
 
 getHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
 getHomeTApplicationR appIdentifier = do
-  maybeUserId <- maybeAuthId
-  appMbe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
-  
-  case appMbe of
-    Just (Entity _ app') -> do
-      _ <- liftIO $ pullChanges app'      
+  appMaybe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
+  maybeUserId <- maybeAuth
+  case appMaybe of
+    Just (Entity _ app') -> do --is there an app with this identifier?
+      _ <- liftIO $ pullChanges app'
+      accessKey <- liftIO $ newHexRandomAccessKey (T.pack "a") (tApplicationIdentifier app')
+      let nonEncryptedAccessKey = decomposeAccessKey accessKey
       case maybeUserId of
-        Just userId -> defaultLayout $ do 
-          accessKey <- liftIO $ newRandomAccessKey (T.pack "usernickname") (tApplicationName app')
+        Just (Entity userId user) -> defaultLayout $ do
           $(widgetFile "TApplication/application-root")
-        Nothing -> defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier} 
+        Nothing -> defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier}
                                                 <p>Welcome stranger: |]
     _ -> error "Not implemented yet; app doesn't exist"
-      
+

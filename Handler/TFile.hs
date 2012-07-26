@@ -7,7 +7,7 @@ module Handler.TFile where
 
 
 import           Import
-
+import           Tersus.AccessKeys
 {- Handler methods for operations on files. -}
 
 -- A way to convert between urls and a file path.
@@ -42,30 +42,27 @@ data WFileLike = WFileLike{
 } deriving Show
 
 writeFileForm :: AccessToken -> Html -> MForm App App (FormResult WFileLike, Widget)
-writeFileForm _ = renderDivs $ WFileLike --TODO Implement security
+writeFileForm t = renderDivs $ WFileLike --TODO Implement security
     <$> areq textField "Content" Nothing
-    <*> areq hiddenField "AccessToken" Nothing
+    <*> areq hiddenField "AccessToken" (Just t)
 
 -- This won't really exist after, it is used for testing purposes only.
 getWriteFileR :: Username -> AccessToken -> Path -> Handler RepHtml
 getWriteFileR username' accessToken path = do
   --get the form
+  let (userNickname,applicationName) = case decomposeAccessKey accessToken of
+        Just (u,a) -> (Just u, Just a)
+        _ -> (Nothing,Nothing)
   (formWidget, enctype) <- generateFormPost $ writeFileForm accessToken
   defaultLayout [whamlet|
      <h1>Dear user #{username'}, you are going to write content to file #{show path}
+     <p> From your access key we can tell that you are: #{show userNickname} and are using #{show applicationName}
      <form method=post action=@{WriteFileR username' accessToken path} enctype=#{enctype}>
                   ^{formWidget}
                   <input type=submit>
      |]
 
--- | Returns the app responsible for the request, from the AccessToken,
--- this is our security layer used for incoming requests.
---decryptUserAppAuth :: User -> AccessToken -> B.ByteString
---decryptUserAppAuth u a = aesUserAppKey u a AES.Decrypt
-
-
-
-  --username = usernameNickname user
+-- Temporal function to test uploading of documents
 postWriteFileR :: Username -> AccessToken -> Path -> Handler RepHtml
 postWriteFileR username' accessToken path = do
   user' <- runDB $ getBy $ UniqueNickname $ username' --find user by username
@@ -88,6 +85,8 @@ postWriteFileR username' accessToken path = do
     Nothing -> defaultLayout $ do
         [whamlet|
          <h1> No user|]
+
+
 {-  where
     -- | Returns a list of this file ancestors.
     fileAncestors :: Path -> [Maybe Id]

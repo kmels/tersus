@@ -1,8 +1,10 @@
 User
+    email Text
     nickname Text
     password Text Maybe
     apps [TApplication]
-    UniqueNickname nickname
+    UniqueUserEmail email
+    UniqueNickname  nickname
     deriving Show Read Eq
 
 Email
