@@ -82,10 +82,9 @@ getHomeTApplicationR appIdentifier = do
   case appMaybe of
     Just (Entity _ app') -> do --is there an app with this identifier?
       _ <- liftIO $ pullChanges app'
-      accessKey <- liftIO $ newHexRandomAccessKey (T.pack "a") (tApplicationIdentifier app')
-      let nonEncryptedAccessKey = decomposeAccessKey accessKey
       case maybeUserId of
         Just (Entity userId user) -> defaultLayout $ do
+          accessKey <- liftIO $ newHexRandomAccessKey (userNickname user) (tApplicationIdentifier app')
           $(widgetFile "TApplication/application-root")
         Nothing -> defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier}
                                                 <p>Welcome stranger: |]
