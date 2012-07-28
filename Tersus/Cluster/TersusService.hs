@@ -22,6 +22,11 @@ import Tersus.Cluster.MessageBackend (sendNotifications)
 import Remote (ReceivePort)
 import Data.Typeable.Internal (Typeable)
 import Data.Binary (Binary)
+import qualified Database.Persist.Store
+import Database.Persist.GenericSql (SqlPersist)
+import Settings (PersistConfig)
+import Tersus.Global
+import Yesod.Default.Config (withYamlEnvironment)
 
 -- Represents a tersus server side app.
 data TersusServerApp = TersusServerApp
@@ -55,7 +60,9 @@ data TersusService = TersusService
       appInstance :: AppInstance,
       -- List of Tersus clusters. Theese are the servers to which acknowledgement
       -- is sent when the app is created
-      clusterList :: TersusClusterList
+      clusterList :: TersusClusterList,
+      -- Database configuration
+      dbConf :: (PersistConfig,Database.Persist.Store.PersistConfigPool PersistConfig)
     }
 
 -- The monad on which a server side application runs. It passes a TersusService datatype
@@ -80,6 +87,23 @@ instance MonadIO TersusServiceM where
     liftIO ioVal = TersusServiceM $ \ts -> (liftIO ioVal >>= \x -> return (ts,x))
 
 
+mkDbConf :: TersusEnvoiernment -> ProcessM (PersistConfig,Database.Persist.Store.PersistConfigPool PersistConfig)
+mkDbConf tersusEnv = liftIO $ do
+  dbConn <- withYamlEnvironment databaseYaml tersusEnv Database.Persist.Store.loadConfig >>= Database.Persist.Store.applyEnv :: IO PersistConfig
+  poolConf <- Database.Persist.Store.createPoolConfig dbConn
+  return (dbConn,poolConf)
+  
+
+runQuery query = TersusServiceM $ runQuery' query
+
+runQuery' :: SqlPersist IO a -> TersusService -> ProcessM (TersusService,a)
+runQuery' query (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance sClusterList (dbConn,poolConf)) = do 
+  res <- runQuery'' dbConn poolConf query
+  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance sClusterList (dbConn,poolConf),res)
+
+runQuery'' :: PersistConfig -> Database.Persist.Store.PersistConfigPool PersistConfig -> SqlPersist IO a -> ProcessM a
+runQuery'' dbConn poolConf query = liftIO $ Database.Persist.Store.runPool dbConn query poolConf
+
 -- Run a TersusServiceM with the given TersusService state ts. Usually the initial
 -- state which are all the messaging pipeings as defined in the datatype
 evalTersusServiceM :: TersusService -> TersusServiceM a -> ProcessM a
@@ -90,18 +114,19 @@ recvListenerFun ts recvPort funs = forever $ do
                                      recvVal <- receiveChannel recvPort                                       
                                      mapM_ (\f -> evalTersusServiceM ts (f recvVal)) funs
 
-makeTersusService :: TersusServerApp -> (TMessageQueue -> TersusClusterList -> ProcessM ())
+makeTersusService :: TersusServerApp -> (TMessageQueue -> TersusClusterList -> TersusEnvoiernment -> ProcessM ())
 makeTersusService (TersusServerApp aRep uRep mFun aFun) = makeTersusService' serviceAppInstance mFun aFun
     where
       serviceAppInstance = getAppInstance $ Address uRep aRep
 
-makeTersusService' :: AppInstance -> (TMessage -> TersusServiceM ()) -> Maybe (MessageResultEnvelope -> TersusServiceM ()) -> TMessageQueue -> TersusClusterList -> ProcessM ()
-makeTersusService' sAppInstance mFun aFun sDeliveryChannel sClusterList = do
+makeTersusService' :: AppInstance -> (TMessage -> TersusServiceM ()) -> Maybe (MessageResultEnvelope -> TersusServiceM ()) -> TMessageQueue -> TersusClusterList -> TersusEnvoiernment -> ProcessM ()
+makeTersusService' sAppInstance mFun aFun sDeliveryChannel sClusterList tersusEnv = do
   (aSendPort,aRecvPort) <- newChannel
   (mSendPort,mRecvPort) <- newChannel
   --  liftIO $ atomically $ writeTChan nChannel (Initialized' appInstance)
   clusters <- liftIO $ atomically $ readTVar sClusterList 
-  let {ts = TersusService sDeliveryChannel (mSendPort,mRecvPort) (aSendPort,aRecvPort) sAppInstance sClusterList;
+  databaseConf <- mkDbConf tersusEnv
+  let {ts = TersusService sDeliveryChannel (mSendPort,mRecvPort) (aSendPort,aRecvPort) sAppInstance sClusterList databaseConf;
        initNotification = [Initialized sAppInstance (mSendPort,"HashLoco")]}
   mapM_ (\c -> sendNotifications initNotification sClusterList c >> (liftIO $ putStrLn "sent stuff")) clusters
   -- The acknowledgement port is stripped from the envelope since acknowledgement is enforced
@@ -129,9 +154,9 @@ defaultAckwFun _ = return ()
 -- getMessages = TersusServiceM getMessages'
 
 getMessage' :: TersusService -> ProcessM (TersusService,TMessageEnvelope)
-getMessage' (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance sClusterList) = do
+getMessage' (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance sClusterList databaseConfig) = do
   msg <- receiveChannel mRecvPort
-  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance sClusterList,msg)
+  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance sClusterList databaseConfig,msg)
 
 -- Get the next message delivered to this particular server side application.
 -- Ie. message located in the delivery channle created for this app
@@ -139,9 +164,9 @@ getMessage :: TersusServiceM (TMessageEnvelope)
 getMessage = TersusServiceM getMessage'
 
 sendMessage' :: TMessage -> TersusService -> ProcessM (TersusService,())
-sendMessage' msg (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort) appInstance sClusterList) = do
+sendMessage' msg (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort) appInstance sClusterList databaseConfig) = do
   liftIO $ atomically $ writeTChan sDeliveryChannel (msg,aSendPort)
-  return (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort)  appInstance sClusterList,())
+  return (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort)  appInstance sClusterList databaseConfig,())
   
 -- Send a message from a server side application it uses the message queue
 -- form the server where it's actually running

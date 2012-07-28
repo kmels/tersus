@@ -6,5 +6,8 @@ import Import
 import Data.Aeson as J
 import qualified Data.Text as T
 
-instance ToJSON User where
+instance ToJSON (UserGeneric a) where
     toJSON (User nickname _ _) = J.object [("username",String nickname)]
+
+-- instance ToJSON (UserGeneric a) where
+--     toJSON user = toJSON user

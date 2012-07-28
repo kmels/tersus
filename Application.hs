@@ -57,6 +57,7 @@ makeFoundation :: AppConfig DefaultEnv Extra -> Logger -> (TMessageQueue,TMessag
 makeFoundation conf setLogger (sendChannel,recvChannel,actionsChannel,mailBoxes,statusTable,aSendPort) = do
     manager <- newManager def
     s <- staticSite
+    liftIO $ putStrLn ("Env: "++(show $ appEnv conf))
     dbconf <- withYamlEnvironment "config/postgres.yml" (appEnv conf)
               Database.Persist.Store.loadConfig >>=
               Database.Persist.Store.applyEnv

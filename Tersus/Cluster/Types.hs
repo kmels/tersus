@@ -16,6 +16,7 @@ import Data.Array.IO
 import qualified Data.List as L
 import qualified Data.Binary as B
 import Data.Typeable.Internal (Typeable)
+import Data.Aeson (toJSON,ToJSON)
 
 type THashCode = String
 

@@ -46,6 +46,7 @@ library
                      Tersus.Cluster.DummyImports
                      Tersus.Cluster.TersusService
                      Tersus.Cluster.TersusServiceApp
+                     Tersus.Global
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT

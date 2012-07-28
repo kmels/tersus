@@ -15,6 +15,7 @@ import qualified Data.Binary as B
 import Data.Typeable.Internal (Typeable)
 import Data.List (find)
 import Data.Maybe (fromJust)
+import Remote.Process ()
 -- You can define all of your database entities in the entities file.
 -- You can find more information on persistent and how to declare entities
 -- at:
@@ -66,11 +67,11 @@ data AppInstance = AppInstance {username :: String, application :: String} deriv
 
 -- Message = { userSender: User, usersReceiver: [User], appSender: Application, appReceiver: Application, content: String}
 data TMessage = TMessage {userSender :: User, 
-                         userReciever :: User, 
-                         appSender :: TApplication, 
-                         appReciever :: TApplication,
-                         content :: Text,
-                         time :: UTCTime} deriving (Eq, Typeable)
+                           userReciever :: User, 
+                           appSender :: TApplication, 
+                           appReciever :: TApplication,
+                           content :: Text,
+                           time :: UTCTime} deriving (Eq, Typeable)
 
 -- Represents a mailbox address, composed from a user and an Application
 data Address = Address {user :: User, app :: TApplication}
@@ -126,9 +127,9 @@ instance B.Binary TMessage where
              (u1,u2,app1,app2,msg,sendTime) <- B.get
              return $ TMessage u1 u2 app1 app2 msg sendTime
 
-instance B.Binary UTCTime where
-         put timeStamp = B.put $ show timeStamp
-         get = do B.get >>= return . read
+-- instance B.Binary UTCTime where
+--          put timeStamp = B.put $ show timeStamp
+--          get = do B.get >>= return . read
 
 -- Utility functions to convert message results into binary data
 

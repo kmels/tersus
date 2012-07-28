@@ -16,5 +16,5 @@ instance ToJSON TMessage where
                                                                                       ("userReceiver",toJSON receiver),
                                                                                       ("appSender",toJSON senderApp),
                                                                                       ("appReceiver",toJSON receiverApp),
-                                                                                      ("content",String msgBody)
+                                                                                      ("content",toJSON msgBody)
                                                                                      ]
