@@ -75,8 +75,8 @@ postRegisterTAppR = do
        |]
     _ -> defaultLayout $ [whamlet|<p>Invalid input|]
 
-getHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
-getHomeTApplicationR appIdentifier = do
+getHomeTApplicationR :: ApplicationIdentifier -> AccessToken -> Handler RepHtml
+getHomeTApplicationR appIdentifier accessToken = do
   appMaybe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
   maybeUserId <- maybeAuth
   case appMaybe of
@@ -86,6 +86,21 @@ getHomeTApplicationR appIdentifier = do
         Just (Entity userId user) -> defaultLayout $ do
           accessKey <- liftIO $ newHexRandomAccessKey (userNickname user) (tApplicationIdentifier app')
           $(widgetFile "TApplication/application-root")
+        Nothing -> defaultLayout $ do [whamlet|
+                                       <h3>About application #{appIdentifier}|]
+    _ -> error "Not implemented yet; app doesn't exist"
+
+getRedirectToHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
+getRedirectToHomeTApplicationR appIdentifier = do
+  appMaybe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
+  maybeUserId <- maybeAuth
+  case appMaybe of
+    Just (Entity _ app') -> do --is there an app with this identifier?
+      _ <- liftIO $ pullChanges app'
+      case maybeUserId of
+        Just (Entity userId user) -> do
+          accessKey <- liftIO $ newHexRandomAccessKey (userNickname user) (tApplicationIdentifier app')
+          redirect $ HomeTApplicationR appIdentifier accessKey
         Nothing -> defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier}
                                                 <p>Welcome stranger: |]
     _ -> error "Not implemented yet; app doesn't exist"
