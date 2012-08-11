@@ -6,7 +6,9 @@
 module Handler.TApplication where
 
 import           Control.Arrow             ((&&&))
+import           Control.Monad             (when)
 import           Control.Monad.Trans.Class (lift)
+import           Data.Maybe                (isNothing)
 import qualified Data.Text                 as T
 import           Data.Time.Clock           (getCurrentTime)
 import           Handler.TApplication.Git  (pullChanges)
@@ -82,15 +84,18 @@ getHomeTApplicationR :: ApplicationIdentifier -> AccessKey -> Handler RepHtml
 getHomeTApplicationR appIdentifier key = do
   appMaybe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
   maybeUserId <- maybeAuth
---  (u,app) <- decomposeAccessKey key
-  case appMaybe of
-    Just (Entity _ app') -> do --is there an app with this identifier?
-      _ <- liftIO $ pullChanges app'
-      case maybeUserId of
-        Just (Entity userId user) -> return $ RepHtml $ ContentFile ("/tmp/" ++ (T.unpack appIdentifier) ++ "/index.html") Nothing
-        Nothing -> defaultLayout $ do [whamlet|
-                                       <h3>About application #{appIdentifier}|]
-    _ -> error "Not implemented yet; app doesn't exist"
+  let keyAuth = decomposeAccessKey key
+  if (isNothing keyAuth) then
+    error "Invalid access key"
+    else case appMaybe of
+      Just (Entity _ app') -> do --is there an app with this identifier?
+        _ <- liftIO $ pullChanges app'
+        case maybeUserId of
+          Just (Entity userId user) -> return $ RepHtml $ ContentFile ("/tmp/" ++ (T.unpack appIdentifier) ++ "/index.html") Nothing
+
+          Nothing -> defaultLayout $ do [whamlet|
+                                         <h3>About application #{appIdentifier}|]
+      _ -> error "Not implemented yet; app doesn't exist"
 
 getRedirectToHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
 getRedirectToHomeTApplicationR appIdentifier = do
