@@ -14,7 +14,7 @@ Email
     UniqueEmail email
 
 TFile
-    user User
+    user UserId
     rawpath RawPath
     ancestors [Double]
     parent Double Maybe
@@ -26,7 +26,7 @@ TFile
     permissions [Permission]
     
 Permission
-    user User
+    user UserId
     read Bool
     write Bool
     app TApplication
