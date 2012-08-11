@@ -18,7 +18,7 @@ instance PathMultiPiece TFilePath where
     fromPathMultiPiece (p:ps) = Just $ TFilePath ([p] ++ ps)
     fromPathMultiPiece _ = Nothing
 
-getFileR :: Text -> AccessToken -> Path -> Handler RepHtml
+getFileR :: Text -> AccessKey -> Path -> Handler RepHtml
 getFileR username' appKey path = do
   defaultLayout $ do
     [whamlet|
@@ -38,16 +38,16 @@ getFileR username' appKey path = do
 --Use standard english (to i18n, supply a translation function)
 data WFileLike = WFileLike{
   fileContentContent :: Text
-  , fileLikeAccessToken :: AccessToken
+  , fileLikeAccessKey :: AccessKey
 } deriving Show
 
-writeFileForm :: AccessToken -> Html -> MForm App App (FormResult WFileLike, Widget)
+writeFileForm :: AccessKey -> Html -> MForm App App (FormResult WFileLike, Widget)
 writeFileForm t = renderDivs $ WFileLike --TODO Implement security
     <$> areq textField "Content" Nothing
-    <*> areq hiddenField "AccessToken" (Just t)
+    <*> areq hiddenField "AccessKey" (Just t)
 
 -- This won't really exist after, it is used for testing purposes only.
-getWriteFileR :: Username -> AccessToken -> Path -> Handler RepHtml
+getWriteFileR :: Username -> AccessKey -> Path -> Handler RepHtml
 getWriteFileR username' accessToken path = do
   --get the form
   let (userNickname,applicationName) = case decomposeAccessKey accessToken of
@@ -63,7 +63,7 @@ getWriteFileR username' accessToken path = do
      |]
 
 -- Temporal function to test uploading of documents
-postWriteFileR :: Username -> AccessToken -> Path -> Handler RepHtml
+postWriteFileR :: Username -> AccessKey -> Path -> Handler RepHtml
 postWriteFileR username' accessToken path = do
   user' <- runDB $ getBy $ UniqueNickname $ username' --find user by username
   case user' of

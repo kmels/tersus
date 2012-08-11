@@ -30,7 +30,7 @@ aes data' dir =
     in AES.crypt' AES.CTR aesKey aesIV dir data' --run AES
 
 -- | Extract a UserNickname and a ApplicationIdentifier from a hexadecimal access key
-decomposeAccessKey :: AccessToken -> Maybe (Username,ApplicationIdentifier)
+decomposeAccessKey :: AccessKey -> Maybe (Username,ApplicationIdentifier)
 decomposeAccessKey key = do
   case (Data.List.Split.splitOn ":" encodedAuth) of
     [random,nickname,appname] -> Just (T.pack nickname,T.pack appname)
@@ -42,15 +42,15 @@ decomposeAccessKey key = do
     encodedAuth :: String -- if valid, a string of the form "usernickname:ramdomstr:appname"
     encodedAuth = T.unpack $ bytestringToText $ aes decodedAccessKey AES.Decrypt
 
-decomposeGHandler :: AccessToken -> GHandler s m (Maybe (Username,ApplicationIdentifier))
+decomposeGHandler :: AccessKey -> GHandler s m (Maybe (Username,ApplicationIdentifier))
 decomposeGHandler t = do
   return $ decomposeAccessKey t
--- | Returns the app responsible for the request, from the AccessToken,
+-- | Returns the app responsible for the request, from the AccessKey,
 -- this is our security layer used for incoming requests.
 -- TODO: Ernesto. What signature must this function have?
 
 -- | Given a username and an application name, this function generates a new hexagesimal (base 16) random string.
-newHexRandomAccessKey :: Username -> ApplicationIdentifier -> IO AccessToken
+newHexRandomAccessKey :: Username -> ApplicationIdentifier -> IO AccessKey
 newHexRandomAccessKey user appIdentifier = do
   randomText <- newRandomKey 16
   let

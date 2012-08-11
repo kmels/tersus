@@ -78,10 +78,11 @@ postRegisterTAppR = do
        |]
     _ -> defaultLayout $ [whamlet|<p>Invalid input|]
 
-getHomeTApplicationR :: ApplicationIdentifier -> AccessToken -> Handler RepHtml
+getHomeTApplicationR :: ApplicationIdentifier -> AccessKey -> Handler RepHtml
 getHomeTApplicationR appIdentifier key = do
   appMaybe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
   maybeUserId <- maybeAuth
+--  (u,app) <- decomposeAccessKey key
   case appMaybe of
     Just (Entity _ app') -> do --is there an app with this identifier?
       _ <- liftIO $ pullChanges app'

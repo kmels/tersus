@@ -9,11 +9,11 @@
 -- APPS
 /app/register RegisterTAppR GET POST
 /t/#ApplicationIdentifier RedirectToHomeTApplicationR   GET
-/t/#ApplicationIdentifier/#AccessToken HomeTApplicationR   GET
+/t/#ApplicationIdentifier/#AccessKey HomeTApplicationR   GET
 
 -- FILES
-/file/get/#Username/#AccessToken/*Texts FileR GET 
-/file/write/#Username/#AccessToken/*Texts WriteFileR GET POST
+/file/get/#Username/#AccessKey/*Texts FileR GET 
+/file/write/#Username/#AccessKey/*Texts WriteFileR GET POST
 
 -- MESSAGES
 /service/message/receive RecvMessageR GET
