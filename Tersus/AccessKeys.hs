@@ -31,17 +31,20 @@ aes data' dir =
 
 -- | Extract a UserNickname and a ApplicationIdentifier from a hexadecimal access key
 decomposeAccessKey :: AccessToken -> Maybe (Username,ApplicationIdentifier)
-decomposeAccessKey accessToken = do
+decomposeAccessKey key = do
   case (Data.List.Split.splitOn ":" encodedAuth) of
     [random,nickname,appname] -> Just (T.pack nickname,T.pack appname)
     _ -> Nothing
   where
     decodedAccessKey :: B.ByteString
     --Let's don't care about invalid (we're using fst) chars, since the decrypted key must have the right structure anyway
-    decodedAccessKey = fst $ Base16.decode $ textToBytestring accessToken
+    decodedAccessKey = fst $ Base16.decode $ textToBytestring key
     encodedAuth :: String -- if valid, a string of the form "usernickname:ramdomstr:appname"
     encodedAuth = T.unpack $ bytestringToText $ aes decodedAccessKey AES.Decrypt
 
+decomposeGHandler :: AccessToken -> GHandler s m (Maybe (Username,ApplicationIdentifier))
+decomposeGHandler t = do
+  return $ decomposeAccessKey t
 -- | Returns the app responsible for the request, from the AccessToken,
 -- this is our security layer used for incoming requests.
 -- TODO: Ernesto. What signature must this function have?

@@ -19,7 +19,7 @@ import           System.IO
 repositoryExists :: TApplication -> IO Bool
 repositoryExists tapp = do
 --  $(logDebug) "Checking if repository exists.."
-  exists <- doesDirectoryExist $ "/home/kmels/apps/" ++ (T.unpack $ tApplicationIdentifier tapp)
+  exists <- doesDirectoryExist $ "/tmp/" ++ (T.unpack $ tApplicationIdentifier tapp)
 --  $(logDebug) "Repository exists:" ++ show exists
   return exists
 
@@ -40,6 +40,6 @@ clone tapp = C.runResourceT $ do
                              Just repoUrl'' -> T.unpack $ repoUrl''
                              _ -> error "Git.clone, Not implemented yet",
                           T.unpack $ tApplicationIdentifier tapp)
-    cloneCmd = "git clone --quiet " ++ repoUrl' ++ " ~/apps/"++ repoName
+    cloneCmd = "git clone --quiet " ++ repoUrl' ++ " /tmp/"++ repoName
 --  $(logDebug) "Spawning: " ++ cloneCmd
   sourceCmd cloneCmd C.$$ CB.sinkHandle stdout

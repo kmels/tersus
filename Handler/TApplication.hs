@@ -5,11 +5,14 @@
 {-# LANGUAGE TypeFamilies          #-}
 module Handler.TApplication where
 
-import           Control.Arrow            ((&&&))
-import qualified Data.Text                as T
-import           Data.Time.Clock          (getCurrentTime)
-import           Handler.TApplication.Git (pullChanges)
+import           Control.Arrow             ((&&&))
+import           Control.Monad.Trans.Class (lift)
+import qualified Data.Text                 as T
+import           Data.Time.Clock           (getCurrentTime)
+import           Handler.TApplication.Git  (pullChanges)
 import           Import
+import           Network.HTTP.Types        (status200)
+import           Network.Wai
 import           Tersus.AccessKeys
 import           Yesod.Auth
 
@@ -76,16 +79,14 @@ postRegisterTAppR = do
     _ -> defaultLayout $ [whamlet|<p>Invalid input|]
 
 getHomeTApplicationR :: ApplicationIdentifier -> AccessToken -> Handler RepHtml
-getHomeTApplicationR appIdentifier accessToken = do
+getHomeTApplicationR appIdentifier key = do
   appMaybe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
   maybeUserId <- maybeAuth
   case appMaybe of
     Just (Entity _ app') -> do --is there an app with this identifier?
       _ <- liftIO $ pullChanges app'
       case maybeUserId of
-        Just (Entity userId user) -> defaultLayout $ do
-          accessKey <- liftIO $ newHexRandomAccessKey (userNickname user) (tApplicationIdentifier app')
-          $(widgetFile "TApplication/application-root")
+        Just (Entity userId user) -> return $ RepHtml $ ContentFile ("/tmp/" ++ (T.unpack appIdentifier) ++ "/index.html") Nothing
         Nothing -> defaultLayout $ do [whamlet|
                                        <h3>About application #{appIdentifier}|]
     _ -> error "Not implemented yet; app doesn't exist"
