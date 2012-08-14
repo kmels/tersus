@@ -5,13 +5,18 @@
 {-# LANGUAGE TypeFamilies          #-}
 module Handler.TApplication where
 
-import           Control.Arrow            ((&&&))
-import qualified Data.Text                as T
-import           Data.Time.Clock          (getCurrentTime)
-import           Handler.TApplication.Git (pullChanges)
+import           Control.Arrow             ((&&&))
+import           Control.Monad             (when)
+import           Control.Monad.Trans.Class (lift)
+import           Data.Maybe                (isNothing)
+import qualified Data.Text                 as T
+import           Data.Time.Clock           (getCurrentTime)
+import           Handler.TApplication.Git  (pullChanges)
 import           Import
-import           Yesod.Auth
+import           Network.HTTP.Types        (status200)
+import           Network.Wai
 import           Tersus.AccessKeys
+import           Yesod.Auth
 
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
@@ -75,19 +80,35 @@ postRegisterTAppR = do
        |]
     _ -> defaultLayout $ [whamlet|<p>Invalid input|]
 
-getHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
-getHomeTApplicationR appIdentifier = do
-  maybeUserId <- maybeAuthId
-  appMbe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
-  
-  case appMbe of
-    Just (Entity _ app') -> do
-      _ <- liftIO $ pullChanges app'      
+getHomeTApplicationR :: ApplicationIdentifier -> AccessKey -> Handler RepHtml
+getHomeTApplicationR appIdentifier key = do
+  appMaybe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
+  maybeUserId <- maybeAuth
+  let keyAuth = decomposeAccessKey key
+  if (isNothing keyAuth) then
+    error "Invalid access key"
+    else case appMaybe of
+      Just (Entity _ app') -> do --is there an app with this identifier?
+        _ <- liftIO $ pullChanges app'
+        case maybeUserId of
+          Just (Entity userId user) -> return $ RepHtml $ ContentFile ("/tmp/" ++ (T.unpack appIdentifier) ++ "/index.html") Nothing
+
+          Nothing -> defaultLayout $ do [whamlet|
+                                         <h3>About application #{appIdentifier}|]
+      _ -> error "Not implemented yet; app doesn't exist"
+
+getRedirectToHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
+getRedirectToHomeTApplicationR appIdentifier = do
+  appMaybe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
+  maybeUserId <- maybeAuth
+  case appMaybe of
+    Just (Entity _ app') -> do --is there an app with this identifier?
+      _ <- liftIO $ pullChanges app'
       case maybeUserId of
-        Just userId -> defaultLayout $ do 
-          accessKey <- liftIO $ newRandomAccessKey (T.pack "usernickname") (tApplicationName app')
-          $(widgetFile "TApplication/application-root")
-        Nothing -> defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier} 
+        Just (Entity userId user) -> do
+          accessKey <- liftIO $ newHexRandomAccessKey (userNickname user) (tApplicationIdentifier app')
+          redirect $ HomeTApplicationR appIdentifier accessKey
+        Nothing -> defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier}
                                                 <p>Welcome stranger: |]
     _ -> error "Not implemented yet; app doesn't exist"
-      
+

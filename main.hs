@@ -1,5 +1,5 @@
-import           Prelude              (IO)
-import           Tersus.Cluster        (tersusProducction)
+import           Prelude        (IO)
+import           Tersus.Cluster (tersusProducction)
 
 main :: IO ()
 main = tersusProducction

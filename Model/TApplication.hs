@@ -6,7 +6,6 @@ module Model.TApplication where
 
 import Import
 import Data.Aeson as J
-import qualified Data.Text as T
 
 -- JSON Encoding for application as defined in the Tersus Developer
 -- API. This API probably needs review

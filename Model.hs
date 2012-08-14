@@ -1,21 +1,19 @@
-{-# Language TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Model where
 
+import           Data.Text              (Text)
+import qualified Data.Text              as T
 import           Prelude
 import           Yesod
-import qualified Data.Text as T
-import           Data.Text(Text)
-
 import           Database.Persist.Quasi
+import           Database.Persist.Store (PersistValue(..), SqlType(..))
+import qualified Data.Binary            as B
+import           Data.List              (find)
+import           Data.Maybe             (fromJust)
+import           Data.Time              (UTCTime)
+import           Data.Typeable.Internal (Typeable)
+import           Remote.Process         ()
 
-import           Database.Persist.Store(PersistValue(..),SqlType(..))
-
-import           Data.Time(UTCTime)
-import qualified Data.Binary as B
-import Data.Typeable.Internal (Typeable)
-import Data.List (find)
-import Data.Maybe (fromJust)
-import Remote.Process ()
 -- You can define all of your database entities in the entities file.
 -- You can find more information on persistent and how to declare entities
 -- at:
@@ -27,7 +25,7 @@ type Id = Double
 type IdList = [Id]
 type ApplicationName = Text
 type ApplicationIdentifier = Text --this has the property that has no spaces in it, it goes in the url.
-type AccessToken = Text
+type AccessKey = Text
 type UrlK = Text
 
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)
@@ -39,7 +37,7 @@ data FileType = File | Directory deriving Show
 
 instance PersistField FileType where
   toPersistValue = PersistText . T.pack . Prelude.show
-  fromPersistValue (PersistText s) = case (T.unpack s) of 
+  fromPersistValue (PersistText s) = case (T.unpack s) of
     "File" -> Right $ File
     "Directory" -> Right $ Directory
     _ -> Left $ "Expected File or Directory"
@@ -50,28 +48,31 @@ data TersusResultCode = Success | InexistentFile | NotEnoughPrivileges | Directo
 
 data TersusResult = TersusResult Int TersusResultCode
 
--- Update the function msgResultNums as well since it's used to 
+-- Update the function msgResultNums as well since it's used to
 -- convert the result into binary data
 data MessageResult = Delivered | ENoAppInstance | EInvalidAppKey | EBufferFull | EInvalidHashCode  deriving (Show, Eq, Enum, Typeable)
 
 
--- Mapping from MessageResults to integers so they can be 
+-- Mapping from MessageResults to integers so they can be
 -- serealized and sent through cloudhaskell
 msgResultsNums :: [(Int,MessageResult)]
 msgResultsNums = [(1,Delivered),(2,ENoAppInstance),(3,EInvalidAppKey),(4,EBufferFull),(5,EInvalidHashCode)]
 
-share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models") 
+share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models")
 
 -- Represents a app being run by a user
 data AppInstance = AppInstance {username :: String, application :: String} deriving (Eq,Typeable,Show)
 
 -- Message = { userSender: User, usersReceiver: [User], appSender: Application, appReceiver: Application, content: String}
-data TMessage = TMessage {userSender :: User, 
-                           userReciever :: User, 
-                           appSender :: TApplication, 
-                           appReciever :: TApplication,
-                           content :: Text,
-                           time :: UTCTime} deriving (Eq, Typeable)
+
+data TMessage = TMessage {
+      userSender :: User, 
+      userReciever :: User, 
+      appSender :: TApplication, 
+      appReciever :: TApplication,
+      content :: Text,
+      time :: UTCTime
+    } deriving (Eq, Typeable)
 
 -- Represents a mailbox address, composed from a user and an Application
 data Address = Address {user :: User, app :: TApplication}
@@ -89,13 +90,13 @@ class InvAddressable a where
     getSendAppInstance :: a -> AppInstance
 
 instance InvAddressable TMessage where
-    getSendAppInstance (TMessage (User nickname _ _) _ (TApplication _ appId _ _ _ _ _ ) _ _ _) = AppInstance (T.unpack nickname) (T.unpack appId)
+    getSendAppInstance (TMessage (User _ nickname _ ) _ (TApplication _ appId _ _ _ _ _ ) _ _ _) = AppInstance (T.unpack nickname) (T.unpack appId)
 
 instance Addressable TMessage where
-         getAppInstance (TMessage _ (User nickname _ _) _ (TApplication _ appId _ _ _ _ _ ) _ _) = AppInstance (T.unpack nickname) (T.unpack appId)
+         getAppInstance (TMessage _ (User _ nickname _ ) _ (TApplication _ appId _ _ _ _ _ ) _ _) = AppInstance (T.unpack nickname) (T.unpack appId)
 
 instance Addressable Address where
-         getAppInstance (Address (User nickname _ _) (TApplication _ id' _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id')
+         getAppInstance (Address (User _ nickname _ ) (TApplication _ id' _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id')
 
 
 instance B.Binary Text where
@@ -103,15 +104,15 @@ instance B.Binary Text where
          get = B.get >>=  return . T.pack
 
 instance B.Binary User where
-         put (User nickname _ _) = B.put (T.unpack nickname)
-         get = do 
-             nickname <- B.get 
-             return $ User (T.pack nickname) Nothing []
+         put (User email nickname _ ) = B.put (T.unpack email,T.unpack nickname)
+         get = do
+             (email,nickname) <- B.get
+             return $ User email (T.pack nickname) Nothing
 
 instance B.Binary TApplication where
          put (TApplication name id' desc _ email date appKey) = B.put (name,id',desc,email,show date,appKey)
 
-         get = do 
+         get = do
              (name,id',desc,email,date,appKey) <- B.get
              return $ TApplication name id' desc Nothing email (read date :: UTCTime) appKey
 
@@ -134,13 +135,13 @@ instance B.Binary TMessage where
 -- Utility functions to convert message results into binary data
 
 getObjNum :: Eq a => [(Int,a)] -> a -> Int
-getObjNum objs obj = let (n,_) = fromJust 
+getObjNum objs obj = let (n,_) = fromJust
                                  $ find (\(_,obj') -> obj' == obj) objs
                      in
                        n
-                      
+
 getNumObj :: Eq a => [(Int,a)] -> Int -> a
-getNumObj objs num = let (_,obj) = fromJust 
+getNumObj objs num = let (_,obj) = fromJust
                                    $ find (\(num',_) -> num' == num) objs
                      in
                        obj

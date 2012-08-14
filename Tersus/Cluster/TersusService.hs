@@ -11,13 +11,13 @@ import Tersus.Cluster.Types
 import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM (atomically)
-import Model (AppInstance)
+-- import Model (AppInstance)
 import Remote.Process (ProcessM,forkProcess)
 import Remote (receiveChannel,newChannel,sendChannel)
 import Control.Monad.IO.Class
-import Control.Monad ()
+-- import Control.Monad ()
 import Control.Monad (forever,mapM_)
-import Model (MessageResult(Delivered,ENoAppInstance),getAppInstance,Address(Address),TApplication,User,TMessage,getSendAppInstance)
+import Model (AppInstance,MessageResult(Delivered,ENoAppInstance),getAppInstance,Address(Address),TApplication,User,TMessage,getSendAppInstance)
 import Tersus.Cluster.MessageBackend (sendNotifications)
 import Remote (ReceivePort)
 import Data.Typeable.Internal (Typeable)
@@ -99,9 +99,9 @@ mkDbConf tersusEnv = liftIO $ do
 runQuery query = TersusServiceM $ runQuery' query
 
 runQuery' :: SqlPersist IO a -> TersusService -> ProcessM (TersusService,a)
-runQuery' query (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance sClusterList (dbConn,poolConf)) = do 
+runQuery' query (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf)) = do 
   res <- runQuery'' dbConn poolConf query
-  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance sClusterList (dbConn,poolConf),res)
+  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf),res)
 
 runQuery'' :: PersistConfig -> Database.Persist.Store.PersistConfigPool PersistConfig -> SqlPersist IO a -> ProcessM a
 runQuery'' dbConn poolConf query = liftIO $ Database.Persist.Store.runPool dbConn query poolConf
@@ -109,7 +109,7 @@ runQuery'' dbConn poolConf query = liftIO $ Database.Persist.Store.runPool dbCon
 -- Run a TersusServiceM with the given TersusService state ts. Usually the initial
 -- state which are all the messaging pipeings as defined in the datatype
 evalTersusServiceM :: TersusService -> TersusServiceM a -> ProcessM a
-evalTersusServiceM ts (TersusServiceM service) = service ts >>= \(ts',a) -> return a
+evalTersusServiceM ts (TersusServiceM service) = service ts >>= \(_,a) -> return a
 
 recvListenerFun :: (Data.Typeable.Internal.Typeable a,Data.Binary.Binary a) => TersusService -> ReceivePort a -> [(a -> TersusServiceM ())] -> ProcessM ()
 recvListenerFun ts recvPort funs = forever $ do 
@@ -156,9 +156,9 @@ defaultAckwFun _ = return ()
 -- getMessages = TersusServiceM getMessages'
 
 getMessage' :: TersusService -> ProcessM (TersusService,TMessageEnvelope)
-getMessage' (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance sClusterList databaseConfig) = do
+getMessage' (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList databaseConfig) = do
   msg <- receiveChannel mRecvPort
-  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance sClusterList databaseConfig,msg)
+  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList databaseConfig,msg)
 
 -- Get the next message delivered to this particular server side application.
 -- Ie. message located in the delivery channle created for this app
@@ -166,9 +166,9 @@ getMessage :: TersusServiceM (TMessageEnvelope)
 getMessage = TersusServiceM getMessage'
 
 sendMessage' :: TMessage -> TersusService -> ProcessM (TersusService,())
-sendMessage' msg (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort) appInstance sClusterList databaseConfig) = do
+sendMessage' msg (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort) appInstance' sClusterList databaseConfig) = do
   liftIO $ atomically $ writeTChan sDeliveryChannel (msg,aSendPort)
-  return (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort)  appInstance sClusterList databaseConfig,())
+  return (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort)  appInstance' sClusterList databaseConfig,())
   
 -- Send a message from a server side application it uses the message queue
 -- form the server where it's actually running
@@ -189,7 +189,7 @@ type MaybeQuery = MaybeT (SqlPersist IO)
 
 maybeGetBy criterion = MaybeT $ getBy criterion
 
-maybeGet id = MaybeT $ get id
+maybeGet id' = MaybeT $ get id'
 
 maybeSelectList l1 l2 = MaybeT $ selectList l1 l2 >>= \res -> case res of
                                                                 [] -> return Nothing

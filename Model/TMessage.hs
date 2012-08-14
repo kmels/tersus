@@ -4,7 +4,6 @@ module Model.TMessage where
 
 import Import
 import Data.Aeson as J
-import Data.Text as T
 import Model.User ()
 import Model.TApplication ()
 

@@ -1,11 +1,11 @@
 module Tersus.Cluster.DummyImports where
 
-import Data.Text as T
-import Model
-import System.IO.Unsafe (unsafePerformIO)
-import Data.Time.Clock (getCurrentTime)
-import Data.Maybe (Maybe(Just))
-import Tersus.Cluster.TersusServiceApp (tersusServiceUser,tersusServiceApp')
+import           Data.Maybe                      (Maybe(Just))
+import           Data.Text                       as T
+import           Data.Time.Clock                 (getCurrentTime)
+import           Model
+import           System.IO.Unsafe                (unsafePerformIO)
+import           Tersus.Cluster.TersusServiceApp (tersusServiceUser,tersusServiceApp')
 
 
 -- This is a dummy datatype only to show that this works
@@ -14,10 +14,10 @@ import Tersus.Cluster.TersusServiceApp (tersusServiceUser,tersusServiceApp')
 -- this will not be part of tersus
 
 dummyUser :: User
-dummyUser = User (T.pack "neto") (Just (T.pack "1234")) []
+dummyUser = User "neto@netogallo.me" (T.pack "neto") (Just (T.pack "1234"))
 
-dummyUser2 = User (T.pack "kmels") (Just (T.pack "1234")) []
-                       
+dummyUser2 = User "c.lopez@kmels.net" (T.pack "kmels") (Just (T.pack "1234"))
+
 dummyApp :: TApplication
 dummyApp = TApplication (T.pack "emacs") (T.pack "identifier") (T.pack "description dummy") (Just (T.pack "url")) (T.pack "mail@place.com") (unsafePerformIO getCurrentTime)  (T.pack "appkey")
 

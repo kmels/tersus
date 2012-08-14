@@ -25,7 +25,6 @@ import Control.Concurrent.MVar (MVar,takeMVar,putMVar,newEmptyMVar)
 import Data.Array.IO (readArray)
 import Control.Monad (foldM)
 import Data.Either ( Either(..) )
-import qualified Data.List as L
 
 -- This is the name that the process used to establish communication with other
 -- Tersus instances will be called.
@@ -51,7 +50,7 @@ initProcessBinderService :: NotificationsSendPort -> TersusClusterList -> Proces
 initProcessBinderService nSendPort clusterList = do
   initLock <- liftIO $ newEmptyMVar
   p <- forkProcess $ processBinderService nSendPort clusterList initLock
-  liftIO $ takeMVar initLock
+  _ <- liftIO $ takeMVar initLock
   return [p]
   
 
@@ -175,7 +174,7 @@ notificationsService msgSendPort clusterList notificationsChan = forever $ do
 sendNotifications :: [TersusNotification] -> TersusClusterList -> (NotificationsSendPort,ProcessId) -> ProcessM ()
 sendNotifications notifications clusterList (nSendPort',pid) = (ptry (sendChannel nSendPort' notifications)) >>= \result ->
                                                                case result of
-                                                                 Left (TransmitException a) -> liftIO $ atomically $ modifyTVar clusterList $ deleteNode pid
+                                                                 Left (TransmitException _) -> liftIO $ atomically $ modifyTVar clusterList $ deleteNode pid
                                                                  _ -> return ()
 
 deleteNode :: Eq b => b -> [(a,b)] -> [(a,b)]
@@ -199,7 +198,7 @@ dispatchMessageAcknowledgementService aRecvPort messageStatusTable = forever $ r
     where
       dispatchAcknowledgement :: MessageResultEnvelope -> ProcessM ()
       dispatchAcknowledgement (hashCode,result,address) = do
-        Just (mappings,statusVars,availableBuff) <- liftIO $ H.lookup messageStatusTable address
+        Just (mappings,statusVars,_) <- liftIO $ H.lookup messageStatusTable address
         -- add error handling
         (Just (_,index)) <- liftIO $ lookupIndex hashCode mappings
         statusVar <- liftIO $ readArray statusVars index
@@ -241,7 +240,7 @@ messageDeliveryService sendQueue addresses = forever $ do
                                                  sendRes <- ptry $ deliverMsg (msg,aPort) destPort
                                                  case sendRes of
                                                    -- Error sending the message on the send port of the receiver app instance
-                                                   Left (TransmitException a) -> (liftIO $ H.delete addresses $ getAppInstance msg) >> deliverMsg (msg,aPort) Nothing
+                                                   Left (TransmitException _) -> (liftIO $ H.delete addresses $ getAppInstance msg) >> deliverMsg (msg,aPort) Nothing
                                                    Right () -> return ()
     where
       -- This function is given the port where the message is delivered
