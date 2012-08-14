@@ -31,11 +31,11 @@ import Tersus.Cluster.TersusService (makeTersusService)
 import Tersus.Cluster.TersusServiceApp (tersusServiceApp)
 import Tersus.Global
 
--- Hash function for a user application combo instance
+-- |Hash function for a user application combo instance
 hashUserApp :: AppInstance -> GHC.Int.Int32
 hashUserApp (AppInstance name tApplication)  = H.hashString $ name ++ tApplication
 
--- Produce all the data structures needed to communicate data between Tersusland and Clould Haskell
+-- |Produce all the data structures needed to communicate data between Tersusland and Clould Haskell
 -- addresses: Matches (user,app) to the processId where it's running
 -- mailBoxes: Matches (user,app) to the MVar where the messages are delivered
 -- msgStatusTable: Matches the md5 hash of a message to the MVar containing it's status. This MVar is written once the message delivery status is known.
@@ -57,7 +57,7 @@ initDataStructures = (liftIO $ H.new (==) hashUserApp) >>= \addresses ->
                      (liftIO $ atomically $ newTVar []) >>= \clusterList ->
                      return (sChannel,rChannel,nChannel,mailBoxes,addresses,msgStatusTable,messagePorts,acknowledgementPorts,(nSendPort,nRecvPort),clusterList)
 
--- Process that runs Tersus and Yesod in development mode
+-- |Process that runs Tersus and Yesod in development mode
 -- This is what yesod devel executes
 -- For the moment it initializes a dummy address and mailbox, but this will be 
 -- discarded once the registration services exist
@@ -72,7 +72,7 @@ createTersusDevelInstance = do
                               { settingsPort = port
                               } app'
 
--- Function for Tersus devel that constantly checks if
+-- |Function for Tersus devel that constantly checks if
 -- the source changed and kills Tersus if the case
 -- is so.
 loop :: IO ()
@@ -84,7 +84,7 @@ loop = do
 terminateDevel :: IO ()
 terminateDevel = exitSuccess
 
--- Process that runs Tersus and Yesod in producction mode
+-- |Process that runs Tersus and Yesod in producction mode
 -- This will be executed when Tersus is deployed
 createTersusInstance :: ProcessM ()
 createTersusInstance = do
@@ -96,7 +96,7 @@ createTersusInstance = do
 -- Make the functions that initialize a tersus process remotable
 remotable ['createTersusInstance,'createTersusDevelInstance]
 
--- Functions to initialize all the tersus nodes and distribute the ProcessId of such nodes
+-- |Functions to initialize all the tersus nodes and distribute the ProcessId of such nodes
 -- Development and producction version of the function
 initTersusCluster :: String -> ProcessM ()
 initTersusCluster "T1" = do 
@@ -109,7 +109,7 @@ initTersusCluster "T1" = do
 
 initTersusCluster _ = return ()
 
--- ProcessM function that initializes a single tersus node in development
+-- |ProcessM function that initializes a single tersus node in development
 -- mode. This Function uses forkProcess to fork a ProcessM instance with
 -- Tersus running.
 initTersusClusterDevel :: String -> ProcessM ()
@@ -125,14 +125,14 @@ initTersusClusterDevel "T1" = do
 
 initTersusClusterDevel _ = return ()
 
--- Initialize Tersus in producction mode running on top of CloudHaskell
+-- |Initialize Tersus in producction mode running on top of CloudHaskell
 -- called by main
 tersusProducction :: IO ()
 tersusProducction = do 
   remoteInit (Just "config/servers") [Tersus.Cluster.__remoteCallMetaData] initTersusCluster
   return ()
 
--- Initialize Tersus in development mode running on top of CloudHaskell
+-- |Initialize Tersus in development mode running on top of CloudHaskell
 -- called by main
 tersusDevel :: IO ()
 tersusDevel = do 

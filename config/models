@@ -5,31 +5,6 @@ User
     UniqueNickname nickname
     deriving Show Read Eq
 
-Email
-    email Text
-    user UserId Maybe
-    verkey Text Maybe
-    UniqueEmail email
-
-TFile
-    user User
-    rawpath RawPath
-    ancestors [Double]
-    parent Double Maybe
-    filename Text
-    content Text Maybe
-    contentType Text Maybe
-    fileType FileType
-    UniqueRawPath rawpath
-    permissions [Permission]
-    
-Permission
-    user User
-    read Bool
-    write Bool
-    app TApplication
-    deriving
-
 TApplication
     name Text
     identifier Text
@@ -40,3 +15,32 @@ TApplication
     appKey Text
     UniqueIdentifier identifier 
     deriving Show Read Eq
+
+Email
+    email Text
+    user UserId Maybe
+    verkey Text Maybe
+    UniqueEmail email
+
+TFile
+    user UserId
+    rawpath RawPath
+    ancestors [Double]
+    parent Double Maybe
+    filename Text
+    content Text Maybe
+    contentType Text Maybe
+    fileType FileType
+    UniqueRawPath rawpath
+    permissions [PermissionId]
+    
+Permission
+    user UserId
+    read Bool
+    write Bool
+    app TApplicationId
+    deriving
+
+UserApplication
+    user UserId
+    application TApplicationId

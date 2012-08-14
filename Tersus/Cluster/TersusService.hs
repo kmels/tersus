@@ -27,6 +27,8 @@ import Database.Persist.GenericSql (SqlPersist)
 import Settings (PersistConfig)
 import Tersus.Global
 import Yesod.Default.Config (withYamlEnvironment)
+import Control.Monad.Maybe
+import Database.Persist (getBy,selectList,get)
 
 -- Represents a tersus server side app.
 data TersusServerApp = TersusServerApp
@@ -182,3 +184,13 @@ acknowledgeMsg' (msg,aPort) ts = do
 -- sender that the message was received
 acknowledgeMsg :: TMessageEnvelope -> TersusServiceM ()
 acknowledgeMsg msgEnv = TersusServiceM $ acknowledgeMsg' msgEnv
+
+type MaybeQuery = MaybeT (SqlPersist IO)
+
+maybeGetBy criterion = MaybeT $ getBy criterion
+
+maybeGet id = MaybeT $ get id
+
+maybeSelectList l1 l2 = MaybeT $ selectList l1 l2 >>= \res -> case res of
+                                                                [] -> return Nothing
+                                                                a -> return $ Just a

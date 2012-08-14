@@ -8,6 +8,9 @@ import Import
 import Data.Aeson as J
 import qualified Data.Text as T
 import Database.Persist.Store (Entity)
+import Data.Text.Lazy.Internal (foldlChunks)
+import Data.Text.Lazy.Internal as LT (Text)
+
 
 -- Datatypes and functions that are general for many of the Tersus components
 
@@ -21,3 +24,6 @@ databaseYaml = "config/postgres.yml"
 
 instance ToJSON a => ToJSON (Entity a) where
     toJSON (Entity _ a) = toJSON a
+
+collapseLazyText :: LT.Text -> T.Text
+collapseLazyText text = foldlChunks (\t1 t2 -> T.concat [t1,t2]) "" text
