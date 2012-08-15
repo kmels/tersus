@@ -154,22 +154,21 @@ receiveMessages appInstance = do
 -- TEsting funcitons 
 getSendMessageR :: Handler RepJson
 getSendMessageR = do
-  resp <- deliverTMessage (getAppInstance dummyAddress) dummyMsg
+  resp <- deliverTMessage (getSendAppInstance dummyMsg) dummyMsg
   jsonToRepJson $ encode $ (show resp)
 
 getRecvMessageR :: Handler RepJson
 getRecvMessageR = do
-  msgs <- receiveMessages (getAppInstance dummyAddress)
+  msgs <- receiveMessages (getSendAppInstance dummyMsg)
   msgs' <- mapM (\(msg,_) -> return msg) msgs
   jsonToRepJson $ encode $ msgs'
 
 getInitMessagesR :: Handler RepJson
 getInitMessagesR = do
-  initApplication $ getAppInstance dummyAddress
+  initApplication $ getSendAppInstance dummyMsg
   jsonToRepJson $ encode $ ("Done" :: String)
 
 -- getInitMessagesR2 :: Handler RepJson
 -- getInitMessagesR2 = do
 --   initApplication $ getAppInstance dummyAddress2
 --   jsonToRepJson $ encode $ ("Done" :: String)
-

@@ -15,11 +15,19 @@ import Tersus.Global
 import Model.User ()
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Control.Monad.Maybe
+import Data.Text (Text)
+
+tersusServiceAppName :: Text
+tersusServiceAppName = "tersus"
 
 tersusServiceApp' :: TApplication
-tersusServiceApp' = TApplication "tersus" "tersus" "Application that provides the service messaging system for system functions" (Just "http://tersusland.com/tersus") "neto@netowork.me" (unsafePerformIO getCurrentTime) "tersusAppKey"
+tersusServiceApp' = TApplication tersusServiceAppName tersusServiceAppName "Application that provides the service messaging system for system functions" (Just "http://tersusland.com/tersus") "neto@netowork.me" (unsafePerformIO getCurrentTime) "tersusAppKey"
+ 
+tersusServiceUsername :: Text
+tersusServiceUsername = "tersus"
 
-tersusServiceUser = User "tersus@tersusland.com" "tersus" (Just "")
+tersusServiceUser :: User
+tersusServiceUser = User "tersus@tersusland.com" tersusServiceUsername (Just "")
 
 tersusServiceRecv (TMessage uSender uReceiver aSender aReceiver content' timestamp) = do
     currTime <- liftIO $ getCurrentTime
@@ -31,8 +39,8 @@ getAppUsersQuery app' = (runMaybeT $ getAppUsersQuery' app') >>= \res -> case re
                                                                            Nothing -> return []
                                                                            Just a -> return a
 
-getAppUsersQuery' (TApplication name id' desc url email date appkey) = do 
-  Entity key _ <- maybeGetBy $ UniqueIdentifier id'
+getAppUsersQuery' applicationIdentifier = do 
+  Entity key _ <- maybeGetBy $ UniqueIdentifier applicationIdentifier
   appUsers <- maybeSelectList [UserApplicationApplication <-. [key]] [] -- :: MaybeT
   mapM (\(Entity _ (UserApplication u _)) ->  maybeGet u) appUsers
   --return [ (\(Entity _ (UserApplication u _)) -> u) x | x <- appUsers]

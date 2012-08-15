@@ -5,7 +5,7 @@ import           Data.Text                       as T
 import           Data.Time.Clock                 (getCurrentTime)
 import           Model
 import           System.IO.Unsafe                (unsafePerformIO)
-import           Tersus.Cluster.TersusServiceApp (tersusServiceUser,tersusServiceApp')
+import           Tersus.Cluster.TersusServiceApp (tersusServiceUser,tersusServiceApp',tersusServiceUsername,tersusServiceAppName)
 
 
 -- This is a dummy datatype only to show that this works
@@ -23,7 +23,7 @@ dummyApp = TApplication (T.pack "emacs") (T.pack "identifier") (T.pack "descript
 
 dummyApp2 = TApplication (T.pack "vi") (T.pack "idvi") (T.pack "description dummy") (Just (T.pack "url")) (T.pack "mail@place.com") (unsafePerformIO getCurrentTime)  (T.pack "appkey2")
 
-dummyMsg = TMessage dummyUser tersusServiceUser dummyApp tersusServiceApp' (T.pack "Alonso") (unsafePerformIO getCurrentTime)
+dummyMsg = TMessage (T.pack "neto") tersusServiceUsername (T.pack "emacs") tersusServiceAppName (T.pack "Alonso") (unsafePerformIO getCurrentTime)
 
 dummyAddress = Address dummyUser dummyApp
 
