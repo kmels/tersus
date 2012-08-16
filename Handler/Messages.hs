@@ -73,20 +73,21 @@ initApplication appInstance = do
 -- queueMessage once the destinatary creates
 -- a receive request. The status MVar is deleted
 -- after the message delivery
-deliverTMessage :: AppInstance -> TMessage -> GHandler sub App MessageResult
-deliverTMessage appInstance message = do 
-                        master <- getYesod
-                        channel <- return $ getSendChannel master
-                        port <- return $ getSendPort master
-                        statusTable <- return $ getStatusTable master
-                        msgBuffer <- liftIO $ H.lookup statusTable appInstance
-                        writeMsgInBuffer channel port  msgBuffer
+deliverTMessage :: TMessage -> GHandler sub App MessageResult
+deliverTMessage message = do 
+  master <- getYesod
+  channel <- return $ getSendChannel master
+  port <- return $ getSendPort master
+  statusTable <- return $ getStatusTable master
+  msgBuffer <- liftIO $ H.lookup statusTable appInstance
+  writeMsgInBuffer channel port  msgBuffer
 
-                        where
-                          writeMsgInBuffer _ _ Nothing = return EInvalidAppKey
-                          writeMsgInBuffer channel port (Just msgBuffer) = do
-                                        status <- liftIO $ queueMessage msgBuffer channel (message,port)
-                                        waitMessage appInstance (generateHash message)                                        
+  where
+    appInstance = getSendAppInstance message
+    writeMsgInBuffer _ _ Nothing = return EInvalidAppKey
+    writeMsgInBuffer channel port (Just msgBuffer) = do
+      status <- liftIO $ queueMessage msgBuffer channel (message,port)
+      waitMessage appInstance (generateHash message)                                        
 
 -- Given an appInstance and the hashcode of a particular message,
 -- blocks until the delivery status of the message is known
@@ -154,7 +155,7 @@ receiveMessages appInstance = do
 -- TEsting funcitons 
 getSendMessageR :: Handler RepJson
 getSendMessageR = do
-  resp <- deliverTMessage (getSendAppInstance dummyMsg) dummyMsg
+  resp <- deliverTMessage dummyMsg
   jsonToRepJson $ encode $ (show resp)
 
 getRecvMessageR :: Handler RepJson
