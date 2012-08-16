@@ -50,13 +50,13 @@ data TersusResult = TersusResult Int TersusResultCode
 
 -- Update the function msgResultNums as well since it's used to
 -- convert the result into binary data
-data MessageResult = Delivered | ENoAppInstance | EInvalidAppKey | EBufferFull | EInvalidHashCode  deriving (Show, Eq, Enum, Typeable)
+data MessageResult = Delivered | ENoAppInstance | EInvalidAppKey | EBufferFull | EInvalidHashCode | InvalidMsgFormat  deriving (Show, Eq, Enum, Typeable)
 
 
 -- Mapping from MessageResults to integers so they can be
 -- serealized and sent through cloudhaskell
 msgResultsNums :: [(Int,MessageResult)]
-msgResultsNums = [(1,Delivered),(2,ENoAppInstance),(3,EInvalidAppKey),(4,EBufferFull),(5,EInvalidHashCode)]
+msgResultsNums = [(1,Delivered),(2,ENoAppInstance),(3,EInvalidAppKey),(4,EBufferFull),(5,EInvalidHashCode),(6,InvalidMsgFormat)]
 
 share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models")
 
@@ -71,7 +71,7 @@ data Address = Address {user :: User, app :: TApplication}
 data TMessage = TMessage Username Username ApplicationIdentifier ApplicationIdentifier Text UTCTime deriving (Eq, Typeable)
 
 -- | A message sent by an application using it's appkey. This is what the post request accepts
-data AuthMessage = AuthMessage AccessKey Username ApplicationIdentifier Text deriving (Eq, Typeable)
+data AuthMessage = AuthMessage AccessKey Username ApplicationIdentifier Text deriving (Eq, Typeable,Show)
 
 -- | Datatype that represents opening and closing of an app instance
 data AppInstanceActions = Init AppInstance | Terminate AppInstance

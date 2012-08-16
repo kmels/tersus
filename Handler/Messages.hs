@@ -8,8 +8,11 @@ module Handler.Messages where
 
 import Data.Aeson as D
 import Data.HashTable as H
+import Data.Text.Lazy (fromChunks)
+import Data.Text.Lazy.Encoding (encodeUtf8)
 import Import
 import Model()
+import Model.AuthMessages()
 import Model.TMessage()
 import Model.TersusResult()
 import Control.Concurrent.STM.TChan
@@ -21,6 +24,8 @@ import Control.Monad (mapM)
 import Data.Array.MArray
 import Data.Array.IO (IOArray)
 import Tersus.Cluster.DummyImports
+import Tersus.AccessKeys (decomposeAccessKey)
+import Data.Time.Clock (getCurrentTime)
 
 bufferSize :: Int
 bufferSize = 2
@@ -66,8 +71,19 @@ initApplication appInstance = do
   registerApplication appInstance
   return ()
   
+-- | Attempt to decrypt the access key of an AuthMessage and convert
+  -- It to a TMessage for delivery. If decryption fails return an
+  -- invalid app key error
+deliverAuthMessage :: AuthMessage -> GHandler sub App MessageResult
+deliverAuthMessage (AuthMessage accessKey username appId body) = deliverTMessage' $ decomposeAccessKey accessKey
+  where
+    deliverTMessage' Nothing = return EInvalidAppKey
+    deliverTMessage' (Just (sUsername,sAppId)) = do
+      currTime <- liftIO $ getCurrentTime
+      deliverTMessage $ TMessage sUsername username sAppId appId body currTime
+  
 
--- Deliver a message, block until it's delivery
+-- | Deliver a message, block until it's delivery
 -- status is known. The delivery status will be
 -- writen on the MVar which is returned by
 -- queueMessage once the destinatary creates
@@ -151,6 +167,18 @@ receiveMessages appInstance = do
                                 return messages'
                 return messages
 
+authMessagesPostParam :: Text
+authMessagesPostParam = "messages"
+
+-- | Send a batch of messages to tersus applications.
+-- The messages are received through post and are decoded using Aeson
+postSendAuthMessagesR :: Handler RepJson
+postSendAuthMessagesR = do
+  msgs <- lookupPostParam authMessagesPostParam
+  -- Try to decode a maybe text. Must be converted to a lazy bytestring beforehand
+  case msgs >>= decode . encodeUtf8 . fromChunks . return of
+    Just msgs' -> mapM deliverAuthMessage msgs' >>= jsonToRepJson . show 
+    Nothing -> jsonToRepJson $ show InvalidMsgFormat
 
 -- TEsting funcitons 
 getSendMessageR :: Handler RepJson
@@ -168,6 +196,8 @@ getInitMessagesR :: Handler RepJson
 getInitMessagesR = do
   initApplication $ getSendAppInstance dummyMsg
   jsonToRepJson $ encode $ ("Done" :: String)
+
+
 
 -- getInitMessagesR2 :: Handler RepJson
 -- getInitMessagesR2 = do
