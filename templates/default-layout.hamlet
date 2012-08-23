@@ -13,5 +13,5 @@ $maybe msg <- mmsg
 
 <h3>Navigation:
 <ul>
-    <li>
-        <a href="/">Home</a>
+    <li><a href="/">Home</a>
+    <li><a href="@{RegisterTAppR}">Register new application</a>
