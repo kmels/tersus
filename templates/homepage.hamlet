@@ -1,5 +1,7 @@
 <h1>_{MsgHello}
 
+<a href="@{RegisterTAppR}">Register new application</a>
+
 <h2> Applications!
 
 Available applications:
