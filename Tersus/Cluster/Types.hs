@@ -80,12 +80,7 @@ class Hashable a where
 instance Hashable TMessage where
     generateHash msg = md5s $ Str ((show msgTime) ++ (T.unpack $ T.concat [un1,un2,id1,id2,body]))
         where
-          TMessage u1 u2 a1 a2 body msgTime = msg
-          User _ un1 _  = u1
-          User _ un2 _  = u2
-          TApplication _ id1 _ _ _ _ _ = a1
-          TApplication _ id2 _ _ _ _ _ = a2
-      
+          TMessage un1 un2 id1 id2 body msgTime = msg
 
 lookupIndex :: THashCode -> TVar [(THashCode,Int)] -> IO (Maybe (THashCode,Int))
 lookupIndex hashCode mappings = do

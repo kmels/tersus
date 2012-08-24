@@ -30,6 +30,7 @@ library
                      Model.TMessage
                      Model.User
                      Model.TApplication
+                     Model.AuthMessages
                      Settings
                      Settings.StaticFiles
                      Settings.Development
@@ -97,7 +98,7 @@ library
                  , monad-control                 >= 0.3        && < 0.4
                  , wai-extra                     >= 1.3        && < 1.4
                  , yaml                          >= 0.7        && <= 0.8.1
-                 , http-conduit                  >= 1.5        && < 1.6        
+                 , http-conduit                  >= 1.5        && < 1.7        
                  , directory                     >= 1.1        && < 1.2
                  , warp                          >= 1.3        && < 1.4                 
                  , data-default
@@ -109,19 +110,18 @@ library
                  , conduit                       >= 0.4.2
                  , split                         >= 0.1.4.3
                  , base16-bytestring             >= 0.1.1.4
-                 , transformers                  >= 0.3
+                 , transformers                  >= 0.2
                  , http-types                    >= 0.6.11
                  , yesod-json                    >= 1.1        && < 1.2
 --added by neto
                  , aeson                         >= 0.6.0.0                 
                  , remote                        >= 0.1.1
                  , binary                        >= 0.5.1
-                 , mtl                           >= 2.1
+                 , mtl                           >= 2.0.0.0
                  , MissingH                      >= 1.1.1.0
                  , array                         >= 0.4.0.0
                  , stm                           >= 2.3
                  , unix                          >= 2.5.1
-                 , transformers                  >= 0.3
                  , MaybeT                        >= 0.1
 
 executable         tersus

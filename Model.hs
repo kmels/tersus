@@ -50,37 +50,33 @@ data TersusResult = TersusResult Int TersusResultCode
 
 -- Update the function msgResultNums as well since it's used to
 -- convert the result into binary data
-data MessageResult = Delivered | ENoAppInstance | EInvalidAppKey | EBufferFull | EInvalidHashCode  deriving (Show, Eq, Enum, Typeable)
+data MessageResult = Delivered | ENoAppInstance | EInvalidAppKey | EBufferFull | EInvalidHashCode | InvalidMsgFormat  deriving (Show, Eq, Enum, Typeable)
 
 
 -- Mapping from MessageResults to integers so they can be
 -- serealized and sent through cloudhaskell
 msgResultsNums :: [(Int,MessageResult)]
-msgResultsNums = [(1,Delivered),(2,ENoAppInstance),(3,EInvalidAppKey),(4,EBufferFull),(5,EInvalidHashCode)]
+msgResultsNums = [(1,Delivered),(2,ENoAppInstance),(3,EInvalidAppKey),(4,EBufferFull),(5,EInvalidHashCode),(6,InvalidMsgFormat)]
 
 share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models")
 
--- Represents a app being run by a user
+-- | Represents a app being run by a user
 data AppInstance = AppInstance {username :: String, application :: String} deriving (Eq,Typeable,Show)
 
--- Message = { userSender: User, usersReceiver: [User], appSender: Application, appReceiver: Application, content: String}
-
-data TMessage = TMessage {
-      userSender :: User, 
-      userReciever :: User, 
-      appSender :: TApplication, 
-      appReciever :: TApplication,
-      content :: Text,
-      time :: UTCTime
-    } deriving (Eq, Typeable)
-
--- Represents a mailbox address, composed from a user and an Application
+-- | Represents a mailbox address of an application instance
+-- mostly used by server side apps
 data Address = Address {user :: User, app :: TApplication}
 
--- Datatype that represents opening and closing of an app instance
+-- | A message with the structure it has when delivered to an application
+data TMessage = TMessage Username Username ApplicationIdentifier ApplicationIdentifier Text UTCTime deriving (Eq, Typeable)
+
+-- | A message sent by an application using it's appkey. This is what the post request accepts
+data AuthMessage = AuthMessage AccessKey Username ApplicationIdentifier Text deriving (Eq, Typeable,Show)
+
+-- | Datatype that represents opening and closing of an app instance
 data AppInstanceActions = Init AppInstance | Terminate AppInstance
 
--- Typeclass that represents the datatypes that can be used to address a User/App instance
+-- | Typeclass that represents the datatypes that can be used to address a User/App instance
 -- basically getAppInstance is a function that given a object, it generates an addres
 -- which is used as index to obtain it's mailbox from the MailBox table
 class Addressable a where
@@ -90,14 +86,13 @@ class InvAddressable a where
     getSendAppInstance :: a -> AppInstance
 
 instance InvAddressable TMessage where
-    getSendAppInstance (TMessage (User _ nickname _ ) _ (TApplication _ appId _ _ _ _ _ ) _ _ _) = AppInstance (T.unpack nickname) (T.unpack appId)
+    getSendAppInstance (TMessage mSender _ appId _ _ _) = AppInstance (T.unpack mSender) (T.unpack appId)
 
 instance Addressable TMessage where
-         getAppInstance (TMessage _ (User _ nickname _ ) _ (TApplication _ appId _ _ _ _ _ ) _ _) = AppInstance (T.unpack nickname) (T.unpack appId)
+    getAppInstance (TMessage _ mReceiver _ appId _ _) = AppInstance (T.unpack mReceiver) (T.unpack appId)
 
 instance Addressable Address where
-         getAppInstance (Address (User _ nickname _ ) (TApplication _ id' _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id')
-
+    getAppInstance (Address (User _ nickname _ ) (TApplication _ id' _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id')
 
 instance B.Binary Text where
          put t = B.put (T.unpack t)
@@ -127,10 +122,6 @@ instance B.Binary TMessage where
          get = do
              (u1,u2,app1,app2,msg,sendTime) <- B.get
              return $ TMessage u1 u2 app1 app2 msg sendTime
-
--- instance B.Binary UTCTime where
---          put timeStamp = B.put $ show timeStamp
---          get = do B.get >>= return . read
 
 -- Utility functions to convert message results into binary data
 
