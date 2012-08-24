@@ -21,6 +21,7 @@ import Import
 import Tersus.AccessKeys(decompose)
 import Yesod.Json(jsonToRepJson)
 import Yesod.Auth
+import Model.User
 import Data.Aeson(encode)
 import Database.Persist.GenericSql.Raw(SqlPersist(..))
 
@@ -29,7 +30,7 @@ getLoggedUserR :: Handler RepJson
 getLoggedUserR = do
   maybeUserId <- maybeAuth
   case maybeUserId of
-       Just (Entity _ u) -> jsonToRepJson $ encode $ (show u)
+       Just (Entity _ u) -> jsonToRepJson $ encode $ u
        Nothing -> error "TODO: Not implemented yet"
     
 -- | Returns Nothing iff the access key doesn't correspond to the given username. Returns a user if the access key is valid for the given username.
