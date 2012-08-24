@@ -30,8 +30,8 @@ aes data' dir =
     in AES.crypt' AES.CTR aesKey aesIV dir data' --run AES
 
 -- | Extract a UserNickname and a ApplicationIdentifier from a hexadecimal access key
-decomposeAccessKey :: AccessKey -> Maybe (Username,ApplicationIdentifier)
-decomposeAccessKey key = do
+decompose :: AccessKey -> Maybe (Username,ApplicationIdentifier)
+decompose key = do
   case (Data.List.Split.splitOn ":" encodedAuth) of
     [random,nickname,appname] -> Just (T.pack nickname,T.pack appname)
     _ -> Nothing
@@ -44,7 +44,7 @@ decomposeAccessKey key = do
 
 decomposeGHandler :: AccessKey -> GHandler s m (Maybe (Username,ApplicationIdentifier))
 decomposeGHandler t = do
-  return $ decomposeAccessKey t
+  return $ decompose t
 -- | Returns the app responsible for the request, from the AccessKey,
 -- this is our security layer used for incoming requests.
 -- TODO: Ernesto. What signature must this function have?

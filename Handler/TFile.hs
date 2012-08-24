@@ -8,6 +8,7 @@ module Handler.TFile where
 
 import           Import
 import           Tersus.AccessKeys
+import           Tersus.User(getValidUser)
 {- Handler methods for operations on files. -}
 
 -- A way to convert between urls and a file path.
@@ -50,7 +51,7 @@ writeFileForm t = renderDivs $ WFileLike --TODO Implement security
 getWriteFileR :: Username -> AccessKey -> Path -> Handler RepHtml
 getWriteFileR username' accessToken path = do
   --get the form
-  let (userNickname,applicationName) = case decomposeAccessKey accessToken of
+  let (userNickname,applicationName) = case decompose accessToken of
         Just (u,a) -> (Just u, Just a)
         _ -> (Nothing,Nothing)
   (formWidget, enctype) <- generateFormPost $ writeFileForm accessToken
@@ -65,13 +66,12 @@ getWriteFileR username' accessToken path = do
 -- Temporal function to test uploading of documents
 postWriteFileR :: Username -> AccessKey -> Path -> Handler RepHtml
 postWriteFileR username' accessToken path = do
-  user' <- runDB $ getBy $ UniqueNickname $ username' --find user by username
-  case user' of
-    -- Do we have a user?
-    Just (Entity _ _ ) -> do
+  maybeValidUser <- getValidUser username' accessToken
+  case maybeValidUser of
+    Just user' -> do
       -- process form
       ((result, _), _) <- runFormPost $ writeFileForm accessToken
-      --      file <- runDB $ insert $ Email "asdf" (Just "zasdf") (Just "as")
+      --file <- runDB $ insert $ Email "asdf" (Just "zasdf") (Just "as")
       --  let file = user >>= \u -> Just $ TFile u
       case result of
         FormSuccess fc -> defaultLayout $ do

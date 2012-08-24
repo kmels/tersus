@@ -15,8 +15,8 @@ import           Handler.Messages          (initApplication)
 import           Handler.TApplication.Git  (pullChanges)
 import           Import
 import           Network.HTTP.Types        (status200)
-import           Network.Wai
-import           Tersus.AccessKeys
+--import           Network.Wai
+import           Tersus.AccessKeys(decompose,newRandomKey,newHexRandomAccessKey)
 import           Yesod.Auth
 
 -- The data type that is expected from registerAppForm
@@ -85,7 +85,7 @@ getHomeTApplicationR :: ApplicationIdentifier -> AccessKey -> Handler RepHtml
 getHomeTApplicationR appIdentifier key = do
   appMaybe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
   maybeUserId <- maybeAuth
-  let keyAuth = decomposeAccessKey key
+  let keyAuth = decompose key
   if (isNothing keyAuth) then
     error "Invalid access key"
     else case appMaybe of
@@ -94,8 +94,7 @@ getHomeTApplicationR appIdentifier key = do
         case maybeUserId of
           Just (Entity userId user) -> return $ RepHtml $ ContentFile ("/tmp/" ++ (T.unpack appIdentifier) ++ "/index.html") Nothing
 
-          Nothing -> defaultLayout $ do [whamlet|
-                                         <h3>About application #{appIdentifier}|]
+          Nothing -> defaultLayout $ do [whamlet|<h3>TODO: user not logged, application index of #{appIdentifier}|]
       _ -> error "Not implemented yet; app doesn't exist"
 
 getRedirectToHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
@@ -110,7 +109,6 @@ getRedirectToHomeTApplicationR appIdentifier = do
           accessKey <- liftIO $ newHexRandomAccessKey (userNickname user) (tApplicationIdentifier app')
           initApplication $ AppInstance (T.unpack $ userNickname user) (T.unpack $ appIdentifier)
           redirect $ HomeTApplicationR appIdentifier accessKey
-        Nothing -> defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier}
-                                                <p>Welcome stranger: |]
+        Nothing -> defaultLayout $ do [whamlet|<h3>TODO: user not logged, return application index of #{appIdentifier}|]
     _ -> error "Not implemented yet; app doesn't exist"
 

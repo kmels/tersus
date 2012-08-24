@@ -1,5 +1,5 @@
 Hello: Hello
 UserWelcome: Hello 
 UserLogin: Login
-UserLoginText: Hello, would you like to 
+UserLoginText: Hello you are not logged, would you like to 
 UserLogout: Logout
