@@ -50,7 +50,7 @@ writeFileForm t = renderDivs $ WFileLike --TODO Implement security
 getWriteFileR :: Username -> AccessKey -> Path -> Handler RepHtml
 getWriteFileR username' accessToken path = do
   --get the form
-  let (userNickname,applicationName) = case decomposeAccessKey accessToken of
+  let (userNickname,applicationName) = case decompose accessToken of
         Just (u,a) -> (Just u, Just a)
         _ -> (Nothing,Nothing)
   (formWidget, enctype) <- generateFormPost $ writeFileForm accessToken
@@ -71,7 +71,7 @@ postWriteFileR username' accessToken path = do
     Just (Entity _ _ ) -> do
       -- process form
       ((result, _), _) <- runFormPost $ writeFileForm accessToken
-      --      file <- runDB $ insert $ Email "asdf" (Just "zasdf") (Just "as")
+      --file <- runDB $ insert $ Email "asdf" (Just "zasdf") (Just "as")
       --  let file = user >>= \u -> Just $ TFile u
       case result of
         FormSuccess fc -> defaultLayout $ do
