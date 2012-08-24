@@ -8,7 +8,7 @@ module Handler.TFile where
 
 import           Import
 import           Tersus.AccessKeys
-import           Tersus.User(getValidUser)
+import           Handler.User(getValidUser)
 {- Handler methods for operations on files. -}
 
 -- A way to convert between urls and a file path.

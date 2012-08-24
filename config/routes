@@ -6,6 +6,9 @@
 
 / HomeR GET
 
+-- JS API
+/api/user LoggedUserR GET
+
 -- APPS
 /app/register RegisterTAppR GET POST
 /t/#ApplicationIdentifier RedirectToHomeTApplicationR   GET
