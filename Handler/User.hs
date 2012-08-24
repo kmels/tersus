@@ -1,23 +1,38 @@
 {- |
-Module      :  Tersus.User
+Module      :  Handler.User
 Copyright   :  (C) 2012 Carlos López-Camey, Ernesto Rodríguez
 License     :  GNU 2
 
 Maintainer  :  <c.lopez@kmels.net>
 Stability   :  stable
 
-A set of monadic and non monadic functions for handling users in requests.
+ - API calls that are related to user
+ - A set of monadic and non monadic functions for handling users in requests
 -}
 
-module Tersus.User(
-  getValidUser
+module Handler.User(
+  --API calls
+  getLoggedUserR, --maybe json logged user
+  --GHandler function helpers  
+  getValidUser --match authkey with username
   ) where
-
+  
 import Import
 import Tersus.AccessKeys(decompose)
+import Yesod.Json(jsonToRepJson)
+import Yesod.Auth
+import Data.Aeson(encode)
 import Database.Persist.GenericSql.Raw(SqlPersist(..))
--- | Returns Nothing iff the access key doesn't correspond to the given username. Returns a user if the access key is valid for the given username.
 
+-- | Returns a JSON representation of the logged user. Returns a 412 status code (Precondition failed) with an empty string
+getLoggedUserR :: Handler RepJson
+getLoggedUserR = do
+  maybeUserId <- maybeAuth
+  case maybeUserId of
+       Just (Entity _ u) -> jsonToRepJson $ encode $ (show u)
+       Nothing -> error "TODO: Not implemented yet"
+    
+-- | Returns Nothing iff the access key doesn't correspond to the given username. Returns a user if the access key is valid for the given username.
 getValidUser :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => Username -> AccessKey -> GHandler s m (Maybe User)
 getValidUser u ak = do  
   userMaybe <- runDB $ getBy $ UniqueNickname $ u --query db

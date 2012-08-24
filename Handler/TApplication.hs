@@ -16,7 +16,8 @@ import           Handler.TApplication.Git  (pullChanges)
 import           Import
 import           Network.HTTP.Types        (status200)
 --import           Network.Wai
-import           Tersus.AccessKeys(decompose,newRandomKey,newHexRandomAccessKey)
+import           Tersus.AccessKeys         (decompose, newHexRandomAccessKey,
+                                            newRandomKey)
 import           Yesod.Auth
 
 -- The data type that is expected from registerAppForm

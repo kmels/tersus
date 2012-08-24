@@ -24,9 +24,11 @@ import Tersus.Cluster.Types
 -- Import all relevant handler modules here.
 -- Don't forget to add new modules to your cabal file!
 import Handler.Home
-import Handler.TFile
+--import Handler.JavascriptAPI
 import Handler.Messages
 import Handler.TApplication
+import Handler.TFile
+import Handler.User
 
 -- This line actually creates our YesodSite instance. It is the second half
 -- of the call to mkYesodData which occurs in Foundation.hs. Please see
@@ -45,8 +47,8 @@ makeApplicationWrapper env conf = makeApplication conf env
 makeApplication :: AppConfig DefaultEnv Extra -> (TMessageQueue,TMessageQueue,NotificationsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO Application
 makeApplication conf env = do
     foundation <- makeFoundation conf env
-    app <- toWaiAppPlain $ foundation
-    return $ logWare app
+    app' <- toWaiAppPlain $ foundation
+    return $ logWare app'
   where
     logWare   = if development then logStdoutDev
                                else logStdout

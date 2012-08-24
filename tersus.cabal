@@ -37,18 +37,19 @@ library
                      TFile.FilesystemUtils
                      Handler.Home
                      Handler.Messages
+                     Handler.JavascriptAPI
                      Handler.TApplication
                      Handler.TApplication.Git
                      Handler.TFile
+                     Handler.User
                      Tersus.AccessKeys
-                     Tersus.User
                      Tersus.Cluster
                      Tersus.Cluster.Types
                      Tersus.Cluster.MessageBackend
                      Tersus.Cluster.DummyImports
                      Tersus.Cluster.TersusService
                      Tersus.Cluster.TersusServiceApp
-                     Tersus.Global
+                     Tersus.Global                     
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -111,6 +112,7 @@ library
                  , base16-bytestring             >= 0.1.1.4
                  , transformers                  >= 0.2
                  , http-types                    >= 0.6.11
+                 , yesod-json                    >= 1.1        && < 1.2
 --added by neto
                  , aeson                         >= 0.6.0.0                 
                  , remote                        >= 0.1.1
