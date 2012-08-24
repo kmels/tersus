@@ -24,7 +24,7 @@ import Data.Maybe (fromJust)
 import Control.Monad (mapM)
 import Data.Array.MArray
 import Data.Array.IO (IOArray)
-import Tersus.AccessKeys (decomposeAccessKey)
+import Tersus.AccessKeys (decompose)
 import Data.Time.Clock (getCurrentTime)
 
 bufferSize :: Int
@@ -75,7 +75,7 @@ initApplication appInstance = do
   -- It to a TMessage for delivery. If decryption fails return an
   -- invalid app key error
 deliverAuthMessage :: AuthMessage -> GHandler sub App MessageResult
-deliverAuthMessage (AuthMessage accessKey rUser appId body) = deliverTMessage' $ decomposeAccessKey accessKey
+deliverAuthMessage (AuthMessage accessKey rUser appId body) = deliverTMessage' $ decompose accessKey
   where
     deliverTMessage' Nothing = return EInvalidAppKey
     deliverTMessage' (Just (sUsername,sAppId)) = do
@@ -187,7 +187,7 @@ postSendAuthMessagesR = do
 getReceiveMessagesR :: Handler RepJson
 getReceiveMessagesR = do
   key <- lookupGetParam appKeyGet
-  case key >>= decomposeAccessKey of
+  case key >>= decompose of
     Just (appUsername,appIdentifier) ->  (liftIO $ putStrLn $ show (appUsername,appIdentifier)) >> (receiveMessages' $ AppInstance (T.unpack appUsername) (T.unpack appIdentifier))
     Nothing -> jsonToRepJson $ show EInvalidAppKey
     
