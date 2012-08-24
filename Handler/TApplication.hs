@@ -11,7 +11,7 @@ import           Control.Monad.Trans.Class (lift)
 import           Data.Maybe                (isNothing)
 import qualified Data.Text                 as T
 import           Data.Time.Clock           (getCurrentTime)
-import           Handler.Messages          (registerApplication)
+import           Handler.Messages          (initApplication)
 import           Handler.TApplication.Git  (pullChanges)
 import           Import
 import           Network.HTTP.Types        (status200)
@@ -108,7 +108,7 @@ getRedirectToHomeTApplicationR appIdentifier = do
       case maybeUserId of
         Just (Entity userId user) -> do
           accessKey <- liftIO $ newHexRandomAccessKey (userNickname user) (tApplicationIdentifier app')
-          registerApplication $ AppInstance (T.unpack $ userNickname user) (T.unpack $ tApplicationIdentifier app')
+          initApplication $ AppInstance (T.unpack $ userNickname user) (T.unpack $ appIdentifier)
           redirect $ HomeTApplicationR appIdentifier accessKey
         Nothing -> defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier}
                                                 <p>Welcome stranger: |]

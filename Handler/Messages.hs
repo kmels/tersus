@@ -8,6 +8,7 @@ module Handler.Messages where
 
 import Data.Aeson as D
 import Data.HashTable as H
+import Data.Text as T
 import Data.Text.Lazy (fromChunks)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Import
@@ -23,7 +24,6 @@ import Data.Maybe (fromJust)
 import Control.Monad (mapM)
 import Data.Array.MArray
 import Data.Array.IO (IOArray)
-import Tersus.Cluster.DummyImports
 import Tersus.AccessKeys (decomposeAccessKey)
 import Data.Time.Clock (getCurrentTime)
 
@@ -75,12 +75,12 @@ initApplication appInstance = do
   -- It to a TMessage for delivery. If decryption fails return an
   -- invalid app key error
 deliverAuthMessage :: AuthMessage -> GHandler sub App MessageResult
-deliverAuthMessage (AuthMessage accessKey username appId body) = deliverTMessage' $ decomposeAccessKey accessKey
+deliverAuthMessage (AuthMessage accessKey rUser appId body) = deliverTMessage' $ decomposeAccessKey accessKey
   where
     deliverTMessage' Nothing = return EInvalidAppKey
     deliverTMessage' (Just (sUsername,sAppId)) = do
       currTime <- liftIO $ getCurrentTime
-      deliverTMessage $ TMessage sUsername username sAppId appId body currTime
+      deliverTMessage $ TMessage sUsername rUser sAppId appId body currTime
   
 
 -- | Deliver a message, block until it's delivery
@@ -170,6 +170,9 @@ receiveMessages appInstance = do
 authMessagesPostParam :: Text
 authMessagesPostParam = "messages"
 
+appKeyGet :: Text
+appKeyGet = "appkey"
+
 -- | Send a batch of messages to tersus applications.
 -- The messages are received through post and are decoded using Aeson
 postSendAuthMessagesR :: Handler RepJson
@@ -180,22 +183,36 @@ postSendAuthMessagesR = do
     Just msgs' -> mapM deliverAuthMessage msgs' >>= jsonToRepJson . show 
     Nothing -> jsonToRepJson $ show InvalidMsgFormat
 
+-- | Request to load all the messages sent to a particular app instance
+getReceiveMessagesR :: Handler RepJson
+getReceiveMessagesR = do
+  key <- lookupGetParam appKeyGet
+  case key >>= decomposeAccessKey of
+    Just (appUsername,appIdentifier) ->  (liftIO $ putStrLn $ show (appUsername,appIdentifier)) >> (receiveMessages' $ AppInstance (T.unpack appUsername) (T.unpack appIdentifier))
+    Nothing -> jsonToRepJson $ show EInvalidAppKey
+    
+  where
+    receiveMessages' appInstance = do
+      msgs <- receiveMessages appInstance
+      msgs' <- mapM (\(msg,_) -> return msg) msgs
+      jsonToRepJson $ encode $ msgs'
+
 -- TEsting funcitons 
-getSendMessageR :: Handler RepJson
-getSendMessageR = do
-  resp <- deliverTMessage dummyMsg
-  jsonToRepJson $ encode $ (show resp)
+-- getSendMessageR :: Handler RepJson
+-- getSendMessageR = do
+--   resp <- deliverTMessage dummyMsg
+--   jsonToRepJson $ encode $ (show resp)
 
-getRecvMessageR :: Handler RepJson
-getRecvMessageR = do
-  msgs <- receiveMessages (getSendAppInstance dummyMsg)
-  msgs' <- mapM (\(msg,_) -> return msg) msgs
-  jsonToRepJson $ encode $ msgs'
+-- getRecvMessageR :: Handler RepJson
+-- getRecvMessageR = do
+--   msgs <- receiveMessages (getSendAppInstance dummyMsg)
+--   msgs' <- mapM (\(msg,_) -> return msg) msgs
+--   jsonToRepJson $ encode $ msgs'
 
-getInitMessagesR :: Handler RepJson
-getInitMessagesR = do
-  initApplication $ getSendAppInstance dummyMsg
-  jsonToRepJson $ encode $ ("Done" :: String)
+-- getInitMessagesR :: Handler RepJson
+-- getInitMessagesR = do
+--   initApplication $ getSendAppInstance dummyMsg
+--   jsonToRepJson $ encode $ ("Done" :: String)
 
 
 

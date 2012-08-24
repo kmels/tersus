@@ -16,6 +16,5 @@
 /file/write/#Username/#AccessKey/*Texts WriteFileR GET POST
 
 -- MESSAGES
-/service/message/receive RecvMessageR GET
-/service/message/send SendMessageR GET
-/service/message/init InitMessagesR GET
+/service/message/receive ReceiveMessagesR GET
+/service/message/send SendAuthMessagesR POST

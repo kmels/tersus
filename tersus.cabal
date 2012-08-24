@@ -30,6 +30,7 @@ library
                      Model.TMessage
                      Model.User
                      Model.TApplication
+                     Model.AuthMessages
                      Settings
                      Settings.StaticFiles
                      Settings.Development
