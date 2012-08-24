@@ -93,8 +93,7 @@ getHomeTApplicationR appIdentifier key = do
         case maybeUserId of
           Just (Entity userId user) -> return $ RepHtml $ ContentFile ("/tmp/" ++ (T.unpack appIdentifier) ++ "/index.html") Nothing
 
-          Nothing -> defaultLayout $ do [whamlet|
-                                         <h3>About application #{appIdentifier}|]
+          Nothing -> defaultLayout $ do [whamlet|<h3>TODO: user not logged, application index of #{appIdentifier}|]
       _ -> error "Not implemented yet; app doesn't exist"
 
 getRedirectToHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
@@ -108,7 +107,6 @@ getRedirectToHomeTApplicationR appIdentifier = do
         Just (Entity userId user) -> do
           accessKey <- liftIO $ newHexRandomAccessKey (userNickname user) (tApplicationIdentifier app')
           redirect $ HomeTApplicationR appIdentifier accessKey
-        Nothing -> defaultLayout $ do [whamlet| Welcome to the application #{appIdentifier}
-                                                <p>Welcome stranger: |]
+        Nothing -> defaultLayout $ do [whamlet|<h3>TODO: user not logged, return application index of #{appIdentifier}|]
     _ -> error "Not implemented yet; app doesn't exist"
 
