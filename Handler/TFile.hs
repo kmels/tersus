@@ -7,12 +7,12 @@ module Handler.TFile where
 
 
 import           Data.Maybe
-import           Data.Text         as T
-import           Handler.User      (getValidUser)
+import           Data.Text        as T
+import           Handler.User     (verifyUserKeyM)
 import           Import
-import           Prelude           (writeFile)
-import           System.Directory  (createDirectoryIfMissing)
-import           Tersus.AccessKeys
+import           Prelude          (writeFile)
+import           System.Directory (createDirectoryIfMissing)
+
 {- Handler methods for operations on files. -}
 
 -- A way to convert between urls and a file path.
@@ -23,22 +23,23 @@ instance PathMultiPiece TFilePath where
     fromPathMultiPiece (p:ps) = Just $ TFilePath ([p] ++ ps)
     fromPathMultiPiece _ = Nothing
 
-getFileR :: Text -> AccessKey -> Path -> Handler RepHtml
-getFileR username' appKey path = do
-  defaultLayout $ do
-    [whamlet|
-     <h1>Username: #{username'}
-     <h1>AppKey: #{appKey}
-     <h1>Path: #{show path}
-            |]
+getFileR :: Text -> AccessKey -> Path -> Handler RepPlain
+getFileR username' accessToken path = do
+  maybeValidUser <- accessToken `verifyUserKeyM` username'
+  case maybeValidUser of
+    Just _ -> do
+      let fsPath = T.unpack . pathToText $ path `fullPathForUser` username'
+      liftIO $ putStrLn $ "Looking: " ++ fsPath
+      return $ RepPlain $ ContentFile fsPath Nothing
+    _ -> error("No user")
 
 -- Temporal function to test uploading of documents
-postWriteFileR :: Username -> AccessKey -> Path -> Handler RepJson
-postWriteFileR username' accessToken filePath = do
-  maybeValidUser <- getValidUser username' accessToken
+putFileR :: Username -> AccessKey -> Path -> Handler RepJson
+putFileR username' accessToken filePath = do
+  maybeUsername <- accessToken `verifyUserKeyM` username'
   content <- lookupPostParam "content"
 
-  case maybeValidUser of
+  case maybeUsername of
     Just user' -> case content of
       Just content' -> do
         let userLocalPath = userDirPath username'
@@ -48,11 +49,11 @@ postWriteFileR username' accessToken filePath = do
         jsonToRepJson $ (show "Wrote file "++(T.unpack $ pathToText fileLocalPath))
 
       Nothing -> jsonToRepJson $ (show "No content provided")
-    Nothing -> jsonToRepJson $ (show "No user")
+    Nothing -> jsonToRepJson $ (show "No user could be deduced")
 
 -- | Creates necessary directories in the filesystem for the given file path
 mkDirsFor :: Path -> IO ()
-mkDirsFor path = createDirectoryIfMissing True (T.unpack dir)
+mkDirsFor path = createDirectoryIfMissing createParents (T.unpack dir)
                  where
                    createParents = True
                    dir = T.pack ("/tmp/") `T.append` (pathToText . Import.reverse $ Import.drop 1 path)
@@ -68,3 +69,7 @@ pathToText p = (T.pack "/") `T.append` T.intercalate (T.pack "/") p
 -- | Returns the user director in the filesystem
 userDirPath :: Username -> Path
 userDirPath uname = (T.pack "tmp") : [uname]
+
+fullPathForUser :: Path -> Username -> Path
+fullPathForUser p u = userDirPath u ++ p
+

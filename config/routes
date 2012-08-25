@@ -16,8 +16,7 @@
 /t/#ApplicationIdentifier/#AccessKey     HomeTApplicationR             GET
 
 -- FILES
-/file/get/#Username/#AccessKey/*Texts    FileR                         GET 
-/file/write/#Username/#AccessKey/*Texts  WriteFileR                    POST
+/file/#Username/#AccessKey/*Texts        FileR                         GET PUT
 
 -- MESSAGES
 /service/message/receive                 ReceiveMessagesR              GET
