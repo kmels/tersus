@@ -1,18 +1,18 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Model where
 
-import           Data.Text              (Text)
-import qualified Data.Text              as T
-import           Prelude
-import           Yesod
-import           Database.Persist.Quasi
-import           Database.Persist.Store (PersistValue(..), SqlType(..))
 import qualified Data.Binary            as B
 import           Data.List              (find)
 import           Data.Maybe             (fromJust)
+import           Data.Text              (Text)
+import qualified Data.Text              as T
 import           Data.Time              (UTCTime)
 import           Data.Typeable.Internal (Typeable)
-import           Remote.Process         ()
+import           Database.Persist.Quasi
+import           Database.Persist.Store (PersistValue (..), SqlType (..))
+import           Prelude
+import           Remote.Process
+import           Yesod
 
 -- You can define all of your database entities in the entities file.
 -- You can find more information on persistent and how to declare entities
@@ -24,6 +24,7 @@ type Path = [Text]
 type Id = Double
 type IdList = [Id]
 type ApplicationName = Text
+type ApplicationKey = Text --private app key
 type ApplicationIdentifier = Text --this has the property that has no spaces in it, it goes in the url.
 type AccessKey = Text
 type UrlK = Text

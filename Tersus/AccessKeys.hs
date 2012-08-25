@@ -33,7 +33,8 @@ aes data' dir =
 decompose :: AccessKey -> Maybe (Username,ApplicationIdentifier)
 decompose key = do
   case (Data.List.Split.splitOn ":" encodedAuth) of
-    [random,nickname,appname] -> Just (T.pack nickname,T.pack appname)
+    [random,nickname,appname] -> do
+      Just (T.pack nickname,T.pack appname)
     _ -> Nothing
   where
     decodedAccessKey :: B.ByteString
@@ -42,12 +43,9 @@ decompose key = do
     encodedAuth :: String -- if valid, a string of the form "usernickname:ramdomstr:appname"
     encodedAuth = T.unpack $ bytestringToText $ aes decodedAccessKey AES.Decrypt
 
-decomposeGHandler :: AccessKey -> GHandler s m (Maybe (Username,ApplicationIdentifier))
-decomposeGHandler t = do
-  return $ decompose t
--- | Returns the app responsible for the request, from the AccessKey,
--- this is our security layer used for incoming requests.
--- TODO: Ernesto. What signature must this function have?
+-- | Wraps decomposed access key in a GHandler monad
+decomposeM :: AccessKey -> GHandler s m (Maybe (Username,ApplicationIdentifier))
+decomposeM = return . decompose
 
 -- | Given a username and an application name, this function generates a new hexagesimal (base 16) random string.
 newHexRandomAccessKey :: Username -> ApplicationIdentifier -> IO AccessKey
@@ -57,6 +55,7 @@ newHexRandomAccessKey user appIdentifier = do
     sep = T.pack ":"
     encodedAuth = randomText `append` sep `append` user `append` sep `append` appIdentifier
     randomHexBytestring = Base16.encode $ aes (textToBytestring encodedAuth) AES.Encrypt --ByteString cypher (encrypted by AES)
+  liftIO $ putStrLn $ show $ "****************************************\nGenerated access key: "++ (T.unpack $ bytestringToText randomHexBytestring)
   return $ bytestringToText randomHexBytestring
 
 

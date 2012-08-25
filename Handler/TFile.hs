@@ -6,9 +6,9 @@
 module Handler.TFile where
 
 
+import           Handler.User      (getValidUser)
 import           Import
 import           Tersus.AccessKeys
-import           Handler.User(getValidUser)
 {- Handler methods for operations on files. -}
 
 -- A way to convert between urls and a file path.
@@ -64,7 +64,7 @@ getWriteFileR username' accessToken path = do
      |]
 
 -- Temporal function to test uploading of documents
-postWriteFileR :: Username -> AccessKey -> Path -> Handler RepHtml
+postWriteFileR :: Username -> AccessKey -> Path -> Handler RepJson
 postWriteFileR username' accessToken path = do
   maybeValidUser <- getValidUser username' accessToken
   case maybeValidUser of
@@ -73,18 +73,12 @@ postWriteFileR username' accessToken path = do
       ((result, _), _) <- runFormPost $ writeFileForm accessToken
       --file <- runDB $ insert $ Email "asdf" (Just "zasdf") (Just "as")
       --  let file = user >>= \u -> Just $ TFile u
+      liftIO $ putStrLn (show result)
       case result of
-        FormSuccess fc -> defaultLayout $ do
-          [whamlet|
-           <h1>Dear #{show $ user'}
-           <h1>You wrote: #{show $ fileContentContent fc}
-           <h3>in #{show path}
-              |]
-        _ -> defaultLayout [whamlet|<p>Invalid input!|]
+        FormSuccess fc -> jsonToRepJson $ (show "File Created")
+        _ -> jsonToRepJson $ (show "Invalid input")
    -- username in url doesn't exist
-    Nothing -> defaultLayout $ do
-        [whamlet|
-         <h1> No user|]
+    Nothing -> jsonToRepJson $ (show "No user")
 
 
 {-  where
