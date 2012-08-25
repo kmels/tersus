@@ -62,9 +62,7 @@ getValidUser u ak = do
     _ -> return Nothing
 
 -- | -- | Returns Nothing iff the access key doesn't correspond to the given username. Returns the given username if the access key belongs to him.
-validateAccessKeyUsername :: AccessKey -> Username -> Maybe Username
-validateAccessKeyUsername ak u = case decompose ak of
-    Nothing -> Nothing
-    Just ((username',_)) -> if (username' == u)
-                          then Just u
-                          else Nothing
+validateAccessKeyUsername :: Username -> AccessKey -> Maybe Username
+validateAccessKeyUsername u ak = decompose ak >>= \(u',_) -> if (u'==u) 
+                                                             then Just u
+                                                             else Nothing

@@ -6,8 +6,12 @@
 module Handler.TFile where
 
 
+import           Data.Maybe
+import           Data.Text         as T
 import           Handler.User      (getValidUser)
 import           Import
+import           Prelude           (writeFile)
+import           System.Directory  (createDirectoryIfMissing)
 import           Tersus.AccessKeys
 {- Handler methods for operations on files. -}
 
@@ -28,61 +32,39 @@ getFileR username' appKey path = do
      <h1>Path: #{show path}
             |]
 
-
--- Form to handle writing to files.
---
--- The **HTML** form (i.e. GET) is only used for testing reasons, the value is used to handle
--- requests coming from REST (i.e. POST)
---
---
-
---Use standard english (to i18n, supply a translation function)
-data WFileLike = WFileLike{
-  fileContentContent :: Text
-  , fileLikeAccessKey :: AccessKey
-} deriving Show
-
-writeFileForm :: AccessKey -> Html -> MForm App App (FormResult WFileLike, Widget)
-writeFileForm t = renderDivs $ WFileLike --TODO Implement security
-    <$> areq textField "Content" Nothing
-    <*> areq hiddenField "AccessKey" (Just t)
-
--- This won't really exist after, it is used for testing purposes only.
-getWriteFileR :: Username -> AccessKey -> Path -> Handler RepHtml
-getWriteFileR username' accessToken path = do
-  --get the form
-  let (userNickname,applicationName) = case decompose accessToken of
-        Just (u,a) -> (Just u, Just a)
-        _ -> (Nothing,Nothing)
-  (formWidget, enctype) <- generateFormPost $ writeFileForm accessToken
-  defaultLayout [whamlet|
-     <h1>Dear user #{username'}, you are going to write content to file #{show path}
-     <p> From your access key we can tell that you are: #{show userNickname} and are using #{show applicationName}
-     <form method=post action=@{WriteFileR username' accessToken path} enctype=#{enctype}>
-                  ^{formWidget}
-                  <input type=submit>
-     |]
-
 -- Temporal function to test uploading of documents
 postWriteFileR :: Username -> AccessKey -> Path -> Handler RepJson
-postWriteFileR username' accessToken path = do
+postWriteFileR username' accessToken filePath = do
   maybeValidUser <- getValidUser username' accessToken
+  content <- lookupPostParam "content"
+
   case maybeValidUser of
-    Just user' -> do
-      -- process form
-      ((result, _), _) <- runFormPost $ writeFileForm accessToken
-      --file <- runDB $ insert $ Email "asdf" (Just "zasdf") (Just "as")
-      --  let file = user >>= \u -> Just $ TFile u
-      liftIO $ putStrLn (show result)
-      case result of
-        FormSuccess fc -> jsonToRepJson $ (show "File Created")
-        _ -> jsonToRepJson $ (show "Invalid input")
-   -- username in url doesn't exist
+    Just user' -> case content of
+      Just content' -> do
+        let userLocalPath = userDirPath username'
+            fileLocalPath = userLocalPath ++ filePath
+
+        liftIO $ writeFileContents fileLocalPath content'
+        jsonToRepJson $ (show "Wrote file "++(T.unpack $ pathToText fileLocalPath))
+
+      Nothing -> jsonToRepJson $ (show "No content provided")
     Nothing -> jsonToRepJson $ (show "No user")
 
+-- | Creates necessary directories in the filesystem for the given file path
+mkDirsFor :: Path -> IO ()
+mkDirsFor path = createDirectoryIfMissing True (T.unpack dir)
+                 where
+                   createParents = True
+                   dir = T.pack ("/tmp/") `T.append` (pathToText . Import.reverse $ Import.drop 1 path)
 
-{-  where
-    -- | Returns a list of this file ancestors.
-    fileAncestors :: Path -> [Maybe Id]
-    fileAncestors xs = let x = 1 in []
--}
+-- | Writes a file to the filesystem
+writeFileContents :: Path -> Text -> IO ()
+writeFileContents path content = mkDirsFor path >>= \_ -> writeFile (T.unpack . pathToText $ path) (T.unpack content)
+
+-- | Converts a list of path components into a list by interacalating a "/"
+pathToText :: Path -> Text
+pathToText p = (T.pack "/") `T.append` T.intercalate (T.pack "/") p
+
+-- | Returns the user director in the filesystem
+userDirPath :: Username -> Path
+userDirPath uname = (T.pack "tmp") : [uname]
