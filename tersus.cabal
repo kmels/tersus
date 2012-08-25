@@ -152,6 +152,7 @@ test-suite test
                        FlexibleContexts
 
     build-depends: base
+                 , hspec
                  , tersus
                  , yesod-test
                  , yesod-default
