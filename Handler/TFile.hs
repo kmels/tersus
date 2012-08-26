@@ -6,13 +6,13 @@
 module Handler.TFile where
 
 
+import           Control.Exception.Extensible hiding (Handler, handle)
 import           Data.Maybe
-import           Data.Text        as T
-import           Handler.User     (verifyUserKeyM)
-import           Import
-import           Prelude          (writeFile)
-import           System.Directory (createDirectoryIfMissing)
-
+import           Data.Text                    as T
+import           Handler.User                 (verifyUserKeyM)
+import           Import                       hiding (catch)
+import           Prelude                      (writeFile)
+import           System.Directory             (createDirectoryIfMissing)
 {- Handler methods for operations on files. -}
 
 -- A way to convert between urls and a file path.
@@ -53,12 +53,12 @@ putFileR username' accessToken filePath = do
 
 -- | Creates necessary directories in the filesystem for the given file path
 mkDirsFor :: Path -> IO ()
-mkDirsFor path = putStrLn ("**********PATH:: " ++ (show path)) >>= \_ -> putStrLn ("**********mkDirsFor: " ++ (T.unpack $ dir)) >>= \_ -> createDirectoryIfMissing createParents (T.unpack dir)
+mkDirsFor path = createDirectoryIfMissing createParents (T.unpack dir)
                  where
                    createParents = True
 		   init' [x] = []
 		   init' (x:xs) =  x : init' xs
-		   init' [] =  error "TODO: mkDirsFor init"
+		   init' [] =  error "ERROR: mkDirsFor init"
                    dir = pathToText (init' path)
 
 -- | Writes a file to the filesystem

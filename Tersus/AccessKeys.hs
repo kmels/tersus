@@ -1,16 +1,16 @@
 module Tersus.AccessKeys where
 
-import qualified Codec.Binary.UTF8.String as UTF8
-import qualified Codec.Crypto.AES         as AES
-import qualified Data.ByteString          as B
-import           Data.ByteString.Base16   as Base16
-import           Data.Char                (chr, ord)
-import           Data.List.Split          (splitOn)
-import           Data.Text                as T
-import qualified Data.Text.Encoding       as TE
-import           Data.Word                (Word8)
+import qualified Codec.Binary.UTF8.String   as UTF8
+import qualified Codec.Crypto.AES           as AES
+import qualified Data.ByteString            as B
+import           Data.ByteString.Base64.URL as Base64
+import           Data.Char                  (chr, ord)
+import           Data.List.Split            (splitOn)
+import           Data.Text                  as T
+import qualified Data.Text.Encoding         as TE
+import           Data.Word                  (Word8)
 import           Import
-import           System.Random            (newStdGen, randomRs)
+import           System.Random              (newStdGen, randomRs)
 
 
 -- | Converts UTF8 text to a Bytestring
@@ -38,8 +38,11 @@ decompose key = do
     _ -> Nothing
   where
     decodedAccessKey :: B.ByteString
-    --Let's don't care about invalid (we're using fst) chars, since the decrypted key must have the right structure anyway
-    decodedAccessKey = fst $ Base16.decode $ textToBytestring key
+    --Let's don't care about invalid chars, since the decrypted key must have the right structure anyway
+    decodedAccessKey = case Base64.decode $ textToBytestring key of
+      Right b -> b
+      _ -> B.empty
+
     encodedAuth :: String -- if valid, a string of the form "usernickname:ramdomstr:appname"
     encodedAuth = T.unpack $ bytestringToText $ aes decodedAccessKey AES.Decrypt
 
@@ -54,7 +57,7 @@ newHexRandomAccessKey user appIdentifier = do
   let
     sep = T.pack ":"
     encodedAuth = randomText `append` sep `append` user `append` sep `append` appIdentifier
-    randomHexBytestring = Base16.encode $ aes (textToBytestring encodedAuth) AES.Encrypt --ByteString cypher (encrypted by AES)
+    randomHexBytestring = Base64.encode $ aes (textToBytestring encodedAuth) AES.Encrypt --ByteString cypher (encrypted by AES)
   liftIO $ putStrLn $ show $ "****************************************\nGenerated access key: "++ (T.unpack $ bytestringToText randomHexBytestring)
   return $ bytestringToText randomHexBytestring
 

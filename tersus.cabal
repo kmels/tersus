@@ -109,10 +109,11 @@ library
                  , process-conduit               >= 0.4.1
                  , conduit                       >= 0.4.2
                  , split                         >= 0.1.4.3
-                 , base16-bytestring             >= 0.1.1.4
                  , transformers                  >= 0.2
                  , http-types                    >= 0.6.11
                  , yesod-json                    >= 1.1        && < 1.2
+                 , extensible-exceptions         >= 0.1.1.4
+                 , base64-bytestring             >= 0.1.2
 --added by neto
                  , aeson                         >= 0.6.0.0                 
                  , remote                        >= 0.1.1
