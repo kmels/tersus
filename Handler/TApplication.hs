@@ -16,7 +16,7 @@ import           Handler.TApplication.Git  (pullChanges)
 import           Import
 import           Network.HTTP.Types        (status200)
 --import           Network.Wai
-import           Tersus.AccessKeys         (decompose, newHexRandomAccessKey,
+import           Tersus.AccessKeys         (decompose, newAccessKey,
                                             newRandomKey)
 import           Yesod.Auth
 
@@ -107,7 +107,7 @@ getRedirectToHomeTApplicationR appIdentifier = do
       _ <- liftIO $ pullChanges app'
       case maybeUserId of
         Just (Entity userId user) -> do
-          accessKey <- liftIO $ newHexRandomAccessKey (userNickname user) (tApplicationIdentifier app')
+          accessKey <- liftIO $ newAccessKey (userNickname user) (tApplicationIdentifier app')
           initApplication $ AppInstance (T.unpack $ userNickname user) (T.unpack $ appIdentifier)
           redirect $ HomeTApplicationR appIdentifier accessKey
         Nothing -> defaultLayout $ do [whamlet|<h3>TODO: user not logged, return application index of #{appIdentifier}|]

@@ -51,8 +51,8 @@ decomposeM :: AccessKey -> GHandler s m (Maybe (Username,ApplicationIdentifier))
 decomposeM = return . decompose
 
 -- | Given a username and an application name, this function generates a new hexagesimal (base 16) random string.
-newHexRandomAccessKey :: Username -> ApplicationIdentifier -> IO AccessKey
-newHexRandomAccessKey user appIdentifier = do
+newAccessKey :: Username -> ApplicationIdentifier -> IO AccessKey
+newAccessKey user appIdentifier = do
   randomText <- newRandomKey 16
   let
     sep = T.pack ":"

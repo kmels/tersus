@@ -46,7 +46,7 @@ getUserAccessKeyR appId = do
   maybeUserId <- maybeAuth
   case maybeUserId of
     Just (Entity _ u) -> do
-      accessKey <- liftIO $ newHexRandomAccessKey (userNickname u) appId
+      accessKey <- liftIO $ newAccessKey (userNickname u) appId
       jsonToRepJson $ accessKey
     Nothing -> error "Result: Empty user"
       
