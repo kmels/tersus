@@ -53,10 +53,13 @@ putFileR username' accessToken filePath = do
 
 -- | Creates necessary directories in the filesystem for the given file path
 mkDirsFor :: Path -> IO ()
-mkDirsFor path = createDirectoryIfMissing createParents (T.unpack dir)
+mkDirsFor path = putStrLn ("**********PATH:: " ++ (show path)) >>= \_ -> putStrLn ("**********mkDirsFor: " ++ (T.unpack $ dir)) >>= \_ -> createDirectoryIfMissing createParents (T.unpack dir)
                  where
                    createParents = True
-                   dir = T.pack ("/tmp/") `T.append` (pathToText . Import.reverse $ Import.drop 1 path)
+		   init' [x] = []
+		   init' (x:xs) =  x : init' xs
+		   init' [] =  error "TODO: mkDirsFor init"
+                   dir = pathToText (init' path)
 
 -- | Writes a file to the filesystem
 writeFileContents :: Path -> Text -> IO ()
