@@ -10,7 +10,7 @@ Development:
   <<: *defaults
 
 Testing:
-  database: tersus_test
+  database: tersus
   <<: *defaults
 
 Staging:

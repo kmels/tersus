@@ -1,3 +1,6 @@
+#tersus
+static/api
+
 #yesod & binaries
 *.swp
 *.hi

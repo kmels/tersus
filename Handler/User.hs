@@ -13,8 +13,10 @@ Stability   :  stable
 module Handler.User(
   --API calls
   getLoggedUserR, --maybe json logged user
-  getUserAccessKeyR, --plain access key for given username,appkey
+  getUserAccessKeyR, --(request) plain access key request for given username,appkey
   --GHandler function helpers  
+  verifyUserKey, --validate accesskey for given username
+  verifyUserKeyM, --monadic version of verifyUserKey
   getValidUser --match authkey with username
   ) where
   
@@ -44,7 +46,7 @@ getUserAccessKeyR appId = do
   maybeUserId <- maybeAuth
   case maybeUserId of
     Just (Entity _ u) -> do
-      accessKey <- liftIO $ newHexRandomAccessKey (userNickname u) appId
+      accessKey <- liftIO $ newAccessKey (userNickname u) appId
       jsonToRepJson $ accessKey
     Nothing -> error "Result: Empty user"
       
@@ -53,18 +55,21 @@ getValidUser :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => Username
 getValidUser u ak = do  
   liftIO $ putStrLn $ "Recibido u:"++(show u)
   userMaybe <- runDB $ getBy $ UniqueNickname $ u --query db
-  liftIO $ putStrLn $ show $ validateAccessKeyUsername u ak
-  case validateAccessKeyUsername u ak of
+  liftIO $ putStrLn $ show $ ak `verifyUserKey` u
+  case ak `verifyUserKey` u of
     Just uname -> do  
       case userMaybe of
-        Just (Entity _ user) -> return $ Just user
+        Just (Entity _ user') -> return $ Just user'
         Nothing -> return Nothing
     _ -> return Nothing
 
--- | -- | Returns Nothing iff the access key doesn't correspond to the given username. Returns the given username if the access key belongs to him.
-validateAccessKeyUsername :: AccessKey -> Username -> Maybe Username
-validateAccessKeyUsername ak u = case decompose ak of
-    Nothing -> Nothing
-    Just ((username',_)) -> if (username' == u)
-                          then Just u
-                          else Nothing
+-- | Monadic version of `verifyUser`
+verifyUserKeyM :: AccessKey -> Username -> GHandler s m (Maybe Username)
+verifyUserKeyM ak u = return $ ak `verifyUserKey` u
+
+-- | Returns Nothing iff the access key doesn't correspond to the given username. Returns the given username if the access key belongs to him.
+verifyUserKey :: AccessKey -> Username -> Maybe Username
+verifyUserKey key uname = decompose key >>= \(u',_) -> if (u'==uname) 
+                                                     then Just uname
+                                                     else Nothing
+                                                                                                          

@@ -6,9 +6,13 @@
 module Handler.TFile where
 
 
-import           Handler.User      (getValidUser)
-import           Import
-import           Tersus.AccessKeys
+import           Control.Exception.Extensible hiding (Handler, handle)
+import           Data.Maybe
+import           Data.Text                    as T
+import           Handler.User                 (verifyUserKeyM)
+import           Import                       hiding (catch)
+import           Prelude                      (writeFile)
+import           System.Directory             (createDirectoryIfMissing)
 {- Handler methods for operations on files. -}
 
 -- A way to convert between urls and a file path.
@@ -19,70 +23,56 @@ instance PathMultiPiece TFilePath where
     fromPathMultiPiece (p:ps) = Just $ TFilePath ([p] ++ ps)
     fromPathMultiPiece _ = Nothing
 
-getFileR :: Text -> AccessKey -> Path -> Handler RepHtml
-getFileR username' appKey path = do
-  defaultLayout $ do
-    [whamlet|
-     <h1>Username: #{username'}
-     <h1>AppKey: #{appKey}
-     <h1>Path: #{show path}
-            |]
-
-
--- Form to handle writing to files.
---
--- The **HTML** form (i.e. GET) is only used for testing reasons, the value is used to handle
--- requests coming from REST (i.e. POST)
---
---
-
---Use standard english (to i18n, supply a translation function)
-data WFileLike = WFileLike{
-  fileContentContent :: Text
-  , fileLikeAccessKey :: AccessKey
-} deriving Show
-
-writeFileForm :: AccessKey -> Html -> MForm App App (FormResult WFileLike, Widget)
-writeFileForm t = renderDivs $ WFileLike --TODO Implement security
-    <$> areq textField "Content" Nothing
-    <*> areq hiddenField "AccessKey" (Just t)
-
--- This won't really exist after, it is used for testing purposes only.
-getWriteFileR :: Username -> AccessKey -> Path -> Handler RepHtml
-getWriteFileR username' accessToken path = do
-  --get the form
-  let (userNickname,applicationName) = case decompose accessToken of
-        Just (u,a) -> (Just u, Just a)
-        _ -> (Nothing,Nothing)
-  (formWidget, enctype) <- generateFormPost $ writeFileForm accessToken
-  defaultLayout [whamlet|
-     <h1>Dear user #{username'}, you are going to write content to file #{show path}
-     <p> From your access key we can tell that you are: #{show userNickname} and are using #{show applicationName}
-     <form method=post action=@{WriteFileR username' accessToken path} enctype=#{enctype}>
-                  ^{formWidget}
-                  <input type=submit>
-     |]
+getFileR :: Text -> AccessKey -> Path -> Handler RepPlain
+getFileR username' accessToken path = do
+  maybeValidUser <- accessToken `verifyUserKeyM` username'
+  case maybeValidUser of
+    Just _ -> do
+      let fsPath = T.unpack . pathToText $ path `fullPathForUser` username'
+      liftIO $ putStrLn $ "Looking: " ++ fsPath
+      return $ RepPlain $ ContentFile fsPath Nothing
+    _ -> error("No user")
 
 -- Temporal function to test uploading of documents
-postWriteFileR :: Username -> AccessKey -> Path -> Handler RepJson
-postWriteFileR username' accessToken path = do
-  maybeValidUser <- getValidUser username' accessToken
-  case maybeValidUser of
-    Just user' -> do
-      -- process form
-      ((result, _), _) <- runFormPost $ writeFileForm accessToken
-      --file <- runDB $ insert $ Email "asdf" (Just "zasdf") (Just "as")
-      --  let file = user >>= \u -> Just $ TFile u
-      liftIO $ putStrLn (show result)
-      case result of
-        FormSuccess fc -> jsonToRepJson $ (show "File Created")
-        _ -> jsonToRepJson $ (show "Invalid input")
-   -- username in url doesn't exist
-    Nothing -> jsonToRepJson $ (show "No user")
+putFileR :: Username -> AccessKey -> Path -> Handler RepJson
+putFileR username' accessToken filePath = do
+  maybeUsername <- accessToken `verifyUserKeyM` username'
+  content <- lookupPostParam "content"
 
+  case maybeUsername of
+    Just user' -> case content of
+      Just content' -> do
+        let userLocalPath = userDirPath username'
+            fileLocalPath = userLocalPath ++ filePath
 
-{-  where
-    -- | Returns a list of this file ancestors.
-    fileAncestors :: Path -> [Maybe Id]
-    fileAncestors xs = let x = 1 in []
--}
+        liftIO $ writeFileContents fileLocalPath content'
+        jsonToRepJson $ (show "Wrote file "++(T.unpack $ pathToText fileLocalPath))
+
+      Nothing -> jsonToRepJson $ (show "No content provided")
+    Nothing -> jsonToRepJson $ (show "No user could be deduced")
+
+-- | Creates necessary directories in the filesystem for the given file path
+mkDirsFor :: Path -> IO ()
+mkDirsFor path = createDirectoryIfMissing createParents (T.unpack dir)
+                 where
+                   createParents = True
+		   init' [x] = []
+		   init' (x:xs) =  x : init' xs
+		   init' [] =  error "ERROR: mkDirsFor init"
+                   dir = pathToText (init' path)
+
+-- | Writes a file to the filesystem
+writeFileContents :: Path -> Text -> IO ()
+writeFileContents path content = mkDirsFor path >>= \_ -> writeFile (T.unpack . pathToText $ path) (T.unpack content)
+
+-- | Converts a list of path components into a list by interacalating a "/"
+pathToText :: Path -> Text
+pathToText p = (T.pack "/") `T.append` T.intercalate (T.pack "/") p
+
+-- | Returns the user director in the filesystem
+userDirPath :: Username -> Path
+userDirPath uname = (T.pack "tmp") : [uname]
+
+fullPathForUser :: Path -> Username -> Path
+fullPathForUser p u = userDirPath u ++ p
+

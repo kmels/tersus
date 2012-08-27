@@ -6,14 +6,16 @@ Default: &defaults
   #analytics: UA-YOURCODE
 
 Development:
+  approot: "http://localhost:3000"
   <<: *defaults
 
 Testing:
+  approot: "http://tersusland.com"
   <<: *defaults
 
 Staging:
   <<: *defaults
 
 Production:
-  #approot: "http://www.example.com"
+  approot: "http://www.tersusland.com"
   <<: *defaults
