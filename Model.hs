@@ -51,7 +51,7 @@ data TersusResult = TersusResult Int TersusResultCode
 
 -- Update the function msgResultNums as well since it's used to
 -- convert the result into binary data
-data MessageResult = Delivered | ENoAppInstance | EInvalidAppKey | EBufferFull | EInvalidHashCode | InvalidMsgFormat  deriving (Show, Eq, Enum, Typeable)
+data MessageResult = Delivered | ENoAppInstance | EInvalidAppKey | EBufferFull | EInvalidHashCode | InvalidMsgFormat | MsgTimeout  deriving (Show, Eq, Enum, Typeable)
 
 
 -- Mapping from MessageResults to integers so they can be

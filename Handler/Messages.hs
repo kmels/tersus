@@ -26,6 +26,7 @@ import Data.Array.MArray
 import Data.Array.IO (IOArray)
 import Tersus.AccessKeys (decompose)
 import Data.Time.Clock (getCurrentTime)
+import System.Timeout (timeout)
 
 bufferSize :: Int
 bufferSize = 2
@@ -150,21 +151,24 @@ queueMessage msgBuffer channel (message,port) = atomically $ do
                                                     addIndex msgIndex indexes = (generateHash message,msgIndex):indexes
                                                     
 
+receiveMessageTimeout :: Int
+receiveMessageTimeout = 30 * 1000000 -- 30 Seconds
+
 -- Get a list of all messages, block until at least one message has arrived
 -- Note that a pattern match failure should not happe. If it happens it means
 -- that the app key generaiton method is not secure
 -- receieveMessage :: Address -> IO [TMessage]
-receiveMessages :: AppInstance -> GHandler sub App [TMessageEnvelope]
+receiveMessages :: AppInstance -> GHandler sub App (Maybe [TMessageEnvelope])
 receiveMessages appInstance = do
                 master <- getYesod
                 mailBoxes <- return $ getMailBoxes master                
                 deliveryChan <- return $ getDeliveryChannel master
                 -- Todo: what happens if the appInstance dosent exist? What should be returned?
                 mailBox <- liftIO (H.lookup mailBoxes appInstance >>= return . fromJust)
-                messages <- liftIO $ atomically $ do 
-                                messages' <- takeTMVar mailBox
-                                mapM_ (\m -> writeTChan deliveryChan m) messages'
-                                return messages'
+                messages <- liftIO $ timeout receiveMessageTimeout $ liftIO $ atomically $ do 
+                  messages' <- takeTMVar mailBox
+                  mapM_ (\m -> writeTChan deliveryChan m) messages'
+                  return messages'
                 return messages
 
 authMessagesPostParam :: Text
@@ -194,8 +198,11 @@ getReceiveMessagesR = do
   where
     receiveMessages' appInstance = do
       msgs <- receiveMessages appInstance
-      msgs' <- mapM (\(msg,_) -> return msg) msgs
-      jsonToRepJson $ encode $ msgs'
+      case msgs >>= return . (Import.map (\(msg,_) -> msg)) of
+        Just (msgs') -> jsonToRepJson msgs'
+        Nothing -> jsonToRepJson $ show MsgTimeout
+      --msgs' <- mapM (\(msg,_) -> return msg) msgs
+      --jsonToRepJson $ encode $ msgs'
 
 -- TEsting funcitons 
 -- getSendMessageR :: Handler RepJson
