@@ -8,6 +8,7 @@ import           Data.Char                  (chr, ord)
 import           Data.List.Split            (splitOn)
 import           Data.Text                  as T
 import qualified Data.Text.Encoding         as TE
+import           Data.Time.Clock            (UTCTime, getCurrentTime)
 import           Data.Word                  (Word8)
 import           Import
 import           System.Random              (newStdGen, randomRs)
@@ -27,13 +28,19 @@ aes data' dir =
   let
     aesKey = B.pack . UTF8.encode $ "01234567890abcde" --16,24 or 32 byte symmetric key
     aesIV = B.pack . UTF8.encode $ "tersus>>=lorenzo" -- initialization vector, 16 byte
-    in AES.crypt' AES.CTR aesKey aesIV dir data' --run AES
+    in AES.crypt' AES.CBC aesKey aesIV dir data' --run AES
+
+-- | The separation string used to separate data in appKeys. This must
+-- be a string that is not allowed in the username, appname or that
+-- dosen't appear in a date string.
+keySeparator :: String
+keySeparator = "$"
 
 -- | Extract a UserNickname and a ApplicationIdentifier from a hexadecimal access key
 decompose :: AccessKey -> Maybe (Username,ApplicationIdentifier)
 decompose key = do
-  case (Data.List.Split.splitOn ":" encodedAuth) of
-    [random,nickname,appname] -> do
+  case (Data.List.Split.splitOn keySeparator encodedAuth) of
+    [random,nickname,appname,_] -> do
       Just (T.pack nickname,T.pack appname)
     _ -> Nothing
   where
@@ -50,13 +57,22 @@ decompose key = do
 decomposeM :: AccessKey -> GHandler s m (Maybe (Username,ApplicationIdentifier))
 decomposeM = return . decompose
 
+-- | The size of the access key. Must be a multiple of 64 because that's the AES block size
+keySize :: Int
+keySize = 128
+
 -- | Given a username and an application name, this function generates a new hexagesimal (base 16) random string.
 newAccessKey :: Username -> ApplicationIdentifier -> IO AccessKey
 newAccessKey user appIdentifier = do
-  randomText <- newRandomKey 16
+  currentTime <- getCurrentTime >>= return . T.pack . show
   let
-    sep = T.pack ":"
-    encodedAuth = randomText `append` sep `append` user `append` sep `append` appIdentifier
+    sep = T.pack keySeparator
+    dataToEncode = sep `append` user `append` sep `append` appIdentifier `append` sep `append` currentTime
+    randTextSize = keySize - (T.length dataToEncode)
+
+  randomText <- newRandomKey randTextSize
+  let
+    encodedAuth = randomText `append` dataToEncode
     randomHexBytestring = Base64.encode $ aes (textToBytestring encodedAuth) AES.Encrypt --ByteString cypher (encrypted by AES)
   liftIO $ putStrLn $ show $ "****************************************\nGenerated access key: "++ (T.unpack $ bytestringToText randomHexBytestring)
   return $ bytestringToText randomHexBytestring
