@@ -87,10 +87,13 @@ class InvAddressable a where
     getSendAppInstance :: a -> AppInstance
 
 instance InvAddressable TMessage where
-    getSendAppInstance (TMessage mSender _ appId _ _ _) = AppInstance (T.unpack mSender) (T.unpack appId)
+         getSendAppInstance (TMessage mSender _ appId _ _ _) = AppInstance (T.unpack mSender) (T.unpack appId)
 
 instance Addressable TMessage where
-    getAppInstance (TMessage _ mReceiver _ appId _ _) = AppInstance (T.unpack mReceiver) (T.unpack appId)
+         getAppInstance (TMessage _ mReceiver _ appId _ _) = AppInstance (T.unpack mReceiver) (T.unpack appId)
+
+instance Addressable AppInstance where
+         getAppInstance a = a
 
 instance Addressable Address where
     getAppInstance (Address (User _ nickname _ ) (TApplication _ id' _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id')

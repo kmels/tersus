@@ -44,10 +44,10 @@ hashUserApp (AppInstance name tApplication)  = H.hashString $ name ++ tApplicati
 -- aChannel: Channel were (user/app) actions are written by tersus so CloudHaskell can communicate them to other processes. Actions are app is opened, app is closed
 -- messagePorts: A send and receive channel (called ports in cloud haskell) dedicated for sending and receiving messages. The send port is distributed to all other tersus instances so they can send messages to this instance
 -- acknowledgementPorts: A send and receive channel dedicated to receive message delivery status. They are usually packed in the message envelope so once a message is received, tersus can immediately send the result to the corresponding process
-initDataStructures :: ProcessM (TMessageQueue,TMessageQueue,NotificationsChannel,MailBoxTable,AddressTable,TMessageStatusTable,MessagingPorts,AcknowledgementPorts,NotificationsPorts,TersusClusterList)
+initDataStructures :: ProcessM (TMessageQueue,TMessageQueue,NotificationsChannel,AppInstanceTable,AddressTable,MessagingPorts,AcknowledgementPorts,NotificationsPorts,TersusClusterList)
 initDataStructures = (liftIO $ H.new (==) hashUserApp) >>= \addresses ->
-                     (liftIO $ H.new (==) hashUserApp) >>= \mailBoxes ->
-                     (liftIO $ H.new (==) hashUserApp) >>= \msgStatusTable ->
+                     (liftIO $ H.new (==) hashUserApp) >>= \appEnvs ->
+--                     (liftIO $ H.new (==) hashUserApp) >>= \msgStatusTable ->
                      (liftIO $ atomically newTChan) >>= \sChannel ->
                      (liftIO $ atomically newTChan) >>= \rChannel ->
                      (liftIO $ atomically newTChan) >>= \nChannel ->
@@ -55,7 +55,7 @@ initDataStructures = (liftIO $ H.new (==) hashUserApp) >>= \addresses ->
                      newChannel >>= \acknowledgementPorts ->
                      newChannel >>= \(nSendPort,nRecvPort) ->
                      (liftIO $ atomically $ newTVar []) >>= \clusterList ->
-                     return (sChannel,rChannel,nChannel,mailBoxes,addresses,msgStatusTable,messagePorts,acknowledgementPorts,(nSendPort,nRecvPort),clusterList)
+                     return (sChannel,rChannel,nChannel,appEnvs,addresses,messagePorts,acknowledgementPorts,(nSendPort,nRecvPort),clusterList)
 
 -- |Process that runs Tersus and Yesod in development mode
 -- This is what yesod devel executes
@@ -63,11 +63,11 @@ initDataStructures = (liftIO $ H.new (==) hashUserApp) >>= \addresses ->
 -- discarded once the registration services exist
 createTersusDevelInstance :: ProcessM ()
 createTersusDevelInstance = do
-  (sChannel,rChannel,aChannel,mailBoxes,addresses,msgStatusTable,(mSendPort,mRecvPort),(aSendPort,aRecvPort),(nSendPort,nRecvPort),clusterList) <- initDataStructures
+  (sChannel,rChannel,aChannel,appEnvs,addresses,(mSendPort,mRecvPort),(aSendPort,aRecvPort),(nSendPort,nRecvPort),clusterList) <- initDataStructures
 
-  _ <- runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvPort) sChannel rChannel aChannel mailBoxes addresses clusterList msgStatusTable 1
+  _ <- runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvPort) sChannel rChannel aChannel appEnvs addresses clusterList 1
   _ <- forkProcess $ makeTersusService tersusServiceApp sChannel clusterList Development
-  liftIO $ do (port, app') <- getApplicationDev (sChannel,rChannel,aChannel,mailBoxes,msgStatusTable,aSendPort)
+  liftIO $ do (port, app') <- getApplicationDev (sChannel,rChannel,aChannel,appEnvs,aSendPort)
               runSettings defaultSettings
                               { settingsPort = port
                               } app'
@@ -88,9 +88,10 @@ terminateDevel = exitSuccess
 -- This will be executed when Tersus is deployed
 createTersusInstance :: ProcessM ()
 createTersusInstance = do
-  (sChannel,rChannel,nChannel,mailBoxes,addresses,msgStatusTable,(mSendPort,mRecvPort),(aSendPort,aRecvPort),(nSendPort,nRecvPort),clusterList) <- initDataStructures
-  _ <- liftIO $ forkIO $ defaultMain (fromArgs parseExtra) $ makeApplicationWrapper (sChannel,rChannel,nChannel,mailBoxes,msgStatusTable,aSendPort)
-  _ <- runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvPort) sChannel rChannel nChannel mailBoxes addresses clusterList msgStatusTable 1
+  (sChannel,rChannel,nChannel,appEnvs,addresses,(mSendPort,mRecvPort),(aSendPort,aRecvPort),(nSendPort,nRecvPort),clusterList) <- initDataStructures
+  
+  _ <- liftIO $ forkIO $ defaultMain (fromArgs parseExtra) $ makeApplicationWrapper (sChannel,rChannel,nChannel,appEnvs,aSendPort)
+  _ <- runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvPort) sChannel rChannel nChannel appEnvs addresses clusterList 1
   return ()
 
 -- Make the functions that initialize a tersus process remotable

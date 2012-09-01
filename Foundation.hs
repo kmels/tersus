@@ -51,10 +51,8 @@ data App = App
     -- Channel to write events occuring in tersus, such as user opening
     -- a app or closing it
     , getNotificationsChannel :: NotificationsChannel 
-    -- Hash table with all the mailboxes
-    , getMailBoxes :: MailBoxTable
-    -- Table where the result of each message is written
-    , getStatusTable :: TMessageStatusTable
+    -- Hash table with all the application envoiernments
+    , getAppEnvs :: AppInstanceTable
     -- CloudHaskell process where Tersus is running
     , getSendPort :: AcknowledgementSendPort
     }

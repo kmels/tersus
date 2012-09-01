@@ -1,5 +1,5 @@
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE RankNTypes         #-}
 module Tersus.Cluster.MessageBackend where
 
 -- Tersus Message Backend
@@ -9,22 +9,27 @@ module Tersus.Cluster.MessageBackend where
 -- It will also contain services to register and unregister
 -- AppInstances accross TersusClusters
 
-import Prelude
-import Control.Monad (forever)
-import Remote.Process (forkProcess,ptry)
-import Remote
-import Tersus.Cluster.Types
-import Model (MessageResult(Delivered,ENoAppInstance),getAppInstance,getSendAppInstance)
-import Data.HashTable as H
-import Control.Monad.Trans (liftIO)
-import Control.Concurrent.STM.TMVar (TMVar, putTMVar, isEmptyTMVar,takeTMVar)
-import Control.Concurrent.STM.TChan (readTChan,isEmptyTChan)
-import Control.Concurrent.STM.TVar (readTVar,modifyTVar)
-import Control.Concurrent.STM (atomically, STM)
-import Control.Concurrent.MVar (MVar,takeMVar,putMVar,newEmptyMVar)
-import Data.Array.IO (readArray)
-import Control.Monad (foldM)
-import Data.Either ( Either(..) )
+import           Control.Concurrent.MVar      (MVar, newEmptyMVar, putMVar,
+                                               takeMVar)
+import           Control.Concurrent.STM       (STM, atomically)
+import           Control.Concurrent.STM.TChan (isEmptyTChan, readTChan)
+import           Control.Concurrent.STM.TMVar (TMVar, isEmptyTMVar, putTMVar,
+                                               takeTMVar)
+import           Control.Concurrent.STM.TVar  (modifyTVar, readTVar)
+import           Control.Monad                (forever)
+import           Control.Monad                (foldM)
+import           Control.Monad.Trans          (liftIO)
+import           Data.Array.IO                (readArray)
+import           Data.Either                  (Either (..))
+import           Data.HashTable               as H
+import           Model                       
+                                               (MessageResult (Delivered, ENoAppInstance),
+                                               getAppInstance,
+                                               getSendAppInstance)
+import           Prelude
+import           Remote
+import           Remote.Process               (forkProcess, ptry)
+import           Tersus.Cluster.Types
 
 -- This is the name that the process used to establish communication with other
 -- Tersus instances will be called.
@@ -35,11 +40,11 @@ processBinderName = "TersusProcessBinder"
 -- There are various services that work together to provide messaging
 -- this function initializes all of them. For specific details view
 -- each service individually
-runTersusMessaging :: MessagingPorts -> AcknowledgementPorts -> NotificationsPorts -> TMessageQueue -> TMessageQueue -> NotificationsChannel -> MailBoxTable -> AddressTable -> TersusClusterList -> TMessageStatusTable -> Int -> ProcessM [ProcessId]
-runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvPort) sendChan recvChan notificationsChan mailBoxes addresses clusterList statusTable numThreads = do
-  _ <- initDispatchMessageAcknowledgementService aRecvPort statusTable numThreads
-  _ <- initMessageDeliveryService sendChan addresses numThreads 
-  _ <- initMessageReceiveService mRecvPort mailBoxes numThreads 
+runTersusMessaging :: MessagingPorts -> AcknowledgementPorts -> NotificationsPorts -> TMessageQueue -> TMessageQueue -> NotificationsChannel -> AppInstanceTable -> AddressTable -> TersusClusterList -> Int -> ProcessM [ProcessId]
+runTersusMessaging (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvPort) sendChan recvChan notificationsChan appEnvs addresses clusterList numThreads = do
+  _ <- initDispatchMessageAcknowledgementService aRecvPort appEnvs numThreads
+  _ <- initMessageDeliveryService sendChan addresses numThreads
+  _ <- initMessageReceiveService mRecvPort appEnvs numThreads
   _ <- initMessageAcknowledgementService recvChan numThreads
   _ <- initNotificationsService mSendPort clusterList notificationsChan numThreads
   _ <- initNotificationsDispatchService addresses nRecvPort numThreads
@@ -52,7 +57,7 @@ initProcessBinderService nSendPort clusterList = do
   p <- forkProcess $ processBinderService nSendPort clusterList initLock
   _ <- liftIO $ takeMVar initLock
   return [p]
-  
+
 
 -- Process that registers new tersus instances once they are started and
 -- ready to start messaging. The registration process is as follows:
@@ -61,7 +66,7 @@ initProcessBinderService nSendPort clusterList = do
 -- 3. When a NotificatiionsPort is received, this port is registered in the list of Nodes, therefore
 -- notifications about applications in this Node are communicated to the newly created node.
 -- 4. When a processId is received, this indicates that this process is requesting the NotificationsPort
--- of the process, therefore the port is sent so the process can start notifing about the activities in the 
+-- of the process, therefore the port is sent so the process can start notifing about the activities in the
 -- of the applications running in that Node.
 -- Note: The PBS has a special name for other nodes to query. This name is held in the value of processBinderName
 processBinderService :: NotificationsSendPort -> TersusClusterList -> MVar Int -> ProcessM ()
@@ -94,9 +99,9 @@ processBinderService nSendPort clusterList lock = do
 
       handleNodeRegistration :: ProcessId -> ProcessM ()
       handleNodeRegistration pid = do
-        myPid <- getSelfPid        
+        myPid <- getSelfPid
         if myPid == pid then return () else send pid (nSendPort,myPid)
-      
+
       receiveSendChannels = receiveWait [match handleNodeRegistration, match handleNotificationsPortRegistration]
 
 
@@ -126,12 +131,12 @@ notificationsDispatchService addressTable notificationsRecvPort = forever $ rece
       processNotification NotificationUnknown = return ()
       -- Helper to handle entry lookup and delete if necesary
       handleEntry hash appInstance (Just (_,hash'))
-                                                                                              | hash' == hash = H.delete addressTable appInstance
+                  | hash' == hash = H.delete addressTable appInstance
                   | otherwise = return ()
       handleEntry _ _ _ = return ()
-      
-                                                                    
-                                                                    
+
+
+
 
 -- Create numThreads instances of notificationsServices
 initNotificationsService :: MessageSendPort -> TersusClusterList -> NotificationsChannel -> Int -> ProcessM [ProcessId]
@@ -144,10 +149,10 @@ initNotificationsService msgSendPort clusterList notificationsChan numThreads = 
 notificationsService :: MessageSendPort -> TersusClusterList -> NotificationsChannel -> ProcessM ()
 notificationsService msgSendPort clusterList notificationsChan = forever $ do
                                                        notifications <- liftIO $ atomically $ getNumNotifications 10
-                                                       -- The list of available clusters is read on every iteration in case 
+                                                       -- The list of available clusters is read on every iteration in case
                                                        -- new clusters become available. It could be configured to be updated
                                                        -- every particular defined period
-                                                       clusters <- liftIO $ atomically $ readTVar clusterList 
+                                                       clusters <- liftIO $ atomically $ readTVar clusterList
                                                        mapM_ (sendNotifications notifications clusterList) clusters
     where
       -- Try to read at most n notifications from the notifications channel
@@ -167,7 +172,7 @@ notificationsService msgSendPort clusterList notificationsChan = forever $ do
       packNotification :: TersusSimpleNotification -> TersusNotification
       packNotification (Initialized' appInstance) = Initialized appInstance (msgSendPort,"HashLoco")
       packNotification (Closed' appInstance) = Closed (appInstance,"HashLoco")
-      
+
 
 -- Transmit the notification to a particular node, if that node is no longer available
 -- it's removed from the list using exception handling
@@ -179,13 +184,13 @@ sendNotifications notifications clusterList (nSendPort',pid) = (ptry (sendChanne
 
 deleteNode :: Eq b => b -> [(a,b)] -> [(a,b)]
 deleteNode _ [] = []
-deleteNode pid ((nSendPort,pid'):t) 
+deleteNode pid ((nSendPort,pid'):t)
     | pid == pid' = deleteNode pid t
     | otherwise = (nSendPort,pid') : (deleteNode pid t)
 
 -- Start numThreads concurrent Message Acknowledgement Dispatch Services
-initDispatchMessageAcknowledgementService :: AcknowledgementRecvPort -> TMessageStatusTable -> Int -> ProcessM [ProcessId]
-initDispatchMessageAcknowledgementService aRecvPort messageStatusTable numThreads = forkProcFun numThreads $ dispatchMessageAcknowledgementService aRecvPort messageStatusTable
+initDispatchMessageAcknowledgementService :: AcknowledgementRecvPort -> AppInstanceTable -> Int -> ProcessM [ProcessId]
+initDispatchMessageAcknowledgementService aRecvPort appEnvs numThreads = forkProcFun numThreads $ dispatchMessageAcknowledgementService aRecvPort appEnvs
 
 -- Message Acknowledgement Dispatch Service: This service listens to
 -- the receive port of the message acknowledgement channel of this
@@ -193,12 +198,12 @@ initDispatchMessageAcknowledgementService aRecvPort messageStatusTable numThread
 -- result of sending a message from this server to another Tersus
 -- instance. In other words inform an application if the message could
 -- be delivered or not.
-dispatchMessageAcknowledgementService :: AcknowledgementRecvPort -> TMessageStatusTable -> ProcessM ()
-dispatchMessageAcknowledgementService aRecvPort messageStatusTable = forever $ receiveChannel aRecvPort >>= dispatchAcknowledgement 
+dispatchMessageAcknowledgementService :: AcknowledgementRecvPort -> AppInstanceTable -> ProcessM ()
+dispatchMessageAcknowledgementService aRecvPort appEnvs = forever $ receiveChannel aRecvPort >>= dispatchAcknowledgement
     where
       dispatchAcknowledgement :: MessageResultEnvelope -> ProcessM ()
       dispatchAcknowledgement (hashCode,result,address) = do
-        Just (mappings,statusVars,_) <- liftIO $ H.lookup messageStatusTable address
+        Just (mappings,statusVars,_) <- liftIO $ getMessageBuffer appEnvs address
         -- add error handling
         (Just (_,index)) <- liftIO $ lookupIndex hashCode mappings
         statusVar <- liftIO $ readArray statusVars index
@@ -216,7 +221,7 @@ initMessageAcknowledgementService recvChan numThreads = mapM (\_ -> forkProcess 
 -- that arrive to this queue and sends a message delivered
 -- status to the Node from where this message came.
 messageAcknowledgementService :: TMessageQueue -> ProcessM ()
-messageAcknowledgementService recvChan = forever $ do 
+messageAcknowledgementService recvChan = forever $ do
                                            (msg,aPort) <- liftIO $ atomically $ readTChan recvChan
                                            sendChannel aPort (generateHash msg, Delivered , getSendAppInstance msg)
 
@@ -231,7 +236,7 @@ initMessageDeliveryService sendQueue addresses numThreads = mapM (\_ -> forkProc
 -- (packed as MessageEnvelopes) from the sendQueue, obtains the sendPort of
 -- the channel where this message should be sent from the address table
 -- and writes the message to that port
-messageDeliveryService :: TMessageQueue -> AddressTable -> ProcessM () 
+messageDeliveryService :: TMessageQueue -> AddressTable -> ProcessM ()
 messageDeliveryService sendQueue addresses = forever $ do
                                                  liftIO $ putStrLn "Running deliver service"
                                                  (msg,aPort) <- liftIO $ atomically $ readTChan sendQueue
@@ -253,27 +258,27 @@ messageDeliveryService sendQueue addresses = forever $ do
       deliverMsg (msg,aPort) _ =  sendChannel aPort (generateHash msg,ENoAppInstance,getSendAppInstance msg) >> return ()
 
 -- Create numThreads concurrent Message Receive Services
-initMessageReceiveService :: MessageRecvPort -> MailBoxTable -> Int -> ProcessM [ProcessId]
-initMessageReceiveService mRecvPort mailBoxes numThreads = mapM (\_ -> forkProcess $ messageReceiveService mRecvPort mailBoxes) [1 .. numThreads]
+initMessageReceiveService :: MessageRecvPort -> AppInstanceTable -> Int -> ProcessM [ProcessId]
+initMessageReceiveService mRecvPort appEnvs numThreads = mapM (\_ -> forkProcess $ messageReceiveService mRecvPort appEnvs) [1 .. numThreads]
 
 -- Message Receive Service: Every tersus instance has a channel to receive messages.
--- The send port of the channel is distributed to all other tersus instances so 
+-- The send port of the channel is distributed to all other tersus instances so
 -- they can send messages to this instance. The receive port is read by this
 -- process. Whenever a new TersusMessage for a AppInstance in this TersusCluster
 -- is sent, it is read from the mRecvPort. This process reads the messages and
 --- writes them to the corresponding mailbox
-messageReceiveService :: MessageRecvPort -> MailBoxTable -> ProcessM ()
-messageReceiveService mRecvPort mailBoxes = forever $ receiveChannel mRecvPort >>= writeToMailBox
+messageReceiveService :: MessageRecvPort -> AppInstanceTable -> ProcessM ()
+messageReceiveService mRecvPort appEnvs = forever $ receiveChannel mRecvPort >>= writeToMailBox
     where
       writeToMailBox :: TMessageEnvelope -> ProcessM ()
       writeToMailBox (msg,aSendPort) = do
         addr <- return $ getAppInstance msg
-        mBox <- liftIO $ H.lookup mailBoxes addr
+        mBox <- liftIO $ getMailBox appEnvs addr
         case mBox of
           Just mBox' -> liftIO $ insertMessage mBox' (msg,aSendPort)
           Nothing -> sendChannel aSendPort (generateHash msg, ENoAppInstance, getSendAppInstance msg) >> return ()
       insertMessage :: TMVar [TMessageEnvelope] -> TMessageEnvelope -> IO ()
-      insertMessage mBox envelope = atomically $ do 
+      insertMessage mBox envelope = atomically $ do
                                       empty <- isEmptyTMVar mBox
                                       if empty then putTMVar mBox [envelope] else modifyTMVar mBox (\msgs -> return (envelope:msgs))
 

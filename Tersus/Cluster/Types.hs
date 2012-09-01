@@ -5,11 +5,12 @@ module Tersus.Cluster.Types where
 import           Control.Concurrent.STM       (atomically)
 import           Control.Concurrent.STM.TChan
 import           Control.Concurrent.STM.TMVar
-import           Control.Concurrent.STM.TVar  (TVar, readTVar)
+import           Control.Concurrent.STM.TVar  (TVar, newTVar, readTVar)
+import           Control.Monad.Trans          (liftIO)
 import           Data.Array.IO
 import qualified Data.Binary                  as B
 import           Data.Hash.MD5
-import           Data.HashTable
+import           Data.HashTable               as H
 import qualified Data.List                    as L
 import           Data.Text                    as T
 import           Data.Typeable.Internal       (Typeable)
@@ -55,18 +56,72 @@ type TersusProcessM = (SendPort TMessageEnvelope,THashCode)
 
 -- HashTable indexed by appInstances that contains all
 -- known AppInstances with their address
-type AddressTable = HashTable (AppInstance) TersusProcessM
+type AddressTable = H.HashTable (AppInstance) TersusProcessM
 
 -- Contains all the Mailboxes for the AppInstances running in this
 -- TersusCluster.
-type MailBoxTable = HashTable AppInstance (TMVar [TMessageEnvelope])
+type MailBox = (TMVar [TMessageEnvelope])
 
 -- Contains a table where the status of each message send from
 -- AppInstances of this server are written once they are
 -- acknowledge by the target TersusCluster
 type TMessageSendBuff = (TVar [(THashCode,Int)], IOArray Int (TMVar MessageResult), TChan (Int,TMVar MessageResult))
-type TMessageStatusTable = HashTable AppInstance TMessageSendBuff
+-- type TMessageStatusTable = HashTable AppInstance TMessageSendBuff
 
+-- | Runtime envoiernment for an appInstance. This contains all the
+-- appInstance needs to do messaging
+type AppInstanceEnv = (MailBox,TMessageSendBuff)
+
+-- | Hash table that contains the envoiernment of all appInstances
+-- under execution in this particular Tersus node.
+type AppInstanceTable = H.HashTable AppInstance AppInstanceEnv
+
+-- | Get the appInstance refered by the addressable element and use that
+-- to retrieve the MessageBuffer and MailBox for that appInstance
+lookupAddressable :: Addressable a => a -> AppInstanceTable -> IO (Maybe (MailBox,TMessageSendBuff))
+lookupAddressable addr table = do
+  let currAppInstance = getAppInstance addr
+  H.lookup table currAppInstance
+
+-- | Get the Mailbox from the AppInstance referred by the
+-- given addressable
+getMailBox :: Addressable a => AppInstanceTable -> a -> IO (Maybe MailBox)
+getMailBox table addr = do
+  res <- lookupAddressable addr table
+  return $ res >>= \(m,_) -> return m
+
+-- | Get the MessageBuffer from the AppInstance reffered by
+-- the given addressable.
+getMessageBuffer :: Addressable a =>  AppInstanceTable -> a -> IO (Maybe TMessageSendBuff)
+getMessageBuffer table addr = do
+  res <- lookupAddressable addr table
+  return $ res >>= \(_,buff) -> return buff
+
+bufferSize :: Int
+bufferSize = 2
+
+-- | Creates a new appInstance envoiernment. This envoiernment can later
+-- be registered to belong to a particular appInstance. With this envoiernment
+-- an appInstance will have everything it needs to do messaging.
+newAppInstanceEnv :: IO AppInstanceEnv
+newAppInstanceEnv = do
+  (statusVars,availableBuff,mappings,mailBox) <- atomically $ do
+    -- Create the TMVars where the result of messages will be placed
+    statusVars' <- mapM (\i -> (newEmptyTMVar >>= \v -> return (i,v))) [0 .. (bufferSize - 1)]
+    -- Create the channel where all buffer variables for messaging will be placed
+    availableBuff' <- newTChan
+    -- Put all the buffer variables in the channel
+    mapM_ (writeTChan availableBuff') statusVars'
+    mappings <- newTVar []
+    -- Create mailbox for delivered messages
+    mailBox <- newEmptyTMVar
+    return (statusVars',availableBuff',mappings,mailBox)
+
+  --Create array where all result variables are placed, this array
+  -- can be accessed to determine the result of a message
+  varsArray <- liftIO $ (newArray_ (0,bufferSize) :: IO (IOArray Int (TMVar MessageResult)))
+  mapM_ (\(i,var) -> writeArray varsArray i var) statusVars
+  return (mailBox, (mappings,varsArray,availableBuff))
 
 type TMessageQueue = TChan TMessageEnvelope
 type AcknowledgementQueue = TChan (TMessageEnvelope,AppInstance)

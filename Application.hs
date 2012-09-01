@@ -37,14 +37,14 @@ mkYesodDispatch "App" resourcesApp
 
 -- Wrapper that reverses the parameters of makeApplication function from Application.hs
 -- This wrapper is generally used to init Tersus from CloudHaskell
-makeApplicationWrapper :: (TMessageQueue,TMessageQueue,NotificationsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> AppConfig DefaultEnv Extra -> IO Application
+makeApplicationWrapper :: (TMessageQueue,TMessageQueue,NotificationsChannel,AppInstanceTable,AcknowledgementSendPort) -> AppConfig DefaultEnv Extra -> IO Application
 makeApplicationWrapper env conf = makeApplication conf env
 
 -- This function allocates resources (such as a database connection pool),
 -- performs initialization and creates a WAI application. This is also the
 -- place to put your migrate statements to have automatic database
 -- migrations handled by Yesod.
-makeApplication :: AppConfig DefaultEnv Extra -> (TMessageQueue,TMessageQueue,NotificationsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO Application
+makeApplication :: AppConfig DefaultEnv Extra -> (TMessageQueue,TMessageQueue,NotificationsChannel,AppInstanceTable,AcknowledgementSendPort) -> IO Application
 makeApplication conf env = do
     foundation <- makeFoundation conf env
     app' <- toWaiAppPlain $ foundation
@@ -53,8 +53,8 @@ makeApplication conf env = do
     logWare   = if development then logStdoutDev
                                else logStdout
 
-makeFoundation :: AppConfig DefaultEnv Extra -> (TMessageQueue,TMessageQueue,NotificationsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO App
-makeFoundation conf (sendChannel,recvChannel,actionsChannel,mailBoxes,statusTable,aSendPort) = do
+makeFoundation :: AppConfig DefaultEnv Extra -> (TMessageQueue,TMessageQueue,NotificationsChannel,AppInstanceTable,AcknowledgementSendPort) -> IO App
+makeFoundation conf (sendChannel,recvChannel,actionsChannel,appEnvs,aSendPort) = do
     manager <- newManager def
     s <- staticSite
     liftIO $ putStrLn ("Env: "++(show $ appEnv conf))
@@ -63,10 +63,10 @@ makeFoundation conf (sendChannel,recvChannel,actionsChannel,mailBoxes,statusTabl
               Database.Persist.Store.applyEnv
     p <- Database.Persist.Store.createPoolConfig (dbconf :: Settings.PersistConfig)
     Database.Persist.Store.runPool dbconf (runMigration migrateAll) p    
-    return $ App conf s p manager dbconf sendChannel recvChannel actionsChannel mailBoxes statusTable aSendPort
+    return $ App conf s p manager dbconf sendChannel recvChannel actionsChannel appEnvs aSendPort
 
 -- for yesod devel
-getApplicationDev :: (TMessageQueue,TMessageQueue,NotificationsChannel,MailBoxTable,TMessageStatusTable,AcknowledgementSendPort) -> IO (Int, Application)
+getApplicationDev :: (TMessageQueue,TMessageQueue,NotificationsChannel,AppInstanceTable,AcknowledgementSendPort) -> IO (Int, Application)
 getApplicationDev env= do    
     defaultDevelApp loader $ makeApplicationWrapper env
   where
