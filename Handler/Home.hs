@@ -14,3 +14,12 @@ getHomeR = do
       aDomId <- lift newIdent
       setTitle "Welcome To Yesod!"
       $(widgetFile "homepage")
+
+
+-- | Responds to the url /about
+
+getAboutR :: Handler RepHtml
+getAboutR = defaultLayout $ do
+  aDomId <- lift newIdent
+  setTitle "About!"
+  $(widgetFile "about")
