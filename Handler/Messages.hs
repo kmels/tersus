@@ -6,6 +6,7 @@ module Handler.Messages where
 
 --Description: Functions to handle the messaging system of Tersus.
 
+import           Control.Concurrent.STM       (atomically, modifyTVar)
 import           Control.Concurrent.STM.TChan
 import           Control.Concurrent.STM.TMVar
 import           Control.Monad                (mapM)
