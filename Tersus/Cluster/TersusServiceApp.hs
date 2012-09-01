@@ -1,28 +1,28 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tersus.Cluster.TersusServiceApp where
 
-import Prelude
-import Model
+import           Model
+import           Prelude
 -- import Database.Persist.Postgresql
-import Tersus.Cluster.TersusService
-import System.IO.Unsafe (unsafePerformIO)
-import Data.Time.Clock (getCurrentTime)
-import Control.Monad.Trans (liftIO)
-import Database.Persist ((<-.))
-import Database.Persist.Store --(Entity)
-import Data.Aeson (toJSON,encode)
-import Tersus.Global
-import Model.User ()
-import Data.Text.Lazy.Encoding (decodeUtf8)
-import Control.Monad.Maybe
-import Data.Text (Text)
+import           Control.Monad.Maybe
+import           Control.Monad.Trans          (liftIO)
+import           Data.Aeson                   (encode, toJSON)
+import           Data.Text                    (Text)
+import           Data.Text.Lazy.Encoding      (decodeUtf8)
+import           Data.Time.Clock              (getCurrentTime)
+import           Database.Persist             ((<-.))
+import           Database.Persist.Store
+import           Model.User
+import           System.IO.Unsafe             (unsafePerformIO)
+import           Tersus.Cluster.TersusService
+import           Tersus.Global
 
 tersusServiceAppName :: Text
 tersusServiceAppName = "tersus"
 
 tersusServiceApp' :: TApplication
 tersusServiceApp' = TApplication tersusServiceAppName tersusServiceAppName "Application that provides the service messaging system for system functions" (Just "http://tersusland.com/tersus") "neto@netowork.me" (unsafePerformIO getCurrentTime) "tersusAppKey"
- 
+
 tersusServiceUsername :: Text
 tersusServiceUsername = "tersus"
 
@@ -39,7 +39,7 @@ getAppUsersQuery app' = (runMaybeT $ getAppUsersQuery' app') >>= \res -> case re
                                                                            Nothing -> return []
                                                                            Just a -> return a
 
-getAppUsersQuery' applicationIdentifier = do 
+getAppUsersQuery' applicationIdentifier = do
   Entity key _ <- maybeGetBy $ UniqueIdentifier applicationIdentifier
   appUsers <- maybeSelectList [UserApplicationApplication <-. [key]] [] -- :: MaybeT
   mapM (\(Entity _ (UserApplication u _)) ->  maybeGet u) appUsers
@@ -48,5 +48,6 @@ getAppUsersQuery' applicationIdentifier = do
 
   where
     filterKey (Entity k _) = k
-    
+
+tersusServiceApp :: TersusServerApp
 tersusServiceApp = TersusServerApp tersusServiceApp' tersusServiceUser tersusServiceRecv Nothing
