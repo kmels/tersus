@@ -46,7 +46,6 @@ library
                      Tersus.Cluster
                      Tersus.Cluster.Types
                      Tersus.Cluster.MessageBackend
-                     Tersus.Cluster.DummyImports
                      Tersus.Cluster.TersusService
                      Tersus.Cluster.TersusServiceApp
                      Tersus.Global                     
