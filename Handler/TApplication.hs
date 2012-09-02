@@ -82,34 +82,34 @@ postRegisterTAppR = do
        |]
     _ -> defaultLayout $ [whamlet|<p>Invalid input|]
 
-getHomeTApplicationR :: ApplicationIdentifier -> AccessKey -> Handler RepHtml
-getHomeTApplicationR appIdentifier key = do
-  appMaybe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
+getTAppHomeR :: ApplicationIdentifier -> AccessKey -> Handler RepHtml
+getTAppHomeR appIdentifier key = do
+  appMaybe <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
   maybeUserId <- maybeAuth
   let keyAuth = decompose key
   if (isNothing keyAuth) then
     error "Invalid access key"
     else case appMaybe of
-      Just (Entity _ app') -> do --is there an app with this identifier?
+      Entity _ app' -> do --is there an app with this identifier?
         _ <- liftIO $ pullChanges app'
         case maybeUserId of
           Just (Entity userId user) -> return $ RepHtml $ ContentFile ("/tmp/" ++ (T.unpack appIdentifier) ++ "/index.html") Nothing
 
           Nothing -> defaultLayout $ do [whamlet|<h3>TODO: user not logged, application index of #{appIdentifier}|]
-      _ -> error "Not implemented yet; app doesn't exist"
+      x -> error $ "Not implemented yetxx; app doesn't exist" ++ (show x)
 
-getRedirectToHomeTApplicationR :: ApplicationIdentifier -> Handler RepHtml
-getRedirectToHomeTApplicationR appIdentifier = do
-  appMaybe <- runDB $ getBy $ UniqueIdentifier $ appIdentifier
+getTAppHomeAuthR :: ApplicationIdentifier -> Handler RepHtml
+getTAppHomeAuthR appIdentifier = do
+  appMaybe <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier --find app or return 404
   maybeUserId <- maybeAuth
   case appMaybe of
-    Just (Entity _ app') -> do --is there an app with this identifier?
+    Entity _ app' -> do 
       _ <- liftIO $ pullChanges app'
       case maybeUserId of
         Just (Entity userId user) -> do
           accessKey <- liftIO $ newAccessKey (userNickname user) (tApplicationIdentifier app')
           initApplication $ AppInstance (T.unpack $ userNickname user) (T.unpack $ appIdentifier)
-          redirect $ HomeTApplicationR appIdentifier accessKey
+          redirect $ TAppHomeR appIdentifier accessKey
         Nothing -> defaultLayout $ do [whamlet|<h3>TODO: user not logged, return application index of #{appIdentifier}|]
-    _ -> error "Not implemented yet; app doesn't exist"
+    v -> error $ "Exception in route TAppHomeAuthR: " ++ (show v)
 
