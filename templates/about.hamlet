@@ -1,0 +1,20 @@
+<h3> What do we do?
+
+<p>Tersusland.com is a platform where web applications run and interact with other web applications you may also use in your favorite browser.
+
+<p><strong>Open source</strong>, the most valuable of our principles: The platform is built using <a href="http://dev.tersusland.com/">Tersus</a>, an open source project written in the Haskell programming language. The software provides a file system (space for user files)?, user management and a messaging system between applications, for applications.
+
+<p><strong>Vision of the project:</strong> We want to encourage the development of open source applications on the web, provide transparency, confidence and security for the common user. 
+
+<p> The name Tersus is latin and origin to english word 'terse', which is an antonym of verbosity and a synonym for 'concise', 'smooth' and 'fine' . 
+
+<h3> Our competitive advantages
+
+<p>Security of your account, how your data is safe with you.
+
+<ul>
+  <li><p>We use <a href="http://openid.net">OpenID</a> to identify you. OpenID provides a way to prove that only you, the end user, can have access over your data. That is, we don't get to know your password from services like gmail, yahoo, etc.
+
+  <li><p>When we get what OpenID says to us about you, we give a key to the applicaton that runs on your browser. This key is only known to this application. There is no way that this key escapes the software you are using, because it's encrypted with https when the application communicates with us. Simply put, only the applications you give permission to get your data, can use your data. The application you use can be, in addition, open source either because it is per se or because you run it in your browser and the code it runs can be known by you, the user.
+
+  <li><p>We also don't store or track any of your data, you can perceive that if you delete a file that an application was using (given your permission), then the data will be forever gone, the application must handle with it in its own way. That is our dream; only you are the owner of your data.

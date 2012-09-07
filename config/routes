@@ -4,7 +4,8 @@
 /favicon.ico FaviconR GET
 /robots.txt RobotsR GET
 
-/ HomeR GET
+/                                        HomeR                         GET
+/about                                   AboutR                        GET
 
 -- JS API
 /api/user                                LoggedUserR                   GET
@@ -12,8 +13,8 @@
 
 -- APPS
 /app/register                            RegisterTAppR                 GET POST
-/t/#ApplicationIdentifier                RedirectToHomeTApplicationR   GET
-/t/#ApplicationIdentifier/#AccessKey     HomeTApplicationR             GET
+/t/#ApplicationIdentifier                TAppHomeAuthR                 GET
+/t/#ApplicationIdentifier/#AccessKey     TAppHomeR                     GET
 
 -- FILES
 /file/#Username/#AccessKey/*Texts        FileR                         GET PUT
