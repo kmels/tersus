@@ -64,7 +64,7 @@ deliverTMessage message = do
   channel <- return $ getSendChannel master
   port <- return $ getSendPort master
   appEnvs <- return $ getAppEnvs master
-  msgBuffer <- liftIO $ getMessageBuffer appEnvs message
+  msgBuffer <- liftIO $ getMessageBuffer appEnvs (getSendAppInstance message)
   writeMsgInBuffer channel port  msgBuffer
 
   where
@@ -72,7 +72,7 @@ deliverTMessage message = do
     writeMsgInBuffer channel port (Just msgBuffer) = do
       status <- liftIO $ queueMessage msgBuffer channel (message,port)
       let
-        appInstance = getAppInstance message
+        appInstance = getSendAppInstance message
       waitMessage appInstance (generateHash message)
 
 -- | Given an appInstance and the hashcode of a particular message,
