@@ -19,6 +19,9 @@ import           Network.HTTP.Types        (status200)
 import           Tersus.AccessKeys         (decompose, newAccessKey,
                                             newRandomKey)
 import           Yesod.Auth
+import Text.Regex.Posix
+import Prelude (last)
+import Data.ByteString (ByteString)
 
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
@@ -82,34 +85,67 @@ postRegisterTAppR = do
        |]
     _ -> defaultLayout $ [whamlet|<p>Invalid input|]
 
-getTAppHomeR :: ApplicationIdentifier -> AccessKey -> Handler RepHtml
-getTAppHomeR appIdentifier key = do
-  appMaybe <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+userNotLogged :: ApplicationIdentifier -> Handler RepHtml
+userNotLogged appIdentifier = defaultLayout $ do [whamlet|<h3>TODO: user not logged, application index of #{appIdentifier}|]
+
+-- | The get parameter under which the access key is provided
+accessKeyParam :: Text
+accessKeyParam = "accessKey"
+
+-- | Load an application. This function checks wether the user
+-- is logged and if the application specified exists and redirects
+-- the user to the appropiate location. If the user is logged and
+-- the application exists, an access key is generated and the user
+-- gets redirected to the index.html of the application.
+getTAppHomeR :: ApplicationIdentifier -> Handler RepHtml
+getTAppHomeR appIdentifier = do
+  Entity _ app <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
   maybeUserId <- maybeAuth
-  let keyAuth = decompose key
-  if (isNothing keyAuth) then
-    error "Invalid access key"
-    else case appMaybe of
-      Entity _ app' -> do --is there an app with this identifier?
-        _ <- liftIO $ pullChanges app'
-        case maybeUserId of
-          Just (Entity userId user) -> return $ RepHtml $ ContentFile ("/tmp/" ++ (T.unpack appIdentifier) ++ "/index.html") Nothing
+  maybeKey <- lookupGetParam accessKeyParam
+  case (maybeUserId,maybeKey) of
+    (Just (Entity userId user),Nothing) -> redirectToApplication user
+    (_,Just accessKey) -> redirectToIndex accessKey
+    _ -> userNotLogged appIdentifier
 
-          Nothing -> defaultLayout $ do [whamlet|<h3>TODO: user not logged, application index of #{appIdentifier}|]
-      x -> error $ "Not implemented yetxx; app doesn't exist" ++ (show x)
+  where
+    redirectToApplication user = do
+      let nickname = userNickname user
+      accessKey <- liftIO $ newAccessKey nickname appIdentifier
+      initApplication $ AppInstance (T.unpack $ nickname) (T.unpack $ appIdentifier)
+      home <- toTextUrl $ TAppHomeR appIdentifier
+      redirect $ T.unpack $ T.concat [home,"?",accessKeyParam,"=",accessKey]
 
-getTAppHomeAuthR :: ApplicationIdentifier -> Handler RepHtml
-getTAppHomeAuthR appIdentifier = do
-  appMaybe <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier --find app or return 404
-  maybeUserId <- maybeAuth
-  case appMaybe of
-    Entity _ app' -> do 
-      _ <- liftIO $ pullChanges app'
-      case maybeUserId of
-        Just (Entity userId user) -> do
-          accessKey <- liftIO $ newAccessKey (userNickname user) (tApplicationIdentifier app')
-          initApplication $ AppInstance (T.unpack $ userNickname user) (T.unpack $ appIdentifier)
-          redirect $ TAppHomeR appIdentifier accessKey
-        Nothing -> defaultLayout $ do [whamlet|<h3>TODO: user not logged, return application index of #{appIdentifier}|]
-    v -> error $ "Exception in route TAppHomeAuthR: " ++ (show v)
+    redirectToIndex accessKey = do
+      resources <- toTextUrl $ TAppResourceR appIdentifier ["index.html" :: T.Text]
+      redirect $ T.unpack $ T.concat [resources,"?",accessKeyParam,"=",accessKey]
 
+-- | The slash used to separate folders in the filesystem.
+fsResourceSep :: T.Text
+fsResourceSep = "/"
+
+-- | The folder where application data is stored
+fsResourcePrefix :: T.Text
+fsResourcePrefix = T.concat [fsResourceSep,"tmp",fsResourceSep]
+
+-- | Match a file extension ending with the appropiate mime-type
+extensionMatcher :: Maybe String -> ContentType
+extensionMatcher ext = case ext of
+  (Just ".html") -> "text/html"
+  (Just ".js") -> "text/javascript"
+  _ -> "text/plain"
+
+-- | Mathches a resource given as name and path with the mime type
+-- of the resource. The mime type is matched using the extension
+-- of the file.
+extension :: [T.Text] -> ContentType
+extension [] = "text/plain"
+extension l = extensionMatcher $ (T.unpack $ Prelude.last l) =~~ ("\\.\\w+$" :: ByteString)
+
+-- | Request that delivers a resource belonging to a particular application. Resource means
+-- any file in the application's repository
+getTAppResourceR :: ApplicationIdentifier -> [T.Text] -> Handler (ContentType,Content)
+getTAppResourceR appIdentifier resource = do
+  liftIO $ putStrLn $ (T.unpack $ T.concat [fsResourcePrefix,appIdentifier,path])
+  return $ (extension resource,ContentFile (T.unpack $ T.concat [fsResourcePrefix,appIdentifier,path]) Nothing)
+  where
+    path = T.concat $ foldl (\x y -> x ++ [fsResourceSep] ++ [y]) [] resource

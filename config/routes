@@ -13,8 +13,8 @@
 
 -- APPS
 /app/register                            RegisterTAppR                 GET POST
-/t/#ApplicationIdentifier                TAppHomeAuthR                 GET
-/t/#ApplicationIdentifier/#AccessKey     TAppHomeR                     GET
+/t/#ApplicationIdentifier                TAppHomeR                     GET
+/r/#ApplicationIdentifier/*Texts         TAppResourceR                 GET
 
 -- FILES
 /file/#Username/#AccessKey/*Texts        FileR                         GET PUT
