@@ -1,8 +1,9 @@
-<h1>_{MsgHello}
 
-<h2> Applications!
+<h4>Available applications:
 
-Available applications:
-<ul>
-    $forall Entity _ tapp <- tapps
-        <li><a href="/t/#{tApplicationIdentifier tapp}"> #{tApplicationName tapp} </a>
+<div class="row">   
+$forall Entity _ tapp <- take 3 $ tapps
+    <div class="span4">
+        <h3>#{tApplicationName tapp}
+        <p>#{tApplicationDescription tapp}
+ 

@@ -12,7 +12,7 @@ getHomeR = do
     tapps <- runDB $ selectList [] [Desc TApplicationIdentifier]
     defaultLayout $ do
       aDomId <- lift newIdent
-      setTitle "Welcome To Yesod!"
+      setTitle "Tersusland!"
       $(widgetFile "homepage")
 
 

@@ -9,7 +9,7 @@
 
         <title>#{pageTitle pc}
         <meta name="description" content="">
-        <meta name="author" content="">
+        <meta name="author" content="Tersusland.com">
         <meta name="viewport" content="width=device-width,initial-scale=1">
 
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"/>
@@ -19,15 +19,21 @@
         \<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
         \<![endif]-->
 
+        <style type="text/css">
+          body {
+            padding-top: 60px;
+            padding-bottom: 40px;
+          }
+            .sidebar-nav {
+            padding: 9px 0;
+          }
+
+        <link href="/static/bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
+
         <script>
           document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/,'js');
-    <body>
-        <div class="container">
-            <header>
-            <div id="main" role="main">
-              ^{pageBody pc}
-            <footer>
-                #{extraCopyright $ appExtra $ settings master}
+    <body>         
+        ^{pageBody pc}            
 
         $maybe analytics <- extraAnalytics $ appExtra $ settings master
             <script>
@@ -45,3 +51,4 @@
             <script>
                 window.attachEvent('onload',function(){CFInstall.check({mode:'overlay'})})
         \<![endif]-->
+

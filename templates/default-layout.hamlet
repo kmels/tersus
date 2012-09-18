@@ -1,17 +1,36 @@
-$maybe Entity uid u <- maybeAuth
-    <p>_{MsgUserWelcome}
-        <a href="user-edit">#{userNickname u} 
-        <a href=@{AuthR LogoutR}>_{MsgUserLogout}
-$nothing
-    <p>_{MsgUserLoginText}
-        <a href=@{AuthR LoginR}>_{MsgUserLogin}
-        ?
+<div class="navbar navbar-inverse navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="brand" href="#">Tersusland</a>
 
-$maybe msg <- mmsg
-    <div #message>#{msg}
-^{widget}
+                    <div class="nav-collapse collapse">
+                        <ul class="nav">
+                          <li class="active"><a href="#">Home</a>
+                          <li><a href="@{RegisterTAppR}">Register new application</a>
+                          $maybe Entity uid u <- maybeAuth
+                            <li><a href=@{AuthR LogoutR}>_{MsgUserLogout}</a>
 
-<h3>Navigation:
-<ul>
-    <li><a href="/">Home</a>
-    <li><a href="@{RegisterTAppR}">Register new application</a>
+                        $maybe Entity uid u <- maybeAuth                          
+                             <p class="navbar-text pull-right">_{MsgUserWelcome}
+                                <a class="navbar-link" href="user-edit">#{userNickname u} / 
+                            
+                
+                        $nothing
+                            <p class="navbar-text pull-right">_{MsgUserLoginText}
+                                <a class="navbar-link" href=@{AuthR LoginR}>_{MsgUserLogin}?
+                            
+                            
+<div class="container">
+
+    <!-- Main hero unit for a primary marketing message or call to action -->
+    <div class="hero-unit">
+        <h2>We believe open source is progress
+        <p>Tersusland.com is a platform where web applications run and interact with other web applications you may also use in your favorite browser.</p>
+        <p><a href="/about" class="btn btn-primary btn-large">Learn more &raquo;</a></p>
+    
+    ^{widget}
+
+    <hr>
+
+    <footer>
+            #{extraCopyright $ appExtra $ settings master}
