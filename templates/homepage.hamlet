@@ -2,7 +2,7 @@
 <h4>Available applications:
 
 <div class="row">   
-$forall Entity _ tapp <- take 3 $ tapps
+   $forall Entity _ tapp <- take 3 $ tapps
     <div class="span4">
         <h3>#{tApplicationName tapp}
         <p>#{tApplicationDescription tapp}
