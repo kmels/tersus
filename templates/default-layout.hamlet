@@ -30,7 +30,5 @@
     
     ^{widget}
 
-    <hr>
-
     <footer>
             #{extraCopyright $ appExtra $ settings master}
