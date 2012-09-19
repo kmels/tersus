@@ -5,8 +5,8 @@
 
                     <div class="nav-collapse collapse">
                         <ul class="nav">
-                          <li class="active"><a href="#">Home</a>
-                          <li><a href="@{RegisterTAppR}">Register new application</a>
+                          <li class="active"><a href="/">Home</a>
+                          <li><a href="@{RegisterTAppR}">Register application</a>
                           $maybe Entity uid u <- maybeAuth
                             <li><a href=@{AuthR LogoutR}>_{MsgUserLogout}</a>
 
