@@ -21,13 +21,6 @@
                             
                             
 <div class="container">
-
-    <!-- Main hero unit for a primary marketing message or call to action -->
-    <div class="hero-unit">
-        <h2>We believe open source is progress
-        <p>Tersusland.com is a platform where web applications run and interact with other web applications you may also use in your favorite browser.</p>
-        <p><a href="/about" class="btn btn-primary btn-large">Learn more &raquo;</a></p>
-    
     ^{widget}
 
     <footer>
