@@ -1,8 +1,12 @@
-<h1>_{MsgHello}
+<!-- Main hero unit for a primary marketing message or call to action -->
+<div class="hero-unit">
+    <h2>We believe open source is progress
+    <p>Tersusland.com is a platform where web applications run and interact with other web applications you may also use in your favorite browser.</p>
+    <p><a href="/about" class="btn btn-primary btn-large">Learn more &raquo;</a></p>
 
-<h2> Applications!
-
-Available applications:
-<ul>
-    $forall Entity _ tapp <- tapps
-        <li><a href="/t/#{tApplicationIdentifier tapp}"> #{tApplicationName tapp} </a>
+<div class="row">   
+   $forall Entity _ tapp <- take 3 $ tapps
+    <div class="span4">
+        <h3>#{tApplicationName tapp}
+        <p>#{tApplicationDescription tapp}
+        <p><a class="btn" href="@{TAppHomeR $ tApplicationIdentifier tapp}">Go to application</a></p>

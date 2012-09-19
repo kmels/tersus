@@ -1,17 +1,32 @@
-$maybe Entity uid u <- maybeAuth
-    <p>_{MsgUserWelcome}
-        <a href="user-edit">#{userNickname u} 
-        <a href=@{AuthR LogoutR}>_{MsgUserLogout}
-$nothing
-    <p>_{MsgUserLoginText}
-        <a href=@{AuthR LoginR}>_{MsgUserLogin}
-        ?
+<div class="navbar navbar-inverse navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+    
+                    <a class="brand" href="#">Tersusland</a>
 
-$maybe msg <- mmsg
-    <div #message>#{msg}
-^{widget}
+                    <div class="nav-collapse collapse">
+                        <ul class="nav">
+                          <li class="active"><a href="/">Home</a>
+                          <li><a href="@{RegisterTAppR}">Register application</a>
+                          $maybe Entity uid u <- maybeAuth
+                            <li><a href=@{AuthR LogoutR}>_{MsgUserLogout}</a>
 
-<h3>Navigation:
-<ul>
-    <li><a href="/">Home</a>
-    <li><a href="@{RegisterTAppR}">Register new application</a>
+                        $maybe Entity uid u <- maybeAuth                          
+                             <p class="navbar-text pull-right">_{MsgUserWelcome}
+                                <a class="navbar-link" href="user-edit">#{userNickname u} / 
+                            
+                
+                        $nothing
+                            <p class="navbar-text pull-right">_{MsgUserLoginText}
+                                <a class="navbar-link" href=@{AuthR LoginR}>_{MsgUserLogin}?
+                            
+                            
+<div class="container">
+    ^{widget}
+
+    <footer>
+            #{extraCopyright $ appExtra $ settings master}
