@@ -6,12 +6,13 @@
                         <span class="icon-bar"></span>
                         <span class="icon-bar"></span>
     
-                    <a class="brand" href="#">Tersusland</a>
+                    <a class="brand" href="/">Tersusland</a>
 
                     <div class="nav-collapse collapse">
                         <ul class="nav">
-                          <li class="active"><a href="/">Home</a>
-                          <li><a href="@{RegisterTAppR}">Register application</a>
+                          <li class="active"><a href="/">About</a>                    
+                          <li><a href="@{RegisterTAppR}">Register Application</a>
+                          <li><a href="#TODO">API Usage</a>
                           $maybe Entity uid u <- maybeAuth
                             <li><a href=@{AuthR LogoutR}>_{MsgUserLogout}</a>
 

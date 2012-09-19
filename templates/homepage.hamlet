@@ -1,8 +1,9 @@
 <!-- Main hero unit for a primary marketing message or call to action -->
 <div class="hero-unit">
-    <h2>We believe open source is progress
-    <p>Tersusland.com is a platform where web applications run and interact with other web applications you may also use in your favorite browser.</p>
-    <p><a href="/about" class="btn btn-primary btn-large">Learn more &raquo;</a></p>
+    <h1>We believe Open Source is progress
+    <p>We provide users and developers with <a href="@{AboutR}">transparency</a>. If you are an user, we run applications that access your data. If you develop, you build applications without worrying about file system and interaction with other applications.
+    <p class="pull-right">
+        <a href="/applications" class="btn btn-primary btn-large">Explore applications &raquo;
 
 <div class="row">   
    $forall Entity _ tapp <- take 3 $ tapps
