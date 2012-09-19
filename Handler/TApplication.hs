@@ -103,7 +103,7 @@ getTAppHomeR appIdentifier = do
   maybeUserId <- maybeAuth
   maybeKey <- lookupGetParam accessKeyParam
   case (maybeUserId,maybeKey) of
-    (Just (Entity userId user),Nothing) -> redirectToApplication user
+    (Just (Entity userId user),Nothing) -> (liftIO $ pullChanges app) >>= \_ -> redirectToApplication user
     (_,Just accessKey) -> redirectToIndex accessKey
     _ -> userNotLogged appIdentifier
 
@@ -132,6 +132,7 @@ extensionMatcher :: Maybe String -> ContentType
 extensionMatcher ext = case ext of
   (Just ".html") -> "text/html"
   (Just ".js") -> "text/javascript"
+  (Just ".css") -> "text/css"
   _ -> "text/plain"
 
 -- | Mathches a resource given as name and path with the mime type

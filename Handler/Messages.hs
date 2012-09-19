@@ -15,7 +15,7 @@ import           Data.Array.MArray
 import           Data.HashTable               as H
 import           Data.Maybe                   (fromJust)
 import           Data.Text                    as T
-import           Data.Text.Lazy               (fromChunks)
+import           Data.Text.Lazy               (fromChunks, unpack)
 import           Data.Text.Lazy.Encoding      (encodeUtf8)
 import           Data.Time.Clock              (getCurrentTime)
 import           Import
@@ -155,6 +155,7 @@ postSendAuthMessagesR :: Handler RepJson
 postSendAuthMessagesR = do
   msgs <- lookupPostParam authMessagesPostParam
   -- Try to decode a maybe text. Must be converted to a lazy bytestring beforehand
+  liftIO $ putStrLn $ show $ msgs >>= return . T.unpack
   case msgs >>= decode . encodeUtf8 . fromChunks . return of
     Just msgs' -> mapM deliverAuthMessage msgs' >>= jsonToRepJson . show
     Nothing -> jsonToRepJson $ show InvalidMsgFormat
