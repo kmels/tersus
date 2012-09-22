@@ -13,7 +13,7 @@ Stability   :  stable
 module Handler.User(
   --API calls
   getLoggedUserR, --maybe json logged user
-  getUserAccessKeyR, --(request) plain access key request for given username,appkey
+  getUserAccessKeyR, --(request) plain access key request for given username,appkey  
   --GHandler function helpers  
   verifyUserKey, --validate accesskey for given username
   verifyUserKeyM, --monadic version of verifyUserKey

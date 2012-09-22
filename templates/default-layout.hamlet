@@ -10,11 +10,19 @@
 
                     <div class="nav-collapse collapse">
                         <ul class="nav">
-                          <li class="active"><a href="/">About</a>                    
-                          <li><a href="@{RegisterTAppR}">Register Application</a>
-                          <li><a href="#TODO">API Usage</a>
+                          <li class="active"><a href="/">About</a>
+                          <li class="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Developers <b class="caret"></b></a>
+                            <ul class="dropdown-menu">
+                                <li><a href="@{RegisterTAppR}">Register Application</a>
+                                <li><a href="#TODO">API Usage</a>
+                                $maybe apps <- maybeUserTApps
+                                    <li class="divider">
+                                    <li class="nav-header">Deploy
+                                    <!--$forall app <- apps
+                                    <li><a href="#">#{tApplicationName app}</a>-->
                           $maybe Entity uid u <- maybeAuth
-                            <li><a href=@{AuthR LogoutR}>_{MsgUserLogout}</a>
+                          <li><a href=@{AuthR LogoutR}>_{MsgUserLogout}</a>
 
                         $maybe Entity uid u <- maybeAuth                          
                              <p class="navbar-text pull-right">_{MsgUserWelcome}

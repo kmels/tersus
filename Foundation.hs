@@ -31,6 +31,8 @@ import Model
 import Text.Jasmine (minifym)
 import Web.ClientSession (getKey)
 import Text.Hamlet (hamletFile)
+
+--Tersus
 import Tersus.Cluster.Types
 
 -- | The site argument for your application. This can be a good place to
@@ -98,7 +100,8 @@ instance Yesod App where
         master <- getYesod
         maybeAuth <- maybeAuth
         mmsg <- getMessage
-
+        maybeUserTApps <- maybeUserTApps
+        
         -- We break up the default layout into two components:
         -- default-layout is the contents of the body tag, and
         -- default-layout-wrapper is the entire page. Since the final
@@ -170,3 +173,20 @@ instance RenderMessage App FormMessage where
 -- wiki:
 --
 -- https://github.com/yesodweb/yesod/wiki/Sending-email
+
+-- | Returns a list of tersus applications owned by the logged user
+maybeUserTApps :: ( YesodAuth m
+             , b ~ YesodPersistBackend m
+             , b ~ PersistEntityBackend val
+             , Key b val ~ AuthId m
+             , PersistStore b (GHandler s m)
+             , PersistEntity val
+             , YesodPersist m
+             ) => GHandler s m (Maybe [TApplication])
+maybeUserTApps = do
+  auth <- maybeAuth
+  case auth of
+    Just (Entity userId user) -> return $ Just []
+    _ -> return Nothing
+    
+  
