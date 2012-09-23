@@ -16,11 +16,11 @@
                             <ul class="dropdown-menu">
                                 <li><a href="@{RegisterTAppR}">Register Application</a>
                                 <li><a href="#TODO">API Usage</a>
-                                $maybe apps <- maybeUserTApps
+                                $if length maybeUserTApps > 0
                                     <li class="divider">
                                     <li class="nav-header">Deploy
-                                    <!--$forall app <- apps
-                                    <li><a href="#">#{tApplicationName app}</a>-->
+                                    $forall Just tapp <- maybeUserTApps
+                                        <li><a href="javascript:deploy('#{tApplicationName tapp}');">#{tApplicationName tapp}</a>
                           $maybe Entity uid u <- maybeAuth
                           <li><a href=@{AuthR LogoutR}>_{MsgUserLogout}</a>
 

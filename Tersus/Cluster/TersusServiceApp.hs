@@ -42,7 +42,8 @@ getAppUsersQuery app' = (runMaybeT $ getAppUsersQuery' app') >>= \res -> case re
 getAppUsersQuery' applicationIdentifier = do
   Entity key _ <- maybeGetBy $ UniqueIdentifier applicationIdentifier
   appUsers <- maybeSelectList [UserApplicationApplication <-. [key]] [] -- :: MaybeT
-  mapM (\(Entity _ (UserApplication u _)) ->  maybeGet u) appUsers
+  --TODO Very inefficient, do a join instead.
+  mapM (\(Entity _ (UserApplication u _ _)) ->  maybeGet u) appUsers
   --return [ (\(Entity _ (UserApplication u _)) -> u) x | x <- appUsers]
   --maybeSelectList [UserId <-. [ filterKey u | u <- appUsers]] []
 
@@ -51,3 +52,5 @@ getAppUsersQuery' applicationIdentifier = do
 
 tersusServiceApp :: TersusServerApp
 tersusServiceApp = TersusServerApp tersusServiceApp' tersusServiceUser tersusServiceRecv Nothing
+
+

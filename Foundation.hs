@@ -32,6 +32,11 @@ import Text.Jasmine (minifym)
 import Web.ClientSession (getKey)
 import Text.Hamlet (hamletFile)
 
+import Database.Persist.Query.Join (SelectOneMany (..), selectOneMany)
+import Database.Persist.Query.Join.Sql (runJoin)
+import Control.Monad.Maybe
+import Control.Monad(filterM)
+import Data.Maybe(isJust)
 --Tersus
 import Tersus.Cluster.Types
 
@@ -100,7 +105,9 @@ instance Yesod App where
         master <- getYesod
         maybeAuth <- maybeAuth
         mmsg <- getMessage
-        maybeUserTApps <- maybeUserTApps
+
+        -- | Returns a list of tersus applications owned by the logged user
+        maybeUserTApps <- maybeUserTApps 
         
         -- We break up the default layout into two components:
         -- default-layout is the contents of the body tag, and
@@ -174,19 +181,28 @@ instance RenderMessage App FormMessage where
 --
 -- https://github.com/yesodweb/yesod/wiki/Sending-email
 
--- | Returns a list of tersus applications owned by the logged user
 maybeUserTApps :: ( YesodAuth m
-             , b ~ YesodPersistBackend m
-             , b ~ PersistEntityBackend val
-             , Key b val ~ AuthId m
-             , PersistStore b (GHandler s m)
-             , PersistEntity val
-             , YesodPersist m
-             ) => GHandler s m (Maybe [TApplication])
+                  , val ~ UserGeneric SqlPersist
+                  , b ~ YesodPersistBackend m
+                  , b ~ PersistEntityBackend val
+                  , Key b val ~ AuthId m
+                  , PersistStore b (GHandler s m)
+                  , PersistEntity val
+                  , YesodPersist m
+                  ) => GHandler s m [Maybe TApplication]
 maybeUserTApps = do
   auth <- maybeAuth
   case auth of
-    Just (Entity userId user) -> return $ Just []
-    _ -> return Nothing
-    
-  
+    Just (Entity userId user) -> do 
+      uapps <- runDB $ selectList [UserApplicationUser ==. userId, UserApplicationIsAdmin ==. True] []
+        --TODO Very inefficient, do a join instead.
+      mapM (\(Entity _ (UserApplication _ appid _)) -> do
+                         app <- runDB $ get appid -- ::Maybe TApplication
+                         return $ (app :: Maybe TApplication)
+           ) uapps
+--      return $ (apps :: [Entity TApplication])
+    _ -> return $ []
+
+maybeGet id' = MaybeT $ get id'
+
+

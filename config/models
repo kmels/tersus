@@ -45,3 +45,6 @@ Permission
 UserApplication
     user UserId
     application TApplicationId
+    isAdmin Bool 
+    deriving Show
+
