@@ -1,0 +1,5 @@
+function deploy(appName){
+    if (confirm("Deploying " + appName + ", are you sure?")){
+        $.post('/app/deploy/'+appName, function(r){ alert(r);})
+    }
+}

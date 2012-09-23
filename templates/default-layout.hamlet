@@ -20,7 +20,7 @@
                                     <li class="divider">
                                     <li class="nav-header">Deploy
                                     $forall Just tapp <- maybeUserTApps
-                                        <li><a href="javascript:deploy('#{tApplicationName tapp}');">#{tApplicationName tapp}</a>
+                                        <li><a onClick="javascript:deploy('#{tApplicationIdentifier tapp}');">#{tApplicationName tapp}</a>
                           $maybe Entity uid u <- maybeAuth
                           <li><a href=@{AuthR LogoutR}>_{MsgUserLogout}</a>
 

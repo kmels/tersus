@@ -13,6 +13,8 @@
 
 -- APPS
 /app/register                            RegisterTAppR                 GET POST
+/app/deploy/#ApplicationIdentifier       DeployTAppR                   POST
+
 /t/#ApplicationIdentifier                TAppHomeR                     GET
 /r/#ApplicationIdentifier/*Texts         TAppResourceR                 GET
 

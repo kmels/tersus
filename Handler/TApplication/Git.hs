@@ -23,12 +23,13 @@ repositoryExists tapp = do
 --  $(logDebug) "Repository exists:" ++ show exists
   return exists
 
--- TODO: implement
+-- TODO: implemento
 pullChanges :: TApplication -> IO()
 pullChanges tapp = do
 -- $(logDebug) "Pulling changes.."
   repoExists <- repositoryExists tapp
   when (not repoExists) $ clone tapp
+  when (repoExists) $ pull tapp
   return ()
 
 -- TODO: implement
@@ -43,3 +44,10 @@ clone tapp = C.runResourceT $ do
     cloneCmd = "git clone --quiet " ++ repoUrl' ++ " /tmp/"++ repoName
 --  $(logDebug) "Spawning: " ++ cloneCmd
   sourceCmd cloneCmd C.$$ CB.sinkHandle stdout
+
+pull :: TApplication -> IO ()
+pull tapp = C.runResourceT $ do
+  let
+    repoName = T.unpack $ tApplicationIdentifier tapp
+    pullCmd = "cd /tmp/"++repoName++"; git pull"
+  sourceCmd pullCmd C.$$ CB.sinkHandle stdout

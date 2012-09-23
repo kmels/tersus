@@ -150,3 +150,10 @@ getTAppResourceR appIdentifier resource = do
   return $ (extension resource,ContentFile (T.unpack $ T.concat [fsResourcePrefix,appIdentifier,path]) Nothing)
   where
     path = T.concat $ foldl (\x y -> x ++ [fsResourceSep] ++ [y]) [] resource
+
+-- | Request that deploys an application (it pulls from its repository)
+postDeployTAppR :: ApplicationIdentifier -> Handler RepHtml
+postDeployTAppR appIdentifier  = do
+  Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+  liftIO $ pullChanges tapp
+  defaultLayout [whamlet| deployed|]
