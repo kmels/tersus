@@ -1,0 +1,11 @@
+#{extra}
+
+$if length errormessages > 0
+    $forall message <- errormessages
+        <span class="error">#{message}
+
+<p> Application name: ^{fvInput nameView}
+<p> Application identifier (it will be in /t/app-identifier) : ^{fvInput identifierView}
+<p> Description: : ^{fvInput descriptionView}
+<p> Repository url: ^{fvInput repositoryUrlView} #
+<p> Contact email: ^{fvInput contactEmailView}

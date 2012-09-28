@@ -3,6 +3,8 @@
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE ConstraintKinds       #-}
+
 module Handler.TApplication where
 
 import           Control.Arrow             ((&&&))
@@ -23,6 +25,9 @@ import Text.Regex.Posix
 import Prelude (last)
 import Data.ByteString (ByteString)
 
+import Data.Maybe(isJust)
+import Data.String
+
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
   appLikeName :: Text
@@ -33,41 +38,37 @@ data AppLike = AppLike {
 } deriving Show
 
 -- A monadic form
-registerAppForm :: Html -> MForm App App (FormResult AppLike,Widget)
-registerAppForm extra = do
+type ErrorMessage = Text
+
+registerAppForm :: [ErrorMessage] -> Html -> MForm App App (FormResult AppLike,Widget)
+registerAppForm errormessages extra = do
   (nameRes, nameView) <- mreq textField "{- not used -}" Nothing
   (descriptionRes, descriptionView) <- mreq textField "{- not used-}" Nothing
   (repositoryUrlRes, repositoryUrlView) <- mopt textField "{- not used -}" Nothing
   (contactEmailRes, contactEmailView) <- mreq textField "{- not used -}" Nothing
-  (identifierRes, identifierView) <- mreq textField "{- not used -}" Nothing
+  (identifierRes, identifierView) <- mreq identifierField "{- not used -}" Nothing
   let appLikeResult = AppLike <$> nameRes <*> identifierRes <*> descriptionRes <*> repositoryUrlRes <*> contactEmailRes
-  let widget = do
-            toWidget [lucius|
-            ##{fvId contactEmailView} {
-            width: 3em;
-            }|]
-            [whamlet|#{extra}
-              <p> App name: # ^{fvInput nameView}
-              <p> Url: ^{fvInput identifierView}
-              <p> Description: : ^{fvInput descriptionView}
-              <p> If open source, repository url is: ^{fvInput repositoryUrlView} #
-              <p> contact email ^{fvInput contactEmailView}
-             |]
+  let widget = $(widgetFile "TApplication/registerFormWidget")
   return (appLikeResult, widget)
+  where
+    --field that verifies that an application doesn't exist already.
+    identifierField = checkM validateIdentifier textField
+    validateIdentifier appidfier = do
+       tapp <- runDB $ getBy $ UniqueIdentifier $ appidfier
+       return $ if isJust tapp
+                then Left ("Error: app exists" :: Text)
+                else Right appidfier
+    
 
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
-  (formWidget, enctype) <- generateFormPost registerAppForm
-  defaultLayout [whamlet|
-                 <h1>Register your app:
-                 <form method=post action=@{RegisterTAppR} enctype=#{enctype}>
-                              ^{formWidget}
-                              <input type=submit value="Createapp">
-                              |]
-
+  (formWidget, enctype) <- generateFormPost $ registerAppForm []
+  defaultLayout $(widgetFile "TApplication/register")
+  
+-- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml
 postRegisterTAppR = do
-  ((result, _), _) <- runFormPost registerAppForm
+  ((result, _), _) <- runFormPost $ registerAppForm []
   case result of
     FormSuccess appLike -> do
       -- get data from the form
@@ -76,14 +77,17 @@ postRegisterTAppR = do
 
       creationDate <- liftIO getCurrentTime --ask date
       appKey <- liftIO $ newRandomKey 32  --create a new appkey
-
+      
       --insert in database
       _ <- runDB $ insert $ TApplication appName appIdentifier appDescription appRepositoryUrl appContactEmail creationDate appKey
-
-      defaultLayout $ [whamlet|
-      <h1>Received, your generated key: #{appKey}
-       |]
-    _ -> defaultLayout $ [whamlet|<p>Invalid input|]
+      defaultLayout $(widgetFile "TApplication/created")
+      
+    --form isn't success
+    FormFailure errorMessages -> do
+      (formWidget, enctype) <- generateFormPost $ registerAppForm errorMessages
+      defaultLayout $(widgetFile "TApplication/register")
+    -- form missing  
+    _ -> getRegisterTAppR
 
 userNotLogged :: ApplicationIdentifier -> Handler RepHtml
 userNotLogged appIdentifier = defaultLayout $ do [whamlet|<h3>TODO: user not logged, application index of #{appIdentifier}|]
@@ -156,4 +160,4 @@ postDeployTAppR :: ApplicationIdentifier -> Handler RepHtml
 postDeployTAppR appIdentifier  = do
   Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
   liftIO $ pullChanges tapp
-  defaultLayout [whamlet| deployed|]
+  defaultLayout [whamlet| TODO deployed|]

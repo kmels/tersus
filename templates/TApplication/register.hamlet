@@ -1,0 +1,4 @@
+<h1>Register your app:
+<form method=post action=@{RegisterTAppR} enctype=#{enctype}>
+    ^{formWidget}
+    <input type=submit value="Create">
