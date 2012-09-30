@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 module Tersus.Cluster.TersusService where
 
 -- TersusService
@@ -16,8 +17,8 @@ import Remote.Process (ProcessM,forkProcess)
 import Remote (receiveChannel,newChannel,sendChannel)
 import Control.Monad.IO.Class
 -- import Control.Monad ()
-import Control.Monad (forever,mapM_)
-import Model (AppInstance,MessageResult(Delivered,ENoAppInstance),getAppInstance,Address(Address),TApplication,User,TMessage,getSendAppInstance)
+import Control.Monad (forever)
+import Model (AppInstance,MessageResult(Delivered),getAppInstance,Address(Address),TApplication,User,TMessage,getSendAppInstance)
 import Tersus.Cluster.MessageBackend (sendNotifications)
 import Remote (ReceivePort)
 import Data.Typeable.Internal (Typeable)
@@ -29,6 +30,9 @@ import Tersus.Global
 import Yesod.Default.Config (withYamlEnvironment)
 import Control.Monad.Maybe
 import Database.Persist (getBy,selectList,get)
+
+import Database.Persist.Query.Internal(Filter,PersistQuery,SelectOpt)
+import Database.Persist.Store(Key,PersistEntity,PersistEntityBackend,PersistUnique,PersistStore,Unique)
 
 -- Represents a tersus server side app.
 data TersusServerApp = TersusServerApp
@@ -95,7 +99,7 @@ mkDbConf tersusEnv = liftIO $ do
   poolConf <- Database.Persist.Store.createPoolConfig dbConn
   return (dbConn,poolConf)
   
-
+runQuery :: forall a. SqlPersist IO a -> TersusServiceM a
 runQuery query = TersusServiceM $ runQuery' query
 
 runQuery' :: SqlPersist IO a -> TersusService -> ProcessM (TersusService,a)
@@ -187,10 +191,27 @@ acknowledgeMsg msgEnv = TersusServiceM $ acknowledgeMsg' msgEnv
 
 type MaybeQuery = MaybeT (SqlPersist IO)
 
+maybeGetBy :: forall (m :: * -> *) val. (PersistEntity val,
+                                         PersistUnique
+                                         (PersistEntityBackend val) m) =>
+              Unique val (PersistEntityBackend val)
+              -> MaybeT
+              (PersistEntityBackend val m) (Database.Persist.Store.Entity val)
 maybeGetBy criterion = MaybeT $ getBy criterion
 
+maybeGet :: forall a (backend :: (* -> *) -> * -> *) (m :: * -> *). (PersistEntity a, PersistStore backend m) =>
+                           Key backend a -> MaybeT (backend m) a
 maybeGet id' = MaybeT $ get id'
 
+maybeSelectList :: forall val (m :: * -> *).
+                   (PersistEntity val,
+                    PersistQuery
+                    (PersistEntityBackend val) m) =>
+                   [Filter val]
+                   -> [SelectOpt val]
+                   -> MaybeT
+                   (Database.Persist.Store.PersistEntityBackend val m)
+                   [Database.Persist.Store.Entity val]
 maybeSelectList l1 l2 = MaybeT $ selectList l1 l2 >>= \res -> case res of
                                                                 [] -> return Nothing
                                                                 a -> return $ Just a

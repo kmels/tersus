@@ -8,26 +8,16 @@
 module Handler.TApplication where
 
 import           Control.Arrow             ((&&&))
-import           Control.Monad             (when)
-import           Control.Monad.Trans.Class (lift)
-import           Data.Maybe                (isNothing)
 import qualified Data.Text                 as T
 import           Data.Time.Clock           (getCurrentTime)
 import           Handler.Messages          (initApplication)
 import           Handler.TApplication.Git  (pullChanges)
 import           Import
-import           Network.HTTP.Types        (status200)
---import           Network.Wai
-import           Tersus.AccessKeys         (decompose, newAccessKey,
-                                            newRandomKey)
-import           Yesod.Auth
-import qualified Text.Regex.TDFA as Regex
+import           Tersus.AccessKeys         (newAccessKey,newRandomKey)
 --import Text.Regex.TDFA
-import Prelude (last)
-import Data.ByteString (ByteString)
 
-import Data.Maybe(isJust)
-import Data.String
+import           Data.Maybe(isJust)
+import           Prelude(last)
 
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
@@ -59,11 +49,11 @@ registerAppForm errormessages extra = do
        return $ if isJust tapp
                 then Left ("Error: app exists" :: Text)
                 else Right appidfier
-    --field that verifies a valid email
-    emailField = check validateEmail textField
-    validateEmail e = if (validEmail (T.unpack e)) then Left (e :: Text) else Right (e :: Text)
+    --TODO: field that verifies a valid email
+    --emailField = check validateEmail textField
+    --validateEmail e = if (validEmail (T.unpack e)) then Left (e :: Text) else Right (e :: Text)
 
---validEmail :: String -> Bool
+validEmail :: String -> Bool
 --TODO: fix regex
 validEmail = \_ -> True
 --validEmail t = ("asdf" Regex.=~ "[a-zA-Z0-9]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9]+" :: Bool)
@@ -111,17 +101,17 @@ accessKeyParam = "accessKey"
 -- gets redirected to the index.html of the application.
 getTAppHomeR :: ApplicationIdentifier -> Handler RepHtml
 getTAppHomeR appIdentifier = do
-  Entity _ app <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+  Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
   maybeUserId <- maybeAuth
   maybeKey <- lookupGetParam accessKeyParam
   case (maybeUserId,maybeKey) of
-    (Just (Entity userId user),Nothing) -> (liftIO $ pullChanges app) >>= \_ -> redirectToApplication user
+    (Just (Entity _ u),Nothing) -> (liftIO $ pullChanges tapp) >>= \_ -> redirectToApplication u
     (_,Just accessKey) -> redirectToIndex accessKey
     _ -> userNotLogged appIdentifier
 
   where
-    redirectToApplication user = do
-      let nickname = userNickname user
+    redirectToApplication u = do
+      let nickname = userNickname u
       accessKey <- liftIO $ newAccessKey nickname appIdentifier
       initApplication $ AppInstance (T.unpack $ nickname) (T.unpack $ appIdentifier)
       home <- toTextUrl $ TAppHomeR appIdentifier
@@ -170,4 +160,5 @@ postDeployTAppR :: ApplicationIdentifier -> Handler RepHtml
 postDeployTAppR appIdentifier  = do
   Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
   liftIO $ pullChanges tapp
-  defaultLayout [whamlet| TODO deployed|]
+  defaultLayout $ [whamlet||]
+  

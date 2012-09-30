@@ -7,7 +7,6 @@ import Prelude
 import Import
 import Data.Aeson as J
 import qualified Data.Text as T
-import Database.Persist.Store (Entity)
 import Data.Text.Lazy.Internal (foldlChunks)
 import Data.Text.Lazy.Internal as LT (Text)
 

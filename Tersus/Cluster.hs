@@ -104,7 +104,7 @@ initTersusCluster "T1" = do
   peers <- getPeers
 --  t2s <- return $ findPeerByRole peers tersusClusterRole
   t2s <- getSelfNode >>= return . return
-  pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusInstance)))  t2s
+  _ <- mapM (\p -> (spawn p $(mkClosure 'createTersusInstance)))  t2s
 --  mapM_ (\p -> send p pids) pids
   receiveWait []
 
@@ -118,7 +118,7 @@ initTersusClusterDevel "T1" = do
   peers <- getPeers
   -- t2s <- return $ findPeerByRole peers tersusClusterRole
   t2s <- getSelfNode >>= return . return
-  pids <- mapM (\p -> (spawn p $(mkClosure 'createTersusDevelInstance)))  t2s
+  _ <- mapM (\p -> (spawn p $(mkClosure 'createTersusDevelInstance)))  t2s
   -- mapM_ (\p -> send p pids) pids
   -- forkProcess createTersusDevelInstance
   liftIO $ loop
