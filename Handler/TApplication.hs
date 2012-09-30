@@ -21,7 +21,8 @@ import           Network.HTTP.Types        (status200)
 import           Tersus.AccessKeys         (decompose, newAccessKey,
                                             newRandomKey)
 import           Yesod.Auth
-import Text.Regex.Posix
+import qualified Text.Regex.TDFA as Regex
+--import Text.Regex.TDFA
 import Prelude (last)
 import Data.ByteString (ByteString)
 
@@ -45,7 +46,7 @@ registerAppForm errormessages extra = do
   (nameRes, nameView) <- mreq textField "{- not used -}" Nothing
   (descriptionRes, descriptionView) <- mreq textField "{- not used-}" Nothing
   (repositoryUrlRes, repositoryUrlView) <- mopt textField "{- not used -}" Nothing
-  (contactEmailRes, contactEmailView) <- mreq textField "{- not used -}" Nothing
+  (contactEmailRes, contactEmailView) <- mreq emailField "{- not used -}" Nothing
   (identifierRes, identifierView) <- mreq identifierField "{- not used -}" Nothing
   let appLikeResult = AppLike <$> nameRes <*> identifierRes <*> descriptionRes <*> repositoryUrlRes <*> contactEmailRes
   let widget = $(widgetFile "TApplication/registerFormWidget")
@@ -58,8 +59,15 @@ registerAppForm errormessages extra = do
        return $ if isJust tapp
                 then Left ("Error: app exists" :: Text)
                 else Right appidfier
-    
+    --field that verifies a valid email
+    emailField = check validateEmail textField
+    validateEmail e = if (validEmail (T.unpack e)) then Left (e :: Text) else Right (e :: Text)
 
+--validEmail :: String -> Bool
+--TODO: fix regex
+validEmail = \_ -> True
+--validEmail t = ("asdf" Regex.=~ "[a-zA-Z0-9]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9]+" :: Bool)
+        
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
   (formWidget, enctype) <- generateFormPost $ registerAppForm []
@@ -144,7 +152,9 @@ extensionMatcher ext = case ext of
 -- of the file.
 extension :: [T.Text] -> ContentType
 extension [] = "text/plain"
-extension l = extensionMatcher $ (T.unpack $ Prelude.last l) =~~ ("\\.\\w+$" :: ByteString)
+--extension l = extensionMatcher $ (T.unpack $ Prelude.last l) Regex.=~ ("\\.\\w+$" :: String)
+--TODO: fix regex
+extension l = extensionMatcher $ Just $ (takeWhile (/= '.') $ T.unpack $ Prelude.last l) 
 
 -- | Request that delivers a resource belonging to a particular application. Resource means
 -- any file in the application's repository
