@@ -112,6 +112,7 @@ library
                  , yesod-json                    >= 1.1        && < 1.2
                  , extensible-exceptions         >= 0.1.1.4
                  , base64-bytestring             >= 0.1.2
+                 , regex-tdfa	                 >= 1.1.8
 --added by neto
                  , aeson                         >= 0.6.0.0                 
                  , remote                        >= 0.1.1
@@ -122,7 +123,6 @@ library
                  , stm                           >= 2.3
                  , unix                          >= 2.5.1
                  , MaybeT                        >= 0.1
-                 , regex-posix                   >= 0.90
 
 executable         tersus
     if flag(library-only)

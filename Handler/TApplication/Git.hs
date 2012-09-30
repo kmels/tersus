@@ -26,7 +26,7 @@ repositoryExists tapp = do
 -- TODO: implemento
 pullChanges :: TApplication -> IO()
 pullChanges tapp = do
--- $(logDebug) "Pulling changes.."
+--  $(logDebug) "Pulling changes.."
   repoExists <- repositoryExists tapp
   when (not repoExists) $ clone tapp
   when (repoExists) $ pull tapp

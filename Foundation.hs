@@ -106,7 +106,7 @@ instance Yesod App where
         maybeAuth <- maybeAuth
         mmsg <- getMessage
 
-        -- | Returns a list of tersus applications owned by the logged user
+        -- Returns a list of tersus applications owned by the logged user
         maybeUserTApps <- maybeUserTApps 
         
         -- We break up the default layout into two components:
