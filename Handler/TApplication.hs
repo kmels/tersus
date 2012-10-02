@@ -49,12 +49,6 @@ registerAppForm errormessages extra = do
        return $ if isJust tapp
                 then Left ("Error: app exists" :: Text)
                 else Right appidfier
-    --TODO: field that verifies a valid email
-    --emailField = check validateEmail textField
-    --validateEmail e = if (validEmail (T.unpack e)) then Left (e :: Text) else Right (e :: Text)
-
-validEmail :: String -> Bool
-validEmail t = t =~ ("[a-zA-Z0-9]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9]+" :: ByteString)
 
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
