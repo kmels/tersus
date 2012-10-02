@@ -10,7 +10,6 @@ import qualified Data.Conduit.Binary  as CB
 import           Data.Conduit.Process
 import qualified Data.Text            as T
 import           Import
-import           Model
 import           Prelude
 import           System.Directory     (doesDirectoryExist)
 import           System.IO

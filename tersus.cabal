@@ -37,7 +37,6 @@ library
                      TFile.FilesystemUtils
                      Handler.Home
                      Handler.Messages
-                     Handler.JavascriptAPI
                      Handler.TApplication
                      Handler.TApplication.Git
                      Handler.TFile
