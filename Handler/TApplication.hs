@@ -1,31 +1,31 @@
+{-# LANGUAGE ConstraintKinds       #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE ConstraintKinds       #-}
 
 module Handler.TApplication where
 
-import           Control.Arrow             ((&&&))
-import qualified Data.Text                 as T
-import           Data.Time.Clock           (getCurrentTime)
-import           Handler.Messages          (initApplication)
-import           Handler.TApplication.Git  (pullChanges)
+import           Control.Arrow            ((&&&))
+import           Data.ByteString          (ByteString)
+import           Data.Maybe               (isJust)
+import qualified Data.Text                as T
+import           Data.Time.Clock          (getCurrentTime)
+import           Handler.Messages         (initApplication)
+import           Handler.TApplication.Git (pullChanges)
 import           Import
-import           Tersus.AccessKeys         (newAccessKey,newRandomKey)
---import Text.Regex.TDFA
-
-import           Data.Maybe(isJust)
-import           Prelude(last)
+import           Prelude                  (last)
+import           Tersus.AccessKeys        (newAccessKey, newRandomKey)
+import           Text.Regex.TDFA
 
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
-  appLikeName :: Text
-  , appLikeIdentifier :: Text
-  , appLikeDescription :: Text
+  appLikeName            :: Text
+  , appLikeIdentifier    :: Text
+  , appLikeDescription   :: Text
   , appLikeRepositoryURL :: Maybe Text
-  , appLikeContactEmail :: Text
+  , appLikeContactEmail  :: Text
 } deriving Show
 
 -- A monadic form
@@ -54,15 +54,13 @@ registerAppForm errormessages extra = do
     --validateEmail e = if (validEmail (T.unpack e)) then Left (e :: Text) else Right (e :: Text)
 
 validEmail :: String -> Bool
---TODO: fix regex
-validEmail = \_ -> True
---validEmail t = ("asdf" Regex.=~ "[a-zA-Z0-9]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9]+" :: Bool)
-        
+validEmail t = t =~ ("[a-zA-Z0-9]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9]+" :: ByteString)
+
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
   (formWidget, enctype) <- generateFormPost $ registerAppForm []
   defaultLayout $(widgetFile "TApplication/register")
-  
+
 -- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml
 postRegisterTAppR = do
@@ -75,16 +73,16 @@ postRegisterTAppR = do
 
       creationDate <- liftIO getCurrentTime --ask date
       appKey <- liftIO $ newRandomKey 32  --create a new appkey
-      
+
       --insert in database
       _ <- runDB $ insert $ TApplication appName appIdentifier appDescription appRepositoryUrl appContactEmail creationDate appKey
       defaultLayout $(widgetFile "TApplication/created")
-      
+
     --form isn't success
     FormFailure errorMessages -> do
       (formWidget, enctype) <- generateFormPost $ registerAppForm errorMessages
       defaultLayout $(widgetFile "TApplication/register")
-    -- form missing  
+    -- form missing
     _ -> getRegisterTAppR
 
 userNotLogged :: ApplicationIdentifier -> Handler RepHtml
@@ -142,15 +140,12 @@ extensionMatcher ext = case ext of
 -- of the file.
 extension :: [T.Text] -> ContentType
 extension [] = "text/plain"
---extension l = extensionMatcher $ (T.unpack $ Prelude.last l) Regex.=~ ("\\.\\w+$" :: String)
---TODO: fix regex
-extension l = extensionMatcher $ Just $ (takeWhile (/= '.') $ T.unpack $ Prelude.last l) 
+extension l = extensionMatcher $ (T.unpack $ Prelude.last l) =~~ ("\\.[a-zA-Z0-9]+$" :: ByteString)
 
 -- | Request that delivers a resource belonging to a particular application. Resource means
 -- any file in the application's repository
 getTAppResourceR :: ApplicationIdentifier -> [T.Text] -> Handler (ContentType,Content)
 getTAppResourceR appIdentifier resource = do
-  liftIO $ putStrLn $ (T.unpack $ T.concat [fsResourcePrefix,appIdentifier,path])
   return $ (extension resource,ContentFile (T.unpack $ T.concat [fsResourcePrefix,appIdentifier,path]) Nothing)
   where
     path = T.concat $ foldl (\x y -> x ++ [fsResourceSep] ++ [y]) [] resource
@@ -161,4 +156,4 @@ postDeployTAppR appIdentifier  = do
   Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
   liftIO $ pullChanges tapp
   defaultLayout $ [whamlet||]
-  
+
