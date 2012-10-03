@@ -4,8 +4,8 @@ license:           BSD3
 license-file:      LICENSE
 author:            Carlos López Camey <c.lopez@kmels.net>, Ernesto Rodríguez <neto@netogallo.me>
 maintainer:        Carlos López Camey <c.lopez@kmels.net>, Ernesto Rodríguez <neto@netogallo.me>
-synopsis:          The greatest Yesod web application ever.
-description:       I'm sure you can say something clever here if you try.
+synopsis:          We believe Open Source is progress
+description:       A web platform that provides applications a file system and a messaging system with other applications.
 category:          Web
 stability:         Experimental
 cabal-version:     >= 1.8
