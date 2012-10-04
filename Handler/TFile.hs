@@ -3,16 +3,23 @@
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE DoAndIfThenElse          #-}
+{-# LANGUAGE UndecidableInstances          #-}
 module Handler.TFile where
 
 
-import           Control.Exception.Extensible hiding (Handler, handle)
-import           Data.Maybe
-import           Data.Text                    as T
-import           Handler.User                 (verifyUserKeyM)
-import           Import                       hiding (catch)
-import           Prelude                      (writeFile)
-import           System.Directory             (createDirectoryIfMissing)
+import Control.Exception.Extensible hiding (Handler, handle)
+import Control.Monad(when)
+import Data.Maybe
+import Data.Text                    as T
+import Handler.User                 (verifyUserKeyM)
+import Import                       hiding (catch)
+import Prelude                      (writeFile,last)
+import System.Directory             (createDirectoryIfMissing,getDirectoryContents,doesDirectoryExist,doesFileExist)
+import           Text.Regex.TDFA
+import           Data.ByteString          (ByteString)
+import Data.Aeson as J
+import Yesod.Json(Value(..))
 {- Handler methods for operations on files. -}
 
 -- A way to convert between urls and a file path.
@@ -23,15 +30,45 @@ instance PathMultiPiece TFilePath where
     fromPathMultiPiece (p:ps) = Just $ TFilePath ([p] ++ ps)
     fromPathMultiPiece _ = Nothing
 
-getFileR :: Text -> AccessKey -> Path -> Handler RepPlain
+-- | Returns the json content type according to RFC 4627
+jsonContentType :: ContentType
+jsonContentType = "application/json"
+
+-- | Finds an appropiate mime-type given a filename (or path to filename) with an extension. Returns "text/plain" as default.
+filenameContentType :: FilePath -> ContentType
+filenameContentType f = let
+  ext :: Maybe String
+  ext = f =~~ ("\\.[a-zA-Z0-9]+$" :: String)
+  in case ext of
+    Just ".html" -> "text/html"
+    Just ".js" -> "text/javascript"
+    Just ".css" -> "text/css"
+    _ -> "text/plain"
+
+newtype JsonFileList = FileList [FilePath]
+
+instance ToJSON JsonFileList where
+  toJSON (FileList fs) = array (Import.filter (\f -> f /= "." && f /= "..") fs) -- drop the "." and ".."
+  
+instance ToContent JsonFileList where
+  toContent = toContent . toJSON
+              
+getFileR :: Text -> AccessKey -> Path -> Handler (ContentType,Content)
 getFileR username' accessToken path = do
   maybeValidUser <- accessToken `verifyUserKeyM` username'
   case maybeValidUser of
-    Just _ -> do
-      let fsPath = T.unpack . pathToText $ path `fullPathForUser` username'
+    Just username'' -> do
+      let fsPath = T.unpack . pathToText $ path `fullPathForUser` username''
       liftIO $ putStrLn $ "Looking: " ++ fsPath
-      return $ RepPlain $ ContentFile fsPath Nothing
-    _ -> error("No user")
+      isDirectory <- liftIO $ doesDirectoryExist fsPath
+      fileExists <- liftIO $ doesFileExist fsPath
+      
+      if isDirectory
+      then liftIO $ getDirectoryContents fsPath >>= \fs -> return $ (jsonContentType, toContent $ FileList fs)
+      else if fileExists
+      then return $ (filenameContentType fsPath, ContentFile fsPath Nothing)
+      else return $ (typeJson, toContent ("todo: error" :: String) )
+    _ -> return $ (typeJson, toContent ("todo: error, invalid access key for user" :: String))
 
 -- Temporal function to test uploading of documents
 putFileR :: Username -> AccessKey -> Path -> Handler RepJson

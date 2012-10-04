@@ -14,11 +14,11 @@ import qualified Data.Text                as T
 import           Data.Time.Clock          (getCurrentTime)
 import           Handler.Messages         (initApplication)
 import           Handler.TApplication.Git (pullChanges)
+import           Handler.TFile(filenameContentType)
 import           Import
 import           Prelude                  (last)
 import           Tersus.AccessKeys        (newAccessKey, newRandomKey)
 import           Text.Regex.TDFA
-
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
   appLikeName            :: Text
@@ -121,24 +121,17 @@ fsResourceSep = "/"
 fsResourcePrefix :: T.Text
 fsResourcePrefix = T.concat [fsResourceSep,"tmp",fsResourceSep]
 
--- | Match a file extension ending with the appropiate mime-type
-extensionMatcher :: Maybe String -> ContentType
-extensionMatcher ext = case ext of
-  (Just ".html") -> "text/html"
-  (Just ".js") -> "text/javascript"
-  (Just ".css") -> "text/css"
-  _ -> "text/plain"
-
--- | Mathches a resource given as name and path with the mime type
+-- | Matches a resource given as name and path with the mime type
 -- of the resource. The mime type is matched using the extension
 -- of the file.
 extension :: [T.Text] -> ContentType
-extension [] = "text/plain"
-extension l = extensionMatcher $ (T.unpack $ Prelude.last l) =~~ ("\\.[a-zA-Z0-9]+$" :: ByteString)
+extension = filenameContentType . T.unpack . Prelude.last
 
 -- | Request that delivers a resource belonging to a particular application. Resource means
 -- any file in the application's repository
 getTAppResourceR :: ApplicationIdentifier -> [T.Text] -> Handler (ContentType,Content)
+getTAppResourceR _ [] = do
+  return $ ("text/plain",toContent ("TODO: error, invalid resource " :: String))
 getTAppResourceR appIdentifier resource = do
   return $ (extension resource,ContentFile (T.unpack $ T.concat [fsResourcePrefix,appIdentifier,path]) Nothing)
   where
