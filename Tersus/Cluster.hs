@@ -6,8 +6,7 @@ module Tersus.Cluster where
 -- functions.
 
 import           Application
-import           Control.Concurrent                                 (forkIO,
-                                                                     threadDelay)
+import           Control.Concurrent                                 (threadDelay)
 import           Control.Concurrent.STM                             (atomically,
                                                                      newTChan)
 import           Control.Concurrent.STM.TVar                        (newTVar)
@@ -103,16 +102,16 @@ terminateDevel = exitSuccess
 createTersusInstance :: Backend -> Process ()
 createTersusInstance back = do
   (sChannel,rChannel,nChannel,appEnvs,addresses,(mSendPort,mRecvPort),(aSendPort,aRecvPort),(nSendPort,nRecvPort),clusterList) <- initDataStructures
-
-  _ <- liftIO $ forkIO $ defaultMain (fromArgs parseExtra) $ makeApplicationWrapper (sChannel,rChannel,nChannel,appEnvs,aSendPort)
   _ <- runTersusMessaging back (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvPort) sChannel rChannel nChannel appEnvs addresses clusterList 1
+  _ <- spawnLocal $ makeTersusService tersusServiceApp sChannel clusterList Development
+  liftIO $ defaultMain (fromArgs parseExtra) $ makeApplicationWrapper (sChannel,rChannel,nChannel,appEnvs,aSendPort)
   return ()
 
 -- |Functions to initialize all the tersus nodes and distribute the ProcessId of such nodes
 -- Development and producction version of the function
 initTersusCluster :: Backend -> Process ()
 initTersusCluster back = do
-  createTersusDevelInstance back
+  createTersusInstance back
   receiveWait []
 
 -- | Initialize a Tersus instance running on top of Cloud Haskell
@@ -127,6 +126,7 @@ initTersusClusterDevel back = do
 -- called by main
 tersusProducction :: IO ()
 tersusProducction = do
+  putStrLn "Init Production"
   back <- initializeBackend "127.0.0.1" "8000" initRemoteTable
   node <- newLocalNode back
   runProcess node $ initTersusCluster back
