@@ -9,20 +9,18 @@ module Handler.Messages where
 import           Control.Concurrent.STM       (atomically, modifyTVar)
 import           Control.Concurrent.STM.TChan
 import           Control.Concurrent.STM.TMVar
-import           Control.Monad                (mapM)
 import           Data.Aeson                   as D
 import           Data.Array.MArray
 import           Data.HashTable               as H
 import           Data.Maybe                   (fromJust)
 import           Data.Text                    as T
-import           Data.Text.Lazy               (fromChunks, unpack)
+import           Data.Text.Lazy               (fromChunks)
 import           Data.Text.Lazy.Encoding      (encodeUtf8)
 import           Data.Time.Clock              (getCurrentTime)
 import           Import
-import           Model
-import           Model.AuthMessages
-import           Model.TersusResult
-import           Model.TMessage
+import           Model                        ()
+import           Model.AuthMessages           ()
+import           Model.TMessage               ()
 import           System.Timeout               (timeout)
 import           Tersus.AccessKeys            (decompose)
 import           Tersus.Cluster.Types
@@ -70,7 +68,7 @@ deliverTMessage message = do
   where
     writeMsgInBuffer _ _ Nothing = return EInvalidAppKey
     writeMsgInBuffer channel port (Just msgBuffer) = do
-      status <- liftIO $ queueMessage msgBuffer channel (message,port)
+      _ <- liftIO $ queueMessage msgBuffer channel (message,port)
       let
         appInstance = getSendAppInstance message
       waitMessage appInstance (generateHash message)
@@ -89,7 +87,7 @@ waitMessage appInstance hashCode = do
     rmHash hash ((hash',msgIndex):t)
            | hash == hash' = t
            | otherwise = (hash',msgIndex) : (rmHash hash t)
-    rmHash hash _ = []
+    rmHash _ _ = []
     -- Lookup the hashcode in the message buffer if such
     -- buffer could be obtained from the app key
     hashCodeLookup Nothing = return EInvalidAppKey
@@ -99,7 +97,7 @@ waitMessage appInstance hashCode = do
         statusVar <- readArray statusVars msgIndex
         atomically $ do
           result <- takeTMVar statusVar
-          mapping <- modifyTVar mappings (rmHash hashCode)
+          modifyTVar mappings (rmHash hashCode)
           writeTChan availableBuff (msgIndex,statusVar)
           return result
       in

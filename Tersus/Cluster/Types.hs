@@ -6,7 +6,7 @@ import           Control.Concurrent.STM       (atomically)
 import           Control.Concurrent.STM.TChan
 import           Control.Concurrent.STM.TMVar
 import           Control.Concurrent.STM.TVar  (TVar, newTVar, readTVar)
-import           Control.Monad.Trans          (liftIO)
+import           Control.Distributed.Process
 import           Data.Array.IO
 import qualified Data.Binary                  as B
 import           Data.Hash.MD5
@@ -16,7 +16,6 @@ import           Data.Text                    as T
 import           Data.Typeable.Internal       (Typeable)
 import           Model
 import           Prelude
-import           Remote
 
 type THashCode = String
 
@@ -178,6 +177,10 @@ type NotificationsChannel = TChan TersusSimpleNotification
 -- to whom the registration of a new app instance should
 -- be informed.
 type TersusClusterList = TVar [(NotificationsSendPort,ProcessId)]
+
+-- | Time that will be used for the getPeers Function
+peerSearch :: Int
+peerSearch = 5000
 
 tersusClusterRole :: String
 tersusClusterRole = "T1"

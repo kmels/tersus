@@ -114,7 +114,8 @@ library
                  , regex-tdfa	                 >= 1.1.8
 --added by neto
                  , aeson                         >= 0.6.0.0                 
-                 , remote                        >= 0.1.1
+                 , distributed-process           >= 0.4.0
+                 , distributed-process-simplelocalnet >= 0.2.0.6
                  , binary                        >= 0.5.1
                  , mtl                           >= 2.0.0.0
                  , MissingH                      >= 1.1.1.0

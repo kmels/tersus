@@ -31,12 +31,8 @@ import Model
 import Text.Jasmine (minifym)
 import Web.ClientSession (getKey)
 import Text.Hamlet (hamletFile)
-
 import Database.Persist.Query.Join (SelectOneMany (..), selectOneMany)
-import Database.Persist.Query.Join.Sql (runJoin)
 import Control.Monad.Maybe
-import Control.Monad(filterM)
-import Data.Maybe(isJust)
 --Tersus
 import Tersus.Cluster.Types
 
