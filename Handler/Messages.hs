@@ -6,7 +6,8 @@ module Handler.Messages where
 
 --Description: Functions to handle the messaging system of Tersus.
 
-import           Control.Concurrent.STM       (atomically, modifyTVar)
+import           Blaze.ByteString.Builder     (fromLazyByteString)
+import           Control.Concurrent.STM       (atomically, modifyTVar,STM)
 import           Control.Concurrent.STM.TChan
 import           Control.Concurrent.STM.TMVar
 import           Data.Aeson                   as D
@@ -24,6 +25,7 @@ import           Model.TMessage               ()
 import           System.Timeout               (timeout)
 import           Tersus.AccessKeys            (decompose)
 import           Tersus.Cluster.Types
+import Network.Wai.EventSource (ServerEvent (..), eventSourceAppIO)
 
 -- | Creates an appInstance envoiernment and registers that
 -- envoiernment with the provided appInstance
@@ -104,7 +106,7 @@ waitMessage appInstance hashCode = do
        lookupIndex hashCode mappings >>= readMsgStatus
 
 
--- Add a message to the privided message queue channel. Create a
+-- | Add a message to the privided message queue channel. Create a
 -- MVar to write the status code of the received message and
 -- Save that MVar in the message status table so the receive request
 -- can write the status once the message is processed
@@ -123,14 +125,17 @@ queueMessage msgBuffer channel (message,port) = atomically $ do
 receiveMessageTimeout :: Int
 receiveMessageTimeout = 30 * 1000000 -- 30 Seconds
 
+-- | Load all the messages from a mailbox and acknowledge them
+-- on the given delivery channel
+loadMessages :: TChan TMessageEnvelope -> TChan TMessageEnvelope -> STM [TMessageEnvelope]
 loadMessages mailBox deliveryChan = do
-  m <- readTChan mailBox
+  msg <- readTChan mailBox
   rest <- loadAll
-  mapM_ (\m -> writeTChan deliveryChan m) (m:rest)
-  return (m:rest)
+  mapM_ (\m -> writeTChan deliveryChan m) (msg:rest)
+  return (msg:rest)
 
   where
-    loadAll = isEmptyTChan mailBox >>= \empty -> case empty of
+    loadAll = isEmptyTChan mailBox >>= \isEmpty -> case isEmpty of
       True -> return []
       False -> do
         msg <- readTChan mailBox
@@ -169,17 +174,55 @@ postSendAuthMessagesR = do
     Just msgs' -> mapM deliverAuthMessage msgs' >>= jsonToRepJson . show
     Nothing -> jsonToRepJson $ show InvalidMsgFormat
 
+-- | Try to decrypt the given encryption key given as a get parameter,
+-- return the user and app or nothing if decryption fails
+receiveMessageAuth :: Handler (Maybe (Username,ApplicationIdentifier))
+receiveMessageAuth = do
+  key <- lookupGetParam appKeyGet
+  return $ key >>= decompose
+
+-- | Create a server event from a MailBox which also acknowledges
+-- the messages as received in the given message queue
+messagesEventSource :: MailBox -> TMessageQueue -> IO ServerEvent
+messagesEventSource mailBox deliveryChan = do
+  msgs' <- atomically $ loadMessages mailBox deliveryChan
+  let
+    msgs = Import.map (\(m,_) -> m) msgs'
+  return $ ServerEvent Nothing Nothing $ return $ fromLazyByteString $ encode msgs
+
+-- | Used to create a channel that lets an application receive messages
+-- using EventSources
+createEventPipe :: Addressable a => a -> Handler ()
+createEventPipe appInstance = do
+  master <- getYesod
+  let
+    appEnvs = getAppEnvs master
+    deliveryChan = getDeliveryChannel master
+  maybeMailBox <- liftIO $ getMailBox appEnvs appInstance
+  case maybeMailBox of
+    Nothing -> return ()
+    Just mailBox -> do
+      nMailBox <- liftIO $ atomically $ dupTChan mailBox
+      req <- waiRequest
+      res <- lift $ eventSourceAppIO (messagesEventSource nMailBox deliveryChan) req
+      sendWaiResponse res
+      
+
 -- | Request to receive messages using Event Sources. Event sources are
 -- only available in html5 so this function only works for powerful browsers
--- getReceiveMessagesEventR = do
+getReceiveMessagesEventR :: Handler ()
+getReceiveMessagesEventR = do
+  key <- receiveMessageAuth
+  case key of
+    Just (appUsername,appIdentifier) -> createEventPipe $ AppInstance (T.unpack appUsername) (T.unpack appIdentifier)
+    Nothing -> return ()
   
-
 -- | Request to load all the messages sent to a particular app instance
 getReceiveMessagesR :: Handler RepJson
 getReceiveMessagesR = do
-  key <- lookupGetParam appKeyGet
-  case key >>= decompose of
-    Just (appUsername,appIdentifier) ->  (liftIO $ putStrLn $ show (appUsername,appIdentifier)) >> (receiveMessages' $ AppInstance (T.unpack appUsername) (T.unpack appIdentifier))
+  key <- receiveMessageAuth
+  case key of
+    Just (appUsername,appIdentifier) -> receiveMessages' $ AppInstance (T.unpack appUsername) (T.unpack appIdentifier)
     Nothing -> jsonToRepJson $ show EInvalidAppKey
 
   where
