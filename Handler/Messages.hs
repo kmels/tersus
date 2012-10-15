@@ -123,6 +123,20 @@ queueMessage msgBuffer channel (message,port) = atomically $ do
 receiveMessageTimeout :: Int
 receiveMessageTimeout = 30 * 1000000 -- 30 Seconds
 
+loadMessages mailBox deliveryChan = do
+  m <- readTChan mailBox
+  rest <- loadAll
+  mapM_ (\m -> writeTChan deliveryChan m) (m:rest)
+  return (m:rest)
+
+  where
+    loadAll = isEmptyTChan mailBox >>= \empty -> case empty of
+      True -> return []
+      False -> do
+        msg <- readTChan mailBox
+        otherMsgs <- loadAll
+        return $ (msg:otherMsgs)
+
 -- | Get a list of all messages, block until at least one message has arrived
 -- Note that a pattern match failure should not happen. If it happens it means
 -- that the app key generaiton method is not secure
@@ -135,10 +149,7 @@ receiveMessages appInstance = do
     deliveryChan = getDeliveryChannel master
   -- Todo: what happens if the appInstance dosent exist? What should be returned?
   mailBox <- liftIO (getMailBox appEnvs appInstance >>= return . fromJust)
-  messages <- liftIO $ timeout receiveMessageTimeout $ atomically $ do
-    messages' <- takeTMVar mailBox
-    mapM_ (\m -> writeTChan deliveryChan m) messages'
-    return messages'
+  messages <- liftIO $ timeout receiveMessageTimeout $ atomically $ loadMessages mailBox deliveryChan
   return messages
 
 authMessagesPostParam :: Text
@@ -157,6 +168,11 @@ postSendAuthMessagesR = do
   case msgs >>= decode . encodeUtf8 . fromChunks . return of
     Just msgs' -> mapM deliverAuthMessage msgs' >>= jsonToRepJson . show
     Nothing -> jsonToRepJson $ show InvalidMsgFormat
+
+-- | Request to receive messages using Event Sources. Event sources are
+-- only available in html5 so this function only works for powerful browsers
+-- getReceiveMessagesEventR = do
+  
 
 -- | Request to load all the messages sent to a particular app instance
 getReceiveMessagesR :: Handler RepJson

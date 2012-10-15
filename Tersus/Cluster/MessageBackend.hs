@@ -17,7 +17,8 @@ import           Control.Concurrent.STM                             (STM,
                                                                      atomically)
 import           Control.Concurrent.STM.TChan                      
                                                                      (isEmptyTChan,
-                                                                     readTChan)
+                                                                     readTChan,
+                                                                     writeTChan)
 import           Control.Concurrent.STM.TMVar                       (TMVar,
                                                                      isEmptyTMVar,
                                                                      putTMVar,
@@ -281,15 +282,5 @@ messageReceiveService mRecvPort appEnvs = forever $ receiveChan mRecvPort >>= wr
         addr <- return $ getAppInstance msg
         mBox <- liftIO $ getMailBox appEnvs addr
         case mBox of
-          Just mBox' -> liftIO $ insertMessage mBox' (msg,aSendPort)
+          Just mBox' -> liftIO $ atomically $ writeTChan mBox' (msg,aSendPort)
           Nothing -> sendChan aSendPort (generateHash msg, ENoAppInstance, getSendAppInstance msg) >> return ()
-      insertMessage :: TMVar [TMessageEnvelope] -> TMessageEnvelope -> IO ()
-      insertMessage mBox envelope = atomically $ do
-                                      empty <- isEmptyTMVar mBox
-                                      if empty then putTMVar mBox [envelope] else modifyTMVar mBox (\msgs -> return (envelope:msgs))
-
-modifyTMVar :: TMVar a -> (a -> STM a) -> STM ()
-modifyTMVar var f = do
-                val <- takeTMVar var
-                val' <- f val
-                putTMVar var (val')
