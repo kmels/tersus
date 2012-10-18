@@ -25,3 +25,4 @@
 -- MESSAGES
 /service/message/receive                 ReceiveMessagesR              GET
 /service/message/send                    SendAuthMessagesR             POST
+/service/message/receiveEv		 ReceiveMessagesEventR         GET

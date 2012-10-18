@@ -11,7 +11,6 @@ import           Data.Typeable.Internal (Typeable)
 import           Database.Persist.Quasi
 import           Database.Persist.Store (PersistValue (..), SqlType (..))
 import           Prelude
-import           Remote.Process
 import           Yesod
 
 -- You can define all of your database entities in the entities file.
@@ -158,3 +157,7 @@ instance B.Binary MessageResult where
 instance B.Binary AppInstance where
     put (AppInstance username' app') = B.put (username',app')
     get = do B.get >>= \(username',app') -> return (AppInstance username' app')
+
+instance B.Binary UTCTime where
+  put time = B.put (show time)
+  get = B.get >>= return.read
