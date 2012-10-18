@@ -6,5 +6,5 @@ import           Data.Aeson as J
 import           Import
 
 instance ToJSON (UserGeneric a) where
-    toJSON (User email nickname _ ) = J.object [("email",String email),("username",String nickname)]
+    toJSON (User email nickname _ _) = J.object [("email",String email),("username",String nickname)]
 

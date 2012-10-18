@@ -23,8 +23,8 @@ import Tersus.Cluster.Types
 
 -- Import all relevant handler modules here.
 -- Don't forget to add new modules to your cabal file!
+import Handler.Admin
 import Handler.Home
---import Handler.JavascriptAPI
 import Handler.Messages
 import Handler.TApplication
 import Handler.TFile

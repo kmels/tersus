@@ -46,6 +46,8 @@ instance PersistField FileType where
 
 data TersusResultCode = Success | InexistentFile | NotEnoughPrivileges | DirectoryNotEmpty | OutOfRange deriving (Show, Eq, Enum)
 
+data TRequestError = TRequestError TersusResultCode String
+
 data TersusResult = TersusResult Int TersusResultCode
 
 -- Update the function msgResultNums as well since it's used to
@@ -95,17 +97,17 @@ instance Addressable AppInstance where
          getAppInstance a = a
 
 instance Addressable Address where
-    getAppInstance (Address (User _ nickname _ ) (TApplication _ id' _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id')
+    getAppInstance (Address (User _ nickname _ _) (TApplication _ id' _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id')
 
 instance B.Binary Text where
          put t = B.put (T.unpack t)
          get = B.get >>=  return . T.pack
 
 instance B.Binary User where
-         put (User email nickname _ ) = B.put (T.unpack email,T.unpack nickname)
+         put (User email nickname _ _) = B.put (T.unpack email,T.unpack nickname)
          get = do
              (email,nickname) <- B.get
-             return $ User email (T.pack nickname) Nothing
+             return $ User email (T.pack nickname) Nothing False
 
 instance B.Binary TApplication where
          put (TApplication name id' desc _ email date appKey) = B.put (name,id',desc,email,show date,appKey)

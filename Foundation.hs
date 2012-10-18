@@ -158,7 +158,7 @@ instance YesodAuth App where
         case x of
             Just (Entity uid _) -> return $ Just uid
             Nothing -> do
-                fmap Just $ insert $ User (credsIdent creds) (credsIdent creds) Nothing
+                fmap Just $ insert $ User (credsIdent creds) (credsIdent creds) Nothing False
                 
     -- You can add other plugins like BrowserID, email or OAuth here
     authPlugins _ = [authBrowserId, authGoogleEmail]

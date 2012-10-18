@@ -6,6 +6,7 @@
 
 /                                        HomeR                         GET
 /about                                   AboutR                        GET
+/admin                                   AdminR                        GET
 
 -- JS API
 /api/user                                LoggedUserR                   GET
