@@ -30,7 +30,7 @@ tersusServiceUsername :: Text
 tersusServiceUsername = "tersus"
 
 tersusServiceUser :: User
-tersusServiceUser = User "tersus@tersusland.com" tersusServiceUsername (Just "")
+tersusServiceUser = User "tersus@tersusland.com" tersusServiceUsername (Just "") False
 
 tersusServiceRecv :: TMessage -> TersusServiceM ()
 tersusServiceRecv (TMessage uSender uReceiver aSender aReceiver _ _) = do

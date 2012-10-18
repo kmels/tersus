@@ -2,6 +2,7 @@ User
     email Text
     nickname Text
     password Text Maybe
+    isSuperAdmin Bool
     UniqueUserEmail email
     UniqueNickname  nickname
     deriving Show Read Eq

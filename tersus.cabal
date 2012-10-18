@@ -35,6 +35,7 @@ library
                      Settings.StaticFiles
                      Settings.Development
                      TFile.FilesystemUtils
+                     Handler.Admin
                      Handler.Home
                      Handler.Messages
                      Handler.TApplication
