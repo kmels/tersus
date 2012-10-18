@@ -19,6 +19,7 @@ import System.Directory             (createDirectoryIfMissing,getDirectoryConten
 import           Text.Regex.TDFA
 import           Data.ByteString          (ByteString)
 import Data.Aeson as J
+import Tersus.TFiles
 import Yesod.Json(Value(..))
 {- Handler methods for operations on files. -}
 
@@ -62,13 +63,18 @@ getFileR username' accessToken path = do
       liftIO $ putStrLn $ "Looking: " ++ fsPath
       isDirectory <- liftIO $ doesDirectoryExist fsPath
       fileExists <- liftIO $ doesFileExist fsPath
-      
       if isDirectory
-      then liftIO $ getDirectoryContents fsPath >>= \fs -> return $ (jsonContentType, toContent $ FileList fs)
+      then liftIO $ directoryContents fsPath >>= \fs -> return $ (jsonContentType, toContent $ fs)
       else if fileExists
       then return $ (filenameContentType fsPath, ContentFile fsPath Nothing)
       else return $ (typeJson, toContent ("todo: error" :: String) )
     _ -> return $ (typeJson, toContent ("todo: error, invalid access key for user" :: String))
+
+  where
+    addUserPath (Resource n _ t) = return $ Resource n (pathToText path) t
+    directoryContents fsPath = do
+      files <- getDirectoryContentsTyped fsPath
+      mapM addUserPath files
 
 -- Temporal function to test uploading of documents
 putFileR :: Username -> AccessKey -> Path -> Handler RepJson

@@ -47,7 +47,8 @@ library
                      Tersus.Cluster.MessageBackend
                      Tersus.Cluster.TersusService
                      Tersus.Cluster.TersusServiceApp
-                     Tersus.Global                     
+                     Tersus.Global
+                     Tersus.TFiles
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
