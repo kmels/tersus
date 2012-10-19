@@ -23,7 +23,7 @@ import           Text.Regex.TDFA
 data AppLike = AppLike {
   appLikeName            :: Text
   , appLikeIdentifier    :: Text
-  , appLikeDescription   :: Text
+  , appLikeDescription   :: Textarea
   , appLikeRepositoryURL :: Maybe Text
   , appLikeContactEmail  :: Text
 } deriving Show
@@ -33,11 +33,11 @@ type ErrorMessage = Text
 
 registerAppForm :: [ErrorMessage] -> Html -> MForm App App (FormResult AppLike,Widget)
 registerAppForm errormessages extra = do
-  (nameRes, nameView) <- mreq textField "{- not used -}" Nothing
-  (descriptionRes, descriptionView) <- mreq textField "{- not used-}" Nothing
-  (repositoryUrlRes, repositoryUrlView) <- mopt textField "{- not used -}" Nothing
-  (contactEmailRes, contactEmailView) <- mreq emailField "{- not used -}" Nothing
-  (identifierRes, identifierView) <- mreq identifierField "{- not used -}" Nothing
+  (nameRes, nameView) <- mreq textField FieldSettings { fsId = Just "TAppNameField", fsLabel = "Application name", fsName = Just "TAppName", fsAttrs = [("placeholder","Turbo app")] } Nothing
+  (identifierRes, identifierView) <- mreq identifierField FieldSettings { fsId = Just "TAppIdentifierField", fsLabel = "Application identifier", fsName = Just "TAppIdentifier", fsAttrs = [("placeholder","turbo-app")] } Nothing
+  (descriptionRes, descriptionView) <- mreq textareaField FieldSettings { fsId = Just "TAppDescriptionField", fsLabel = "Description", fsName = Just "TAppDescription", fsAttrs = [("placeholder","An application that turboes your _")] } Nothing
+  (repositoryUrlRes, repositoryUrlView) <- mopt textField FieldSettings { fsId = Just "TApplicationRepositoryUrlField", fsLabel = "Application repository url", fsName = Just "TApplicationRepositoryUrl", fsAttrs = [("placeholder","http://github.com/turbo-nickname/turbo-app")] } Nothing
+  (contactEmailRes, contactEmailView) <- mreq emailField FieldSettings { fsId = Just "TApplicationContactEmailField", fsLabel = "Contact email", fsName = Just "TApplicationRepositoryUrl", fsAttrs = [("placeholder","turbo-email@example.com")] } Nothing
   let appLikeResult = AppLike <$> nameRes <*> identifierRes <*> descriptionRes <*> repositoryUrlRes <*> contactEmailRes
   let widget = $(widgetFile "TApplication/registerFormWidget")
   return (appLikeResult, widget)
@@ -69,7 +69,7 @@ postRegisterTAppR = do
       appKey <- liftIO $ newRandomKey 32  --create a new appkey
 
       --insert in database
-      _ <- runDB $ insert $ TApplication appName appIdentifier appDescription appRepositoryUrl appContactEmail creationDate appKey
+      _ <- runDB $ insert $ TApplication appName appIdentifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey
       defaultLayout $(widgetFile "TApplication/created")
 
     --form isn't success

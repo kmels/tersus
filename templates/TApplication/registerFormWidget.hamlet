@@ -4,8 +4,24 @@ $if length errormessages > 0
     $forall message <- errormessages
         <span class="error">#{message}
 
-<p> Application name: ^{fvInput nameView}
-<p> Application identifier (it will be in /t/app-identifier) : ^{fvInput identifierView}
-<p> Description: : ^{fvInput descriptionView}
-<p> Repository url: ^{fvInput repositoryUrlView} #
-<p> Contact email: ^{fvInput contactEmailView}
+<div class="control-group">
+    <label class="control-label" for="#{fvId nameView}">#{fvLabel nameView}</label>
+    <div class="controls">^{fvInput nameView}
+
+<div class="control-group">
+    <label class="control-label" for="#{fvId identifierView}">#{fvLabel identifierView}</label>
+    <div class="controls">
+      <div class="input-prepend"><span class="add-on">http://tersusland.com/t/</span>^{fvInput identifierView}
+
+<div class="control-group">
+    <label class="control-label" for="#{fvId descriptionView}">#{fvLabel descriptionView}</label>
+    <div class="controls">^{fvInput descriptionView}
+ 
+<div class="control-group">
+    <label class="control-label" for="#{fvId repositoryUrlView}">#{fvLabel repositoryUrlView}</label>
+    <div class="controls">        
+        <div class="input-append">^{fvInput identifierView}<span class="add-on">.git</span>
+
+<div class="control-group">
+    <label class="control-label" for="#{fvId contactEmailView}">#{fvLabel contactEmailView}</label>
+    <div class="controls">^{fvInput contactEmailView}
