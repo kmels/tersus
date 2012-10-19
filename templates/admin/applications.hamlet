@@ -1,6 +1,29 @@
 
-<table>
+<table id="table_id">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Identifier in URL</th>
+            <th>Name </th>
+            <th>Created on</th>
+            <th>Repository</th>
+            <th>Actions</th>
     <tbody>
-        $forall Entity tappid tapp <- tapps
+        $forall Entity tappkey tapp <- tapps
             <tr>
+                $case tappkey
+                    $of Key persistValue
+                        $case persistValue 
+                            $of PersistInt64 k
+                               <td>#{show k}</td>
+                            $of _ 
+                                <td></td>
+                <td>#{tApplicationIdentifier tapp}
                 <td>#{tApplicationName tapp}
+                <td>#{show $ tApplicationCreationDate tapp} 
+                $maybe repoUrl <- tApplicationRepositoryUrl tapp
+                    <td><a href="#{repoUrl}">#{repoUrl}</a>
+                $nothing
+                    <td></td>
+                <td><a href="@{TApplicationEditR $ tApplicationIdentifier tapp}">Edit</a>
+                    

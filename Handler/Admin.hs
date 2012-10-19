@@ -20,6 +20,10 @@ import Yesod.Auth
 import Control.Monad.Trans.Maybe
 import Control.Monad(guard)
 
+import Database.Persist.Store
+
+import Model
+
 getAdminR :: Handler RepHtml
 getAdminR = do
   superAdmin <- requireSuperAdmin
@@ -27,6 +31,11 @@ getAdminR = do
     Just admin -> defaultLayout $(widgetFile "admin/dashboard")
     _ -> defaultLayout [whamlet| "TODO Permission denied"|]
 
+getTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml 
+getTApplicationEditR identifier = do
+  defaultLayout [whamlet| "TODO"|]
+
+-- | replies to /admin/applications with a list of applications and links to manage it (edit,deactivate)
 getTApplicationsAdminR :: Handler RepHtml 
 getTApplicationsAdminR = do
   superAdmin <- requireSuperAdmin
