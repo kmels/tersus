@@ -19,6 +19,7 @@ import System.Directory             (createDirectoryIfMissing,getDirectoryConten
 import           Text.Regex.TDFA
 import           Data.ByteString          (ByteString)
 import Data.Aeson as J
+import Tersus.TFiles
 import Yesod.Json(Value(..))
 import Model.TersusResult
 {- Handler methods for operations on files. -}
@@ -63,13 +64,17 @@ getFileR username' accessToken path = do
       liftIO $ putStrLn $ "Looking: " ++ fsPath
       isDirectory <- liftIO $ doesDirectoryExist fsPath
       fileExists <- liftIO $ doesFileExist fsPath
-      
       if isDirectory
-      then liftIO $ getDirectoryContents fsPath >>= \fs -> return $ (jsonContentType, toContent $ FileList fs)
+      then liftIO $ directoryContents fsPath >>= \fs -> return $ (jsonContentType, toContent $ fs)
       else if fileExists
       then return $ (filenameContentType fsPath, ContentFile fsPath Nothing)
       else return $ (typeJson, toContent . toJSON $ fileDoesNotExistError)
     _ -> return $ (typeJson, toContent ("todo: error, invalid access key for user" :: String))
+    where
+        addUserPath (Resource n _ t) = return $ Resource n (pathToText path) t
+        directoryContents fsPath = do
+           files <- getDirectoryContentsTyped fsPath
+           mapM addUserPath files
 
 fileDoesNotExistError :: TRequestError
 fileDoesNotExistError = TRequestError InexistentFile "File does not exist"

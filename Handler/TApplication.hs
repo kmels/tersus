@@ -86,6 +86,10 @@ userNotLogged appIdentifier = defaultLayout $ do [whamlet|<h3>TODO: user not log
 accessKeyParam :: Text
 accessKeyParam = "accessKey"
 
+-- | The startup parameters for an application
+argvParam :: Text
+argvParam = "argv"
+
 -- | Load an application. This function checks wether the user
 -- is logged and if the application specified exists and redirects
 -- the user to the appropiate location. If the user is logged and
@@ -96,22 +100,27 @@ getTAppHomeR appIdentifier = do
   Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
   maybeUserId <- maybeAuth
   maybeKey <- lookupGetParam accessKeyParam
+  maybeArgv <- lookupGetParam argvParam
+  let
+    argv = case maybeArgv of
+      Just argv' -> T.concat ["&",argvParam,"=",argv']
+      Nothing -> ""
   case (maybeUserId,maybeKey) of
-    (Just (Entity _ u),Nothing) -> (liftIO $ pullChanges tapp) >>= \_ -> redirectToApplication u
-    (_,Just accessKey) -> redirectToIndex accessKey
+    (Just (Entity _ u),Nothing) -> (liftIO $ pullChanges tapp) >>= \_ -> redirectToApplication u argv
+    (_,Just accessKey) -> redirectToIndex accessKey argv
     _ -> userNotLogged appIdentifier
 
   where
-    redirectToApplication u = do
+    redirectToApplication u argv = do
       let nickname = userNickname u
       accessKey <- liftIO $ newAccessKey nickname appIdentifier
       initApplication $ AppInstance (T.unpack $ nickname) (T.unpack $ appIdentifier)
       home <- toTextUrl $ TAppHomeR appIdentifier
-      redirect $ T.unpack $ T.concat [home,"?",accessKeyParam,"=",accessKey]
+      redirect $ T.unpack $ T.concat [home,"?",accessKeyParam,"=",accessKey,argv]
 
-    redirectToIndex accessKey = do
+    redirectToIndex accessKey argv = do
       resources <- toTextUrl $ TAppResourceR appIdentifier ["index.html" :: T.Text]
-      redirect $ T.unpack $ T.concat [resources,"?",accessKeyParam,"=",accessKey]
+      redirect $ T.unpack $ T.concat [resources,"?",accessKeyParam,"=",accessKey,argv]
 
 -- | The slash used to separate folders in the filesystem.
 fsResourceSep :: T.Text
