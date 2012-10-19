@@ -20,6 +20,7 @@ import           Text.Regex.TDFA
 import           Data.ByteString          (ByteString)
 import Data.Aeson as J
 import Yesod.Json(Value(..))
+import Model.TersusResult
 {- Handler methods for operations on files. -}
 
 -- A way to convert between urls and a file path.
@@ -67,8 +68,11 @@ getFileR username' accessToken path = do
       then liftIO $ getDirectoryContents fsPath >>= \fs -> return $ (jsonContentType, toContent $ FileList fs)
       else if fileExists
       then return $ (filenameContentType fsPath, ContentFile fsPath Nothing)
-      else return $ (typeJson, toContent ("todo: error" :: String) )
+      else return $ (typeJson, toContent . toJSON $ fileDoesNotExistError)
     _ -> return $ (typeJson, toContent ("todo: error, invalid access key for user" :: String))
+
+fileDoesNotExistError :: TRequestError
+fileDoesNotExistError = TRequestError InexistentFile "File does not exist"
 
 -- Temporal function to test uploading of documents
 putFileR :: Username -> AccessKey -> Path -> Handler RepJson

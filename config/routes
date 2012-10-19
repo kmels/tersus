@@ -7,6 +7,7 @@
 /                                        HomeR                         GET
 /about                                   AboutR                        GET
 /admin                                   AdminR                        GET
+/admin/applications                      TApplicationsAdminR           GET
 
 -- JS API
 /api/user                                LoggedUserR                   GET

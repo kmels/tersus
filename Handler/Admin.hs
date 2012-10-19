@@ -27,6 +27,14 @@ getAdminR = do
     Just admin -> defaultLayout $(widgetFile "admin/dashboard")
     _ -> defaultLayout [whamlet| "TODO Permission denied"|]
 
+getTApplicationsAdminR :: Handler RepHtml 
+getTApplicationsAdminR = do
+  superAdmin <- requireSuperAdmin
+  tapps <- runDB $ selectList [] [Desc TApplicationIdentifier]
+  case superAdmin of
+    Just admin -> defaultLayout $(widgetFile "admin/applications")
+    _ -> defaultLayout [whamlet| "TODO Permission denied"|]
+
 requireSuperAdmin :: ( YesodAuth m
              , b ~ YesodPersistBackend m
              , b ~ PersistEntityBackend val

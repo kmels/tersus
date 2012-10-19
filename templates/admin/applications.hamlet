@@ -1,0 +1,6 @@
+
+<table>
+    <tbody>
+        $forall Entity tappid tapp <- tapps
+            <tr>
+                <td>#{tApplicationName tapp}

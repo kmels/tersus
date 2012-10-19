@@ -1,3 +1,8 @@
 
 
 Hello #{userNickname $ admin}, you have super powers.
+
+<ul>
+    <li><a href="@{TApplicationsAdminR}">Manage applications</a>
+    <li><a href="">Manage users</a>
+
