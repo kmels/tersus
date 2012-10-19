@@ -36,10 +36,7 @@ clone :: TApplication -> IO ()
 clone tapp = C.runResourceT $ do
 --  liftIO $(logDebug) "Cloning repository.."
   let
-    (repoUrl',repoName) = (case tApplicationRepositoryUrl tapp of
-                             Just repoUrl'' -> T.unpack $ repoUrl''
-                             _ -> error "Git.clone, Not implemented yet",
-                          T.unpack $ tApplicationIdentifier tapp)
+    (repoUrl',repoName) = (T.unpack $ tApplicationRepositoryUrl tapp, T.unpack $ tApplicationIdentifier tapp)
     cloneCmd = "git clone --quiet " ++ repoUrl' ++ " /tmp/"++ repoName
 --  $(logDebug) "Spawning: " ++ cloneCmd
   sourceCmd cloneCmd C.$$ CB.sinkHandle stdout

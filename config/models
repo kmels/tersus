@@ -11,7 +11,7 @@ TApplication
     name Text
     identifier Text
     description Text
-    repositoryUrl Text Maybe    
+    repositoryUrl Text
     contactEmail Text
     creationDate UTCTime
     appKey Text

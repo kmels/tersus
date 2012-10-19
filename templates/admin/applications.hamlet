@@ -24,10 +24,7 @@
                 <td>#{tApplicationIdentifier tapp}
                 <td>#{tApplicationName tapp}
                 <td>#{show $ tApplicationCreationDate tapp} 
-                $maybe repoUrl <- tApplicationRepositoryUrl tapp
-                    <td><a href="#{repoUrl}">#{repoUrl}</a>
-                $nothing
-                    <td></td>
+                <td><a href="#{tApplicationRepositoryUrl tapp}">#{tApplicationRepositoryUrl tapp}</a>
                 <td>
                     <a href="@{TApplicationEditR $ tApplicationIdentifier tapp}">Edit</a>
                     <a href="@{TApplicationEditR $ tApplicationIdentifier tapp}">Deactivate</a>

@@ -24,7 +24,7 @@ tersusServiceAppName :: Text
 tersusServiceAppName = "tersus"
 
 tersusServiceApp' :: TApplication
-tersusServiceApp' = TApplication tersusServiceAppName tersusServiceAppName "Application that provides the service messaging system for system functions" (Just "http://tersusland.com/tersus") "neto@netowork.me" (unsafePerformIO getCurrentTime) "tersusAppKey"
+tersusServiceApp' = TApplication tersusServiceAppName tersusServiceAppName "Application that provides the service messaging system for system functions" "http://tersusland.com/tersus" "neto@netowork.me" (unsafePerformIO getCurrentTime) "tersusAppKey"
 
 tersusServiceUsername :: Text
 tersusServiceUsername = "tersus"

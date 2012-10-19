@@ -114,7 +114,7 @@ instance B.Binary TApplication where
 
          get = do
              (name,id',desc,email,date,appKey) <- B.get
-             return $ TApplication name id' desc Nothing email (read date :: UTCTime) appKey
+             return $ TApplication name id' desc "**TODO**:repo" email (read date :: UTCTime) appKey
 
 instance B.Binary TMessage where
          put (TMessage sender receiver appSender' appReceiver msg sendTime) = B.put (sender
