@@ -23,6 +23,7 @@ import Control.Monad(guard)
 import Database.Persist.Store
 
 import Model
+import Handler.TApplication
 
 getAdminR :: Handler RepHtml
 getAdminR = do
@@ -32,8 +33,10 @@ getAdminR = do
     _ -> defaultLayout [whamlet| "TODO Permission denied"|]
 
 getTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml 
-getTApplicationEditR identifier = do
-  defaultLayout [whamlet| "TODO"|]
+getTApplicationEditR appIdentifier = do
+  Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier  
+  (formWidget, enctype) <- generateFormPost $ tAppForm [] $ Just tapp
+  defaultLayout $(widgetFile "admin/TApplication/edit")
 
 -- | replies to /admin/applications with a list of applications and links to manage it (edit,deactivate)
 getTApplicationsAdminR :: Handler RepHtml 
@@ -43,6 +46,11 @@ getTApplicationsAdminR = do
   case superAdmin of
     Just admin -> defaultLayout $(widgetFile "admin/applications")
     _ -> defaultLayout [whamlet| "TODO Permission denied"|]
+
+-- | processes a form produced by TApplicationeditR GET
+postTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml
+postTApplicationEditR appIdentifier = do
+  defaultLayout $ [whamlet|"TODO"|]
 
 requireSuperAdmin :: ( YesodAuth m
              , b ~ YesodPersistBackend m

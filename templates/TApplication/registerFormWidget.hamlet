@@ -1,3 +1,4 @@
+EXTRA:
 #{extra}
 
 $if length errormessages > 0

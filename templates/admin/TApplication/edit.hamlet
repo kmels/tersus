@@ -1,0 +1,7 @@
+<h1>Edit:
+
+<form class="form-horizontal" method=post action=@{TApplicationEditR appIdentifier} enctype=#{enctype}>
+    ^{formWidget}
+    <div class="control-group">
+        <div class="controls">
+            <button type="submit" class="btn btn-primary">Save changes</button>

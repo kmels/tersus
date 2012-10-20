@@ -8,7 +8,7 @@
 /about                                   AboutR                        GET
 /admin                                   AdminR                        GET
 /admin/t/list                            TApplicationsAdminR           GET
-/admin/t/#ApplicationIdentifier/edit     TApplicationEditR             GET
+/admin/t/#ApplicationIdentifier/edit     TApplicationEditR             GET POST
 
 -- JS API
 /api/user                                LoggedUserR                   GET

@@ -31,13 +31,15 @@ data AppLike = AppLike {
 -- A monadic form
 type ErrorMessage = Text
 
-registerAppForm :: [ErrorMessage] -> Html -> MForm App App (FormResult AppLike,Widget)
-registerAppForm errormessages extra = do
-  (nameRes, nameView) <- mreq textField FieldSettings { fsId = Just "TAppNameField", fsLabel = "Application name", fsName = Just "TAppName", fsAttrs = [("placeholder","Turbo app")] } Nothing
-  (identifierRes, identifierView) <- mreq identifierField FieldSettings { fsId = Just "TAppIdentifierField", fsLabel = "Application identifier", fsName = Just "TAppIdentifier", fsAttrs = [("placeholder","turbo-app")] } Nothing
-  (descriptionRes, descriptionView) <- mreq textareaField FieldSettings { fsId = Just "TAppDescriptionField", fsLabel = "Description", fsName = Just "TAppDescription", fsAttrs = [("placeholder","An application that turboes your _")] } Nothing
-  (repositoryUrlRes, repositoryUrlView) <- mreq textField FieldSettings { fsId = Just "TApplicationRepositoryUrlField", fsLabel = "Application repository url", fsName = Just "TApplicationRepositoryUrl", fsAttrs = [("placeholder","http://github.com/turbo-nickname/turbo-app")] } Nothing
-  (contactEmailRes, contactEmailView) <- mreq emailField FieldSettings { fsId = Just "TApplicationContactEmailField", fsLabel = "Contact email", fsName = Just "TAppConcatEmail", fsAttrs = [("placeholder","turbo-email@example.com")] } Nothing
+-- A form that results in AppLike and is wraped in a widget. It receives a list of error messages to show in the widget and appLike in case default values are being shown (in case of editing and not registering).
+
+tAppForm :: [ErrorMessage] -> Maybe TApplication -> Html -> MForm App App (FormResult AppLike,Widget)
+tAppForm errormessages defaultValues extra = do
+  (nameRes, nameView) <- mreq textField FieldSettings { fsId = Just "TAppNameField", fsLabel = "Application name", fsName = Just "TAppName", fsAttrs = [("placeholder","Turbo app")] } (tApplicationName <$> defaultValues)
+  (identifierRes, identifierView) <- mreq identifierField FieldSettings { fsId = Just "TAppIdentifierField", fsLabel = "Application identifier", fsName = Just "TAppIdentifier", fsAttrs = [("placeholder","turbo-app")] } (tApplicationIdentifier <$> defaultValues)
+  (descriptionRes, descriptionView) <- mreq textareaField FieldSettings { fsId = Just "TAppDescriptionField", fsLabel = "Description", fsName = Just "TAppDescription", fsAttrs = [("placeholder","An application that turboes your _")] } (Textarea . tApplicationDescription <$> defaultValues)
+  (repositoryUrlRes, repositoryUrlView) <- mreq textField FieldSettings { fsId = Just "TApplicationRepositoryUrlField", fsLabel = "Application repository url", fsName = Just "TApplicationRepositoryUrl", fsAttrs = [("placeholder","http://github.com/turbo-nickname/turbo-app")] } (tApplicationRepositoryUrl <$> defaultValues)
+  (contactEmailRes, contactEmailView) <- mreq emailField FieldSettings { fsId = Just "TApplicationContactEmailField", fsLabel = "Contact email", fsName = Just "TAppConcatEmail", fsAttrs = [("placeholder","turbo-email@example.com")] } (tApplicationContactEmail <$> defaultValues)
   let appLikeResult = AppLike <$> nameRes <*> identifierRes <*> descriptionRes <*> repositoryUrlRes <*> contactEmailRes
   let widget = $(widgetFile "TApplication/registerFormWidget")
   return (appLikeResult, widget)
@@ -52,13 +54,13 @@ registerAppForm errormessages extra = do
 
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
-  (formWidget, enctype) <- generateFormPost $ registerAppForm []
+  (formWidget, enctype) <- generateFormPost $ tAppForm [] Nothing
   defaultLayout $(widgetFile "TApplication/register")
 
 -- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml
 postRegisterTAppR = do
-  ((result, _), _) <- runFormPost $ registerAppForm []
+  ((result, _), _) <- runFormPost $ tAppForm [] Nothing
   case result of
     FormSuccess appLike -> do
       -- get data from the form
@@ -74,7 +76,7 @@ postRegisterTAppR = do
 
     --form isn't success
     FormFailure errorMessages -> do
-      (formWidget, enctype) <- generateFormPost $ registerAppForm errorMessages
+      (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages Nothing
       defaultLayout $(widgetFile "TApplication/register")
     -- form missing
     _ -> getRegisterTAppR
