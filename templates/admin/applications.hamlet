@@ -26,6 +26,13 @@
                 <td>#{show $ tApplicationCreationDate tapp} 
                 <td><a href="#{tApplicationRepositoryUrl tapp}">#{tApplicationRepositoryUrl tapp}</a>
                 <td>
-                    <a href="@{TApplicationEditR $ tApplicationIdentifier tapp}">Edit</a>
-                    <a href="@{TApplicationEditR $ tApplicationIdentifier tapp}">Deactivate</a>
+                    <div class="btn-group">
+                        <a class="btn btn-primary" href="#"><i class="icon-user icon-white"></i> Manage</a>
+                        <a class="btn btn-primary dropdown-toggle" data-toggle="dropdown" href="#"><span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="@{TApplicationEditR $ tApplicationIdentifier tapp}"><i class="icon-pencil"></i> Edit</a></li>
+                            <li><a href="#"><i class="icon-trash"></i> Delete</a></li>
+                            <li><a href="#"><i class="icon-ban-circle"></i> Deactivate</a></li>
+
+
 
