@@ -21,7 +21,7 @@ $if length errormessages > 0
 <div class="control-group">
     <label class="control-label" for="#{fvId repositoryUrlView}">#{fvLabel repositoryUrlView}</label>
     <div class="controls">        
-        <div class="input-append">^{fvInput identifierView}<span class="add-on">.git</span>
+        <div class="input-append">^{fvInput repositoryUrlView}<span class="add-on">.git</span>
 
 <div class="control-group">
     <label class="control-label" for="#{fvId contactEmailView}">#{fvLabel contactEmailView}</label>
