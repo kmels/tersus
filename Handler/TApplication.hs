@@ -8,6 +8,7 @@
 module Handler.TApplication where
 
 import           Control.Arrow            ((&&&))
+import Control.Monad(when)
 import           Data.ByteString          (ByteString)
 import           Data.Maybe               (isJust)
 import qualified Data.Text                as T
@@ -45,12 +46,19 @@ tAppForm errormessages defaultValues extra = do
   return (appLikeResult, widget)
   where
     --field that verifies that an application doesn't exist already.
-    identifierField = checkM validateIdentifier textField
-    validateIdentifier appidfier = do
-       tapp <- runDB $ getBy $ UniqueIdentifier $ appidfier
-       return $ if isJust tapp
-                then Left ("Error: app exists" :: Text)
-                else Right appidfier
+    identifierField = checkM validateIdentifier textField      
+    validateIdentifier appidfier =        
+       case (tApplicationIdentifier <$> defaultValues) of 
+         Just defaultAppIdentifier -> do
+           tapp <- runDB $ getBy $ UniqueIdentifier $ appidfier
+           return $ if (isJust tapp && defaultAppIdentifier /= appidfier)
+                  then Left ("Error: application identifier exists" :: Text)
+                  else Right appidfier
+         Nothing -> do
+           tapp <- runDB $ getBy $ UniqueIdentifier $ appidfier
+           return $ if (isJust tapp)
+                  then Left ("Error: application identifier exists" :: Text)
+                  else Right appidfier       
 
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
@@ -60,7 +68,7 @@ getRegisterTAppR = do
 -- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml
 postRegisterTAppR = do
-  ((result, _), _) <- runFormPost $ tAppForm [] Nothing
+  ((result, _), _) <- runFormPost $ tAppForm [] Nothing 
   case result of
     FormSuccess appLike -> do
       -- get data from the form

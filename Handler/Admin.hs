@@ -19,6 +19,7 @@ import Data.Maybe
 import Yesod.Auth
 import Control.Monad.Trans.Maybe
 import Control.Monad(guard)
+import           Control.Arrow            ((&&&))
 
 import Database.Persist.Store
 
@@ -50,7 +51,27 @@ getTApplicationsAdminR = do
 -- | processes a form produced by TApplicationeditR GET
 postTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml
 postTApplicationEditR appIdentifier = do
-  defaultLayout $ [whamlet|"TODO"|]
+  Entity tappkey tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+  ((result, _), _) <- runFormPost $ tAppForm [] $ Just tapp
+  case result of
+    FormSuccess appLike -> do
+      -- get data from the form
+      let
+        (appName,(appDescription,(appRepositoryUrl,(appContactEmail,appIdentifier')))) = (appLikeName &&& unTextarea . appLikeDescription &&& appLikeRepositoryURL &&& appLikeContactEmail &&& appLikeIdentifier) appLike
+        
+      --update in database
+      _ <- runDB $ update tappkey [TApplicationName =. appName,TApplicationDescription =. appDescription,TApplicationRepositoryUrl =. appRepositoryUrl, TApplicationContactEmail =. appContactEmail, TApplicationIdentifier =. appIdentifier']
+      getTApplicationsAdminR
+
+    --form isn't success
+    FormFailure errorMessages -> do
+      liftIO $ putStrLn $ "FORM FAILURE"
+      (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages $ Just tapp
+      defaultLayout $(widgetFile "admin/TApplication/edit")
+    -- form missing
+    _ -> do
+      liftIO $ putStrLn $ "----------------------------------------"
+      getTApplicationEditR appIdentifier
 
 requireSuperAdmin :: ( YesodAuth m
              , b ~ YesodPersistBackend m
