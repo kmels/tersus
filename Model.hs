@@ -27,6 +27,7 @@ type ApplicationKey = Text --private app key
 type ApplicationIdentifier = Text --this has the property that has no spaces in it, it goes in the url.
 type AccessKey = Text
 type UrlK = Text
+type Message = String
 
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)
 
@@ -44,9 +45,10 @@ instance PersistField FileType where
   fromPersistValue _ = Left $ "Expected PersistText as PersistValue for FileType"
   sqlType _ = SqlString
 
-data TersusResultCode = Success | InexistentFile | NotEnoughPrivileges | DirectoryNotEmpty | OutOfRange deriving (Show, Eq, Enum)
+data TersusResultCode = Success | InexistentFile | NotEnoughPrivileges | DirectoryNotEmpty | OutOfRange deriving (Show, Eq)
 
-data TRequestError = TRequestError TersusResultCode String
+data TRequestError = TRequestError TersusResultCode Message
+data TRequestResponse = TRequestResponse TersusResultCode Message
 
 data TersusResult = TersusResult Int TersusResultCode
 

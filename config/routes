@@ -9,6 +9,7 @@
 /admin                                   AdminR                        GET
 /admin/t/list                            TApplicationsAdminR           GET
 /admin/t/#ApplicationIdentifier/edit     TApplicationEditR             GET POST
+/admin/t/#ApplicationIdentifier/delete   TApplicationDeleteR           GET
 
 -- JS API
 /api/user                                LoggedUserR                   GET

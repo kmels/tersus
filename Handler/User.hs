@@ -17,7 +17,8 @@ module Handler.User(
   --GHandler function helpers  
   verifyUserKey, --validate accesskey for given username
   verifyUserKeyM, --monadic version of verifyUserKey
-  getValidUser --match authkey with username
+  getValidUser, --match authkey with username
+  requireSuperAdmin --get a superadmin user
   ) where
   
 import Import
@@ -29,6 +30,10 @@ import Data.Aeson(encode)
 import Database.Persist.GenericSql.Raw(SqlPersist(..))
 import Tersus.AccessKeys
 import           Data.Text                as T
+
+--monads
+import Control.Monad(guard)
+import Control.Monad.Trans.Maybe
 
 -- | Returns a JSON representation of the logged user. Returns a 412 status code (Precondition failed) with an empty string
 getLoggedUserR :: Handler RepJson
@@ -72,4 +77,19 @@ verifyUserKey :: AccessKey -> Username -> Maybe Username
 verifyUserKey key uname = decompose key >>= \(u',_) -> if (u'==uname) 
                                                      then Just uname
                                                      else Nothing
-                                                                                                          
+ 
+-- | A method wrapped in the GHandler monad, returning a Maybe u iff the logged user `u` has super admin rights
+requireSuperAdmin :: ( YesodAuth m
+             , b ~ YesodPersistBackend m
+             , b ~ PersistEntityBackend val
+             , Key b val ~ AuthId m
+             , PersistStore b (GHandler s m)
+             , PersistEntity val
+             , YesodPersist m
+             , val ~ UserGeneric b
+             ) => GHandler s m (Maybe val)
+requireSuperAdmin = runMaybeT $ do
+  aid <- MaybeT $ maybeAuthId
+  user   <- MaybeT $ runDB $ get aid
+  guard (userIsSuperAdmin user)
+  return user

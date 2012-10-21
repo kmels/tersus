@@ -15,3 +15,7 @@ instance ToJSON TersusResult where
 instance ToJSON TRequestError where
          toJSON (TRequestError httpStatusCode errorMessage) = J.object [(T.pack "httpStatusCode") .= httpStatusCode,
                                                                   (T.pack "message") .= errorMessage]
+
+instance ToJSON TRequestResponse where
+         toJSON (TRequestResponse httpStatusCode message') = J.object [(T.pack "httpStatusCode") .= httpStatusCode,
+                                                                  (T.pack "message") .= message']

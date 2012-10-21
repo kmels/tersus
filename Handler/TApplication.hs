@@ -20,6 +20,14 @@ import           Import
 import           Prelude                  (last)
 import           Tersus.AccessKeys        (newAccessKey, newRandomKey)
 import           Text.Regex.TDFA
+
+--types
+import Data.Aeson(toJSON)
+
+--tersus
+import Handler.User(requireSuperAdmin)
+import Handler.Admin(getTApplicationsAdminR)
+
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
   appLikeName            :: Text
@@ -65,6 +73,17 @@ getRegisterTAppR = do
   (formWidget, enctype) <- generateFormPost $ tAppForm [] Nothing
   defaultLayout $(widgetFile "TApplication/register")
 
+getTApplicationDeleteR :: ApplicationIdentifier -> Handler RepJson
+getTApplicationDeleteR appIdentifier = do
+  --check for permissions
+  superAdmin <- requireSuperAdmin
+  case superAdmin of
+    Just _ -> do
+      Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+      runDB $ delete tappkey
+      return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ T.unpack appIdentifier ++ " deleted"
+    _ -> permissionDenied "Permission denied " --return $ toContent .toJSON $ TRequestError NotEnoughPrivileges "Permission denied. You are not administrator of this application"
+  
 -- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml
 postRegisterTAppR = do
@@ -87,7 +106,35 @@ postRegisterTAppR = do
       (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages Nothing
       defaultLayout $(widgetFile "TApplication/register")
     -- form missing
-    _ -> getRegisterTAppR
+    _ -> getRegisterTAppR 
+
+getTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml 
+getTApplicationEditR appIdentifier = do
+  Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier  
+  (formWidget, enctype) <- generateFormPost $ tAppForm [] $ Just tapp
+  defaultLayout $(widgetFile "admin/TApplication/edit")
+
+-- | processes a form produced by TApplicationeditR GET
+postTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml
+postTApplicationEditR appIdentifier = do
+  Entity tappkey tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+  ((result, _), _) <- runFormPost $ tAppForm [] $ Just tapp
+  case result of
+    FormSuccess appLike -> do
+      -- get data from the form
+      let
+        (appName,(appDescription,(appRepositoryUrl,(appContactEmail,appIdentifier')))) = (appLikeName &&& unTextarea . appLikeDescription &&& appLikeRepositoryURL &&& appLikeContactEmail &&& appLikeIdentifier) appLike
+        
+      --update in database
+      _ <- runDB $ update tappkey [TApplicationName =. appName,TApplicationDescription =. appDescription,TApplicationRepositoryUrl =. appRepositoryUrl, TApplicationContactEmail =. appContactEmail, TApplicationIdentifier =. appIdentifier']
+      getTApplicationsAdminR
+
+    --form isn't success
+    FormFailure errorMessages -> do
+      (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages $ Just tapp
+      defaultLayout $(widgetFile "admin/TApplication/edit")
+    -- form missing
+    _ -> getTApplicationEditR appIdentifier
 
 userNotLogged :: ApplicationIdentifier -> Handler RepHtml
 userNotLogged appIdentifier = defaultLayout $ do [whamlet|<h3>TODO: user not logged, application index of #{appIdentifier}|]
