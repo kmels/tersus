@@ -73,8 +73,8 @@ getRegisterTAppR = do
   (formWidget, enctype) <- generateFormPost $ tAppForm [] Nothing
   defaultLayout $(widgetFile "TApplication/register")
 
-getTApplicationDeleteR :: ApplicationIdentifier -> Handler RepJson
-getTApplicationDeleteR appIdentifier = do
+deleteTApplicationR :: ApplicationIdentifier -> Handler RepJson
+deleteTApplicationR appIdentifier = do
   --check for permissions
   superAdmin <- requireSuperAdmin
   case superAdmin of

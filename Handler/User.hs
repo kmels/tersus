@@ -13,12 +13,14 @@ Stability   :  stable
 module Handler.User(
   --API calls
   getLoggedUserR, --maybe json logged user
-  getUserAccessKeyR, --(request) plain access key request for given username,appkey  
+  getUserAccessKeyR, --(request) plain access key request for given username,appkey
+  --Handlers
+  getUsernameSearchR,
   --GHandler function helpers  
-  verifyUserKey, --validate accesskey for given username
-  verifyUserKeyM, --monadic version of verifyUserKey
   getValidUser, --match authkey with username
-  requireSuperAdmin --get a superadmin user
+  requireSuperAdmin, --get a superadmin user
+  verifyUserKey, --validate accesskey for given username
+  verifyUserKeyM --monadic version of verifyUserKey    
   ) where
   
 import Import
@@ -30,6 +32,12 @@ import Data.Aeson(encode)
 import Database.Persist.GenericSql.Raw(SqlPersist(..))
 import Tersus.AccessKeys
 import           Data.Text                as T
+
+import qualified Data.Conduit as C
+import Database.Persist.GenericSql.Raw (withStmt)
+import qualified Data.Conduit.List as CL
+import Database.Persist.Store
+import Data.Either (lefts,rights)
 
 --monads
 import Control.Monad(guard)
@@ -93,3 +101,19 @@ requireSuperAdmin = runMaybeT $ do
   user   <- MaybeT $ runDB $ get aid
   guard (userIsSuperAdmin user)
   return user
+  
+
+-- | This function is written in the spirit of fromPersistValues in Database.Persist, it takes a list of persist values (equivalent to columns coming from a sql query) and extracts the ones who have only one element of text (intented to use in getUsernameSearchR because only the `nickname` field is SELECT'ed
+extractNickname :: [PersistValue] -> Either String Text
+extractNickname [PersistText x] = Right x
+extractNickname _ = Left $ "Input error on extractNickname: number of fields are more than one (ignoring)"
+
+-- | Handler to autocomplete a user nickname from a query
+getUsernameSearchR :: Text -> Handler RepJson
+getUsernameSearchR query = do
+  --TODO SECURITY IMPORTANT, prevent SQL INJECTION? PENDING REVIEW
+  let stripped_query = T.filter (/= '\'') query 
+  let sql = "SELECT nickname FROM public.user WHERE nickname LIKE '%" `T.append` stripped_query `T.append` "%' LIMIT 5;" 
+  extracts <- runDB $ C.runResourceT $ withStmt sql ([]::[PersistValue])
+                    C.$= CL.map extractNickname C.$$ CL.consume
+  jsonToRepJson $ array . rights $ extracts

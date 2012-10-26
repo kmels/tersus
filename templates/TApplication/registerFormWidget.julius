@@ -1,0 +1,14 @@
+function tersusUsersList(query,process){
+    $.ajax({
+        type: "GET",
+        url: "/ajax/u/search/"+query
+    }).done(function(usernames){
+        process(usernames);
+    });
+}
+
+$('#typeahead').typeahead({
+    source: tersusUsersList,
+    items: 5,
+    minLength: 1
+})
