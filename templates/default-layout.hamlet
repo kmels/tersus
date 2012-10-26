@@ -23,6 +23,9 @@
                                     <li class="nav-header">Deploy
                                     $forall Just tapp <- maybeUserTApps
                                         <li><a onClick="javascript:deploy('#{tApplicationIdentifier tapp}');">#{tApplicationName tapp}</a>
+                                    <li class="nav-header">Edit
+                                    $forall Just tapp <- maybeUserTApps
+                                        <li><a href="@{TApplicationEditR $ tApplicationIdentifier tapp}">#{tApplicationName tapp}</a>
     
                 
                             $maybe Entity uid u <- maybeAuth

@@ -120,6 +120,7 @@ getTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml
 getTApplicationEditR appIdentifier = do
   Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier  
   (formWidget, enctype) <- generateFormPost $ tAppForm [] $ Just tapp
+  let manageTAppAdminsWidget = $(widgetFile "admin/TApplication/manageTAppAdminsWidget")
   defaultLayout $(widgetFile "admin/TApplication/edit")
 
 -- | processes a form produced by TApplicationeditR GET
@@ -140,6 +141,7 @@ postTApplicationEditR appIdentifier = do
     --form isn't success
     FormFailure errorMessages -> do
       (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages $ Just tapp
+      let manageTAppAdminsWidget = $(widgetFile "admin/TApplication/manageTAppAdminsWidget")
       defaultLayout $(widgetFile "admin/TApplication/edit")
     -- form missing
     _ -> getTApplicationEditR appIdentifier
