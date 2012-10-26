@@ -114,6 +114,5 @@ getUsernameSearchR query = do
   --TODO SECURITY IMPORTANT, prevent SQL INJECTION? PENDING REVIEW
   let stripped_query = T.filter (/= '\'') query 
   let sql = "SELECT nickname FROM public.user WHERE nickname LIKE '%" `T.append` stripped_query `T.append` "%' LIMIT 5;" 
-  extracts <- runDB $ C.runResourceT $ withStmt sql ([]::[PersistValue])
-                    C.$= CL.map extractNickname C.$$ CL.consume
-  jsonToRepJson $ array . rights $ extracts
+  extracts <- runDB $ C.runResourceT $ withStmt sql ([]::[PersistValue]) C.$= CL.map extractNickname C.$$ CL.consume
+  jsonToRepJson . array . rights $ extracts
