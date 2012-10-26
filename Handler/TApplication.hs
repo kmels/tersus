@@ -70,6 +70,7 @@ tAppForm errormessages defaultValues extra = do
 
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
+  auth <- requireAuth
   (formWidget, enctype) <- generateFormPost $ tAppForm [] Nothing
   defaultLayout $(widgetFile "TApplication/register")
 
@@ -86,7 +87,9 @@ deleteTApplicationR appIdentifier = do
   
 -- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml
-postRegisterTAppR = do
+postRegisterTAppR = do  
+  Entity userid user <- requireAuth
+    
   ((result, _), _) <- runFormPost $ tAppForm [] Nothing 
   case result of
     FormSuccess appLike -> do
@@ -98,7 +101,11 @@ postRegisterTAppR = do
       appKey <- liftIO $ newRandomKey 32  --create a new appkey
 
       --insert in database
-      _ <- runDB $ insert $ TApplication appName appIdentifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey
+      tapp <- runDB $ insert $ TApplication appName appIdentifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey
+      
+      --insert owner
+      _ <- runDB $ insert $ UserApplication userid tapp True 
+      
       defaultLayout $(widgetFile "TApplication/created")
 
     --form isn't success
