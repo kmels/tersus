@@ -38,7 +38,7 @@ keySeparator = "$"
 
 -- | Extract a UserNickname and a ApplicationIdentifier from a hexadecimal access key
 decompose :: AccessKey -> Maybe (Username,ApplicationIdentifier)
-decompose key = do
+decompose key = do  
   case (Data.List.Split.splitOn keySeparator encodedAuth) of
     [random,nickname,appname,_] -> do
       Just (T.pack nickname,T.pack appname)
@@ -47,7 +47,9 @@ decompose key = do
     decodedAccessKey :: B.ByteString
     --Let's don't care about invalid chars, since the decrypted key must have the right structure anyway
     decodedAccessKey = case Base64.decode $ textToBytestring key of
-      Right b -> b
+      Right b -> if (B.length b `mod` 16 ==0) -- aes with CBC can only handle 16-byte frames
+                 then b
+                 else B.empty
       _ -> B.empty
 
     encodedAuth :: String -- if valid, a string of the form "usernickname:ramdomstr:appname"
