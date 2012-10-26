@@ -26,3 +26,10 @@ instance ToJSON a => ToJSON (Entity a) where
 
 collapseLazyText :: LT.Text -> T.Text
 collapseLazyText text = foldlChunks (\t1 t2 -> T.concat [t1,t2]) "" text
+
+-- | Left-biased choice on maybes
+orElse :: Maybe a -> Maybe a -> Maybe a
+x `orElse` y = case x of
+                 Just _  -> x
+                 Nothing -> y
+                 
