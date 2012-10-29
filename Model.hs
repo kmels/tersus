@@ -31,6 +31,7 @@ type ApplicationKey = Text --private app key
 type ApplicationIdentifier = Text --this has the property that has no spaces in it, it goes in the url.
 type AccessKey = Text
 type UrlK = Text
+type Query = Text
 type Message = String
 
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)

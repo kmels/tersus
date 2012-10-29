@@ -1,9 +1,19 @@
-module Tersus.TFiles where
-
--- | Description: This file contains general datatypes and functions to inspect the resources in
+----------------------------------------------------------------------------
+-- |
+-- Module      :  Tersus.TFiles
+-- Copyright   :  (c) Ernesto Rodriguez, Carlos López-Camey
+-- License     :  
+--
+-- Maintainer  :  c.lopez@kmels.net
+-- Stability   :  stable
+--
+--
+-- This file contains general datatypes and functions to inspect the resources in
 -- the filesystem. It has convenience functions that will encode the contents of
 -- directories in nice ways.
--- Author: Ernesto Rodriguez
+-----------------------------------------------------------------------------
+
+module Tersus.TFiles where
 
 import           Data.Aeson         as J
 import Data.Text (Text,pack)
@@ -15,9 +25,9 @@ data ResourceType = FileType | FolderType deriving Show
 
 -- | Represents a file system resource
 data Resource = Resource{
-  resourceName :: Text, -- | The filesystem name of the resource
-  resourceFolder :: Text, -- | The folder where the resource resides
-  resourceType :: ResourceType -- | The type of the resource
+  resourceName :: Text, -- the filesystem name of the resource
+  resourceFolder :: Text, -- the folder where the resource resides
+  resourceType :: ResourceType -- the type of the resource
   }
 
 instance ToJSON Resource where

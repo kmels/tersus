@@ -8,7 +8,7 @@ import Prelude
 import System.IO.Unsafe (unsafePerformIO)
 import Data.SafeCopy
 import Data.IxSet
-import Model hiding (Success)
+import Model hiding (Success,Query)
 import Data.Text hiding (foldl,empty)
 import Data.Time.Clock (getCurrentTime)
 import Data.Typeable.Internal (Typeable)
@@ -19,7 +19,7 @@ import Data.Acid
 import qualified Data.Aeson.Types as A
 import Data.Acid.Advanced (update',query')
 import Control.Monad (mzero)
-import Import hiding (delete,foldl,insert,object,Success,replace,sendResponse)
+import Import hiding (delete,foldl,insert,object,Success,replace,sendResponse,Query)
 import Tersus.Cluster.TersusService
 import Tersus.Global
 import Safe (readMay)

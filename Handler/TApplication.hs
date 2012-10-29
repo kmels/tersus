@@ -20,7 +20,7 @@ import           Import
 import           Prelude                  (last)
 import           Tersus.AccessKeys        (newAccessKey, newRandomKey)
 import           Text.Regex.TDFA
-
+import Tersus.Global(orElse)
 --types
 import Data.Aeson(toJSON)
 
@@ -44,11 +44,12 @@ type ErrorMessage = Text
 
 tAppForm :: [ErrorMessage] -> Maybe TApplication -> Html -> MForm App App (FormResult AppLike,Widget)
 tAppForm errormessages defaultValues extra = do
+  Entity _ user <- lift requireAuth
   (nameRes, nameView) <- mreq textField FieldSettings { fsId = Just "TAppNameField", fsLabel = "Application name", fsName = Just "TAppName", fsAttrs = [("placeholder","Turbo app")] } (tApplicationName <$> defaultValues)
   (identifierRes, identifierView) <- mreq identifierField FieldSettings { fsId = Just "TAppIdentifierField", fsLabel = "Application identifier", fsName = Just "TAppIdentifier", fsAttrs = [("placeholder","turbo-app")] } (tApplicationIdentifier <$> defaultValues)
   (descriptionRes, descriptionView) <- mreq textareaField FieldSettings { fsId = Just "TAppDescriptionField", fsLabel = "Description", fsName = Just "TAppDescription", fsAttrs = [("placeholder","An application that turboes your _")] } (Textarea . tApplicationDescription <$> defaultValues)
   (repositoryUrlRes, repositoryUrlView) <- mreq textField FieldSettings { fsId = Just "TApplicationRepositoryUrlField", fsLabel = "Application repository url", fsName = Just "TApplicationRepositoryUrl", fsAttrs = [("placeholder","http://github.com/turbo-nickname/turbo-app")] } (tApplicationRepositoryUrl <$> defaultValues)
-  (contactEmailRes, contactEmailView) <- mreq emailField FieldSettings { fsId = Just "TApplicationContactEmailField", fsLabel = "Contact email", fsName = Just "TAppConcatEmail", fsAttrs = [("placeholder","turbo-email@example.com")] } (tApplicationContactEmail <$> defaultValues)
+  (contactEmailRes, contactEmailView) <- mreq emailField FieldSettings { fsId = Just "TApplicationContactEmailField", fsLabel = "Contact email", fsName = Just "TAppConcatEmail", fsAttrs = [("placeholder","turbo-email@example.com")] } ((tApplicationContactEmail <$> defaultValues) `orElse` (Just $ userEmail user))
   let appLikeResult = AppLike <$> nameRes <*> identifierRes <*> descriptionRes <*> repositoryUrlRes <*> contactEmailRes
   let widget = $(widgetFile "TApplication/registerFormWidget")
   return (appLikeResult, widget)
@@ -70,11 +71,12 @@ tAppForm errormessages defaultValues extra = do
 
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
+  Entity _ user <- requireAuth
   (formWidget, enctype) <- generateFormPost $ tAppForm [] Nothing
   defaultLayout $(widgetFile "TApplication/register")
 
-getTApplicationDeleteR :: ApplicationIdentifier -> Handler RepJson
-getTApplicationDeleteR appIdentifier = do
+deleteTApplicationR :: ApplicationIdentifier -> Handler RepJson
+deleteTApplicationR appIdentifier = do
   --check for permissions
   superAdmin <- requireSuperAdmin
   case superAdmin of
@@ -86,7 +88,9 @@ getTApplicationDeleteR appIdentifier = do
   
 -- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml
-postRegisterTAppR = do
+postRegisterTAppR = do  
+  Entity userid user <- requireAuth
+    
   ((result, _), _) <- runFormPost $ tAppForm [] Nothing 
   case result of
     FormSuccess appLike -> do
@@ -98,7 +102,11 @@ postRegisterTAppR = do
       appKey <- liftIO $ newRandomKey 32  --create a new appkey
 
       --insert in database
-      _ <- runDB $ insert $ TApplication appName appIdentifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey
+      tapp <- runDB $ insert $ TApplication appName appIdentifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey
+      
+      --insert owner
+      _ <- runDB $ insert $ UserApplication userid tapp True 
+      
       defaultLayout $(widgetFile "TApplication/created")
 
     --form isn't success
@@ -112,6 +120,7 @@ getTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml
 getTApplicationEditR appIdentifier = do
   Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier  
   (formWidget, enctype) <- generateFormPost $ tAppForm [] $ Just tapp
+  let manageTAppAdminsWidget = $(widgetFile "admin/TApplication/manageTAppAdminsWidget")
   defaultLayout $(widgetFile "admin/TApplication/edit")
 
 -- | processes a form produced by TApplicationeditR GET
@@ -132,6 +141,7 @@ postTApplicationEditR appIdentifier = do
     --form isn't success
     FormFailure errorMessages -> do
       (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages $ Just tapp
+      let manageTAppAdminsWidget = $(widgetFile "admin/TApplication/manageTAppAdminsWidget")
       defaultLayout $(widgetFile "admin/TApplication/edit")
     -- form missing
     _ -> getTApplicationEditR appIdentifier

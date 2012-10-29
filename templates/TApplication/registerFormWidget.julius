@@ -1,0 +1,24 @@
+function tersusUsersList(query,process){
+    $.ajax({
+        type: "GET",
+        url: "/ajax/u/search/"+query
+    }).done(function(usernames){
+        process(usernames);
+    });
+}
+
+/* After the typeahead updater is run, clean the input */
+$('#typeahead').change(function(){$(this).val(""); $(this).focus()}); 
+
+$('#typeahead').typeahead({
+    source: tersusUsersList,
+    items: 5,
+    minLength: 1,
+    updater: function(nickname){        
+        /* add the completion to the admin list */
+        var typeahead = $('#typeahead');
+        $('#typeahead').val(""); //clean value
+        typeahead.parent().append('<h5><span class="label label-inverse">'+nickname+'<a href="javascript:$(this).parent().parent().remove();"><i class="icon-remove"></i></a></span></h5>'); //append nickname to admins; 
+        return nickname;
+    }
+});

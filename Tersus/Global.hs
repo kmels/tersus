@@ -28,8 +28,16 @@ instance ToJSON a => ToJSON (Entity a) where
 collapseLazyText :: LT.Text -> T.Text
 collapseLazyText text = foldlChunks (\t1 t2 -> T.concat [t1,t2]) "" text
 
+-- | Function to encode datatypes as JSON Text
 encodeAsText :: ToJSON obj => obj -> T.Text
 encodeAsText = collapseLazyText.decodeUtf8.encode.toJSON
 
+-- | Decode a Text containing json representation of an object
 decodeFromText :: FromJSON obj => T.Text -> Maybe obj
 decodeFromText = decode.encodeUtf8.fromChunks.return
+
+-- | Left-biased choice on maybes
+orElse :: Maybe a -> Maybe a -> Maybe a
+x `orElse` y = case x of
+                 Just _  -> x
+                 Nothing -> y
