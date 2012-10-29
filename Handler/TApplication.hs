@@ -171,7 +171,7 @@ getTAppHomeR appIdentifier = do
     redirectToApplication u argv = do
       let nickname = userNickname u
       accessKey <- liftIO $ newAccessKey nickname appIdentifier
-      initApplication $ AppInstance (T.unpack $ nickname) (T.unpack $ appIdentifier)
+      initApplication $ AppInstance nickname appIdentifier
       home <- toTextUrl $ TAppHomeR appIdentifier
       redirect $ T.unpack $ T.concat [home,"?",accessKeyParam,"=",accessKey,argv]
 

@@ -169,7 +169,6 @@ postSendAuthMessagesR :: Handler RepJson
 postSendAuthMessagesR = do
   msgs <- lookupPostParam authMessagesPostParam
   -- Try to decode a maybe text. Must be converted to a lazy bytestring beforehand
-  liftIO $ putStrLn $ show $ msgs >>= return . T.unpack
   case msgs >>= decode . encodeUtf8 . fromChunks . return of
     Just msgs' -> mapM deliverAuthMessage msgs' >>= jsonToRepJson . show
     Nothing -> jsonToRepJson $ show InvalidMsgFormat
@@ -214,7 +213,7 @@ getReceiveMessagesEventR :: Handler ()
 getReceiveMessagesEventR = do
   key <- receiveMessageAuth
   case key of
-    Just (appUsername,appIdentifier) -> createEventPipe $ AppInstance (T.unpack appUsername) (T.unpack appIdentifier)
+    Just (appUsername,appIdentifier) -> createEventPipe $ AppInstance appUsername appIdentifier
     Nothing -> return ()
   
 -- | Request to load all the messages sent to a particular app instance
@@ -222,7 +221,7 @@ getReceiveMessagesR :: Handler RepJson
 getReceiveMessagesR = do
   key <- receiveMessageAuth
   case key of
-    Just (appUsername,appIdentifier) -> receiveMessages' $ AppInstance (T.unpack appUsername) (T.unpack appIdentifier)
+    Just (appUsername,appIdentifier) -> receiveMessages' $ AppInstance appUsername appIdentifier
     Nothing -> jsonToRepJson $ show EInvalidAppKey
 
   where

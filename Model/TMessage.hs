@@ -11,9 +11,9 @@ import           Model.User
 -- according to the Tersus Developers Api.
 instance ToJSON TMessage where
          toJSON (TMessage sender receiver senderApp receiverApp msgBody _) = J.object [
-                                                                                      ("userSender",toJSON sender),
-                                                                                      ("userReceiver",toJSON receiver),
-                                                                                      ("appSender",toJSON senderApp),
-                                                                                      ("appReceiver",toJSON receiverApp),
-                                                                                      ("content",toJSON msgBody)
-                                                                                     ]
+           ("userSender",toJSON sender),
+           ("userReceiver",toJSON receiver),
+           ("appSender",toJSON senderApp),
+           ("appReceiver",toJSON receiverApp),
+           ("content",toJSON msgBody)
+           ]

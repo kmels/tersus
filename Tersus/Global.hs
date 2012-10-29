@@ -9,7 +9,8 @@ import Data.Aeson as J
 import qualified Data.Text as T
 import Data.Text.Lazy.Internal (foldlChunks)
 import Data.Text.Lazy.Internal as LT (Text)
-
+import Data.Text.Lazy.Encoding (decodeUtf8,encodeUtf8)
+import Data.Text.Lazy (fromChunks)
 
 -- Datatypes and functions that are general for many of the Tersus components
 
@@ -26,3 +27,9 @@ instance ToJSON a => ToJSON (Entity a) where
 
 collapseLazyText :: LT.Text -> T.Text
 collapseLazyText text = foldlChunks (\t1 t2 -> T.concat [t1,t2]) "" text
+
+encodeAsText :: ToJSON obj => obj -> T.Text
+encodeAsText = collapseLazyText.decodeUtf8.encode.toJSON
+
+decodeFromText :: FromJSON obj => T.Text -> Maybe obj
+decodeFromText = decode.encodeUtf8.fromChunks.return

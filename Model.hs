@@ -6,12 +6,16 @@ import           Data.List              (find)
 import           Data.Maybe             (fromJust)
 import           Data.Text              (Text)
 import qualified Data.Text              as T
+import           Data.Text.Encoding     (encodeUtf8,decodeUtf8)
 import           Data.Time              (UTCTime)
 import           Data.Typeable.Internal (Typeable)
 import           Database.Persist.Quasi
 import           Database.Persist.Store (PersistValue (..), SqlType (..))
 import           Prelude
 import           Yesod
+import Data.SafeCopy (deriveSafeCopy,base,SafeCopy)
+import Data.IxSet (Indexable(..),ixSet,ixFun)
+import Data.Data (Data)
 
 -- You can define all of your database entities in the entities file.
 -- You can find more information on persistent and how to declare entities
@@ -65,14 +69,43 @@ msgResultsNums = [(1,Delivered),(2,ENoAppInstance),(3,EInvalidAppKey),(4,EBuffer
 share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models")
 
 -- | Represents a app being run by a user
-data AppInstance = AppInstance {username :: String, application :: String} deriving (Eq,Typeable,Show)
+data AppInstance = AppInstance {username :: Text, application :: Text} deriving (Eq,Typeable,Show)
+
+appInstanceAsText :: AppInstance -> Text
+appInstanceAsText (AppInstance u a) = T.concat [u,a]
+
+instance Ord AppInstance where
+  compare a a' = compare (appInstanceAsText a) (appInstanceAsText a')
+  a < a' = (<) (appInstanceAsText a) (appInstanceAsText a')
+  a <= a' = (<=) (appInstanceAsText a) (appInstanceAsText a')
+  a > a' = (>) (appInstanceAsText a) (appInstanceAsText a')
+  a >= a' = (>=) (appInstanceAsText a) (appInstanceAsText a')
+  max a a' | a > a' = a
+           | otherwise = a'
+  min a a' | a < a' = a
+           | otherwise = a'
+
+
+newtype AUserId = AUserId Text deriving (Eq,Ord,Data,Typeable,SafeCopy)
+newtype AAppId = AAppId Text deriving (Eq,Ord,Data,Typeable,SafeCopy)
+
+instance Indexable AppInstance where
+  empty = ixSet [ ixFun $ \ai -> [AUserId $ username ai]
+                ,ixFun $ \ai -> [AAppId $ application ai]
+                ,ixFun $ \ai -> [ai]
+                ]
 
 -- | Represents a mailbox address of an application instance
 -- mostly used by server side apps
 data Address = Address {user :: User, app :: TApplication}
 
 -- | A message with the structure it has when delivered to an application
-data TMessage = TMessage Username Username ApplicationIdentifier ApplicationIdentifier Text UTCTime deriving (Eq, Typeable)
+data TMessage = TMessage {messageSender ::Username
+                         ,messageReceiver :: Username
+                         ,messageSenderApp :: ApplicationIdentifier
+                         ,messageReceiverApp :: ApplicationIdentifier
+                         ,messageBody :: Text
+                         ,messageTimestamp :: UTCTime} deriving (Eq, Typeable, Show)
 
 -- | A message sent by an application using it's appkey. This is what the post request accepts
 data AuthMessage = AuthMessage AccessKey Username ApplicationIdentifier Text deriving (Eq, Typeable,Show)
@@ -90,16 +123,16 @@ class InvAddressable a where
     getSendAppInstance :: a -> AppInstance
 
 instance InvAddressable TMessage where
-         getSendAppInstance (TMessage mSender _ appId _ _ _) = AppInstance (T.unpack mSender) (T.unpack appId)
+         getSendAppInstance (TMessage mSender _ appId _ _ _) = AppInstance  mSender appId
 
 instance Addressable TMessage where
-         getAppInstance (TMessage _ mReceiver _ appId _ _) = AppInstance (T.unpack mReceiver) (T.unpack appId)
+         getAppInstance (TMessage _ mReceiver _ appId _ _) = AppInstance mReceiver appId
 
 instance Addressable AppInstance where
          getAppInstance a = a
 
 instance Addressable Address where
-    getAppInstance (Address (User _ nickname _ _) (TApplication _ id' _ _ _ _ _)) = AppInstance (T.unpack nickname) (T.unpack id')
+    getAppInstance (Address (User _ nickname _ _) (TApplication _ id' _ _ _ _ _)) = AppInstance nickname id'
 
 instance B.Binary Text where
          put t = B.put (T.unpack t)
@@ -157,9 +190,11 @@ instance B.Binary MessageResult where
          get = B.get >>= \num -> return $ getNumMsgResult num
 
 instance B.Binary AppInstance where
-    put (AppInstance username' app') = B.put (username',app')
-    get = do B.get >>= \(username',app') -> return (AppInstance username' app')
+    put (AppInstance username' app') = B.put (encodeUtf8 username',encodeUtf8 app')
+    get = do B.get >>= \(username',app') -> return (AppInstance (decodeUtf8 username') (decodeUtf8 app'))
 
 instance B.Binary UTCTime where
   put time = B.put (show time)
   get = B.get >>= return.read
+
+$(deriveSafeCopy 0 'base ''AppInstance)

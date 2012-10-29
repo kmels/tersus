@@ -28,12 +28,21 @@ import Tersus.Global
 import Yesod.Default.Config (withYamlEnvironment)
 import Control.Monad.Maybe
 import Database.Persist (getBy,selectList,get)
+import Data.Acid (AcidState)
+import Data.SafeCopy (SafeCopy)
+import Control.Exception (Exception,throw)
+import Data.Time.Clock (getCurrentTime,UTCTime)
 
 import Database.Persist.Query.Internal(Filter,PersistQuery,SelectOpt)
 import Database.Persist.Store(Key,PersistEntity,PersistEntityBackend,PersistUnique,PersistStore,Unique)
+-- | Exceptions that can result from server side applications
+-- | NoStateException: raised if an application that dosen't use acid state tries to access it's acid state
+data TersusServiceExceptions = NoStateException deriving (Show,Typeable)
 
--- Represents a tersus server side app.
-data TersusServerApp = TersusServerApp
+instance Exception TersusServiceExceptions
+  
+-- | Represents a tersus server side app.
+data (SafeCopy store) => TersusServerApp store = TersusServerApp
     {
       -- The Tersus Application that represents this app. This is here for messaging purposes
       -- so normal tersus apps can communicate with it as if it were a tersus app.
@@ -42,15 +51,19 @@ data TersusServerApp = TersusServerApp
       -- it to the current app implementation
       userRep :: User,
       -- The function that is executed every time a message is received by the application
-      msgFun :: TMessage -> TersusServiceM (),
+      msgFun :: TMessage -> TersusServiceM store (),
       -- A optional function that is executed every time a message delivery status is
-      -- executed
-      ackwFun :: Maybe (MessageResultEnvelope -> TersusServiceM ())
+      -- obtained
+      ackwFun :: Maybe (MessageResultEnvelope -> TersusServiceM store ()),
+      -- Function that is called when the session of a AppInstance expires
+      expireFun :: Maybe ([AppInstance] -> TersusServiceM store ()),
+      -- The optional state that will be used by the application
+      initialState :: Maybe (IO (AcidState store))
     }
 
 -- The datatype that contains all necesary data to run a Tersus Server application
 -- this datatype also represents the `state` of the application.
-data TersusService = TersusService 
+data (SafeCopy store) => TersusService store = TersusService 
     {
       -- The channel which the app uses to deliver messages. The server side
       -- apps use the same channel as the client side apps running in this server
@@ -66,15 +79,17 @@ data TersusService = TersusService
       -- is sent when the app is created
       clusterList :: TersusClusterList,
       -- Database configuration
-      dbConf :: (PersistConfig,Database.Persist.Store.PersistConfigPool PersistConfig)
+      dbConf :: (PersistConfig,Database.Persist.Store.PersistConfigPool PersistConfig),
+      -- In memory database of the application
+      memDb :: Maybe (AcidState store)
     }
 
 -- The monad on which a server side application runs. It passes a TersusService datatype
 -- to represent the state and eventually collapses to a Process since they are intended to
 -- be run with cloud haskell
-data TersusServiceM a = TersusServiceM {runTersusServiceM :: TersusService -> Process (TersusService,a)}
+data TersusServiceM store a = TersusServiceM {runTersusServiceM :: TersusService store -> Process (TersusService store,a)}
 
-instance Monad TersusServiceM where
+instance Monad (TersusServiceM store) where
     -- Apply runTersusServiceM to the first argument which is a monad to obtain a function that
     -- goes from TersusService -> Process. Apply this function to the TersusService that will
     -- be provided as ts and pind the resulting Process to the new state and the result of the
@@ -87,7 +102,7 @@ instance Monad TersusServiceM where
 -- Process monad, then the resulting value is binded and the provided
 -- TersusService state ts is coupled with the value to get back into
 -- the TersusServiceM
-instance MonadIO TersusServiceM where
+instance MonadIO (TersusServiceM store) where
     liftIO ioVal = TersusServiceM $ \ts -> (liftIO ioVal >>= \x -> return (ts,x))
 
 
@@ -97,41 +112,39 @@ mkDbConf tersusEnv = liftIO $ do
   poolConf <- Database.Persist.Store.createPoolConfig dbConn
   return (dbConn,poolConf)
   
-runQuery :: forall a. SqlPersist IO a -> TersusServiceM a
+runQuery :: (SafeCopy store) => forall a. SqlPersist IO a -> TersusServiceM store a
 runQuery query = TersusServiceM $ runQuery' query
 
-runQuery' :: SqlPersist IO a -> TersusService -> Process (TersusService,a)
-runQuery' query (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf)) = do 
+runQuery' :: (SafeCopy store) => SqlPersist IO a -> TersusService store -> Process (TersusService store,a)
+runQuery' query (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf) state) = do 
   res <- runQuery'' dbConn poolConf query
-  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf),res)
+  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf) state,res)
 
 runQuery'' :: PersistConfig -> Database.Persist.Store.PersistConfigPool PersistConfig -> SqlPersist IO a -> Process a
 runQuery'' dbConn poolConf query = liftIO $ Database.Persist.Store.runPool dbConn query poolConf
 
 -- Run a TersusServiceM with the given TersusService state ts. Usually the initial
 -- state which are all the messaging pipeings as defined in the datatype
-evalTersusServiceM :: TersusService -> TersusServiceM a -> Process a
+evalTersusServiceM :: TersusService b -> TersusServiceM b a -> Process a
 evalTersusServiceM ts (TersusServiceM service) = service ts >>= \(_,a) -> return a
 
-recvListenerFun :: (Data.Typeable.Internal.Typeable a,Data.Binary.Binary a) => TersusService -> ReceivePort a -> [(a -> TersusServiceM ())] -> Process ()
+recvListenerFun :: (Data.Typeable.Internal.Typeable a,Data.Binary.Binary a) => TersusService store -> ReceivePort a -> [(a -> TersusServiceM store ())] -> Process ()
 recvListenerFun ts recvPort funs = forever $ do 
   recvVal <- receiveChan recvPort                                       
   mapM_ (\f -> evalTersusServiceM ts (f recvVal)) funs
 
-makeTersusService :: TersusServerApp -> (TMessageQueue -> TersusClusterList -> TersusEnvoiernment -> Process ())
-makeTersusService (TersusServerApp aRep uRep mFun aFun) = makeTersusService' serviceAppInstance mFun aFun
-    where
-      serviceAppInstance = getAppInstance $ Address uRep aRep
-
-makeTersusService' :: AppInstance -> (TMessage -> TersusServiceM ()) -> Maybe (MessageResultEnvelope -> TersusServiceM ()) -> TMessageQueue -> TersusClusterList -> TersusEnvoiernment -> Process ()
-makeTersusService' sAppInstance mFun aFun sDeliveryChannel sClusterList tersusEnv = do
+-- | Initialize a process that runs the given server side application
+makeTersusService :: (SafeCopy store) => TersusServerApp store -> TMessageQueue -> TersusClusterList -> TersusEnvoiernment -> Process ()
+makeTersusService tersusServerApp sDeliveryChannel sClusterList tersusEnv = do
   (aSendPort,aRecvPort) <- newChan
   (mSendPort,mRecvPort) <- newChan
   --  liftIO $ atomically $ writeTChan nChannel (Initialized' appInstance)
   clusters <- liftIO $ atomically $ readTVar sClusterList 
   databaseConf <- mkDbConf tersusEnv
-  let {ts = TersusService sDeliveryChannel (mSendPort,mRecvPort) (aSendPort,aRecvPort) sAppInstance sClusterList databaseConf;
-       initNotification = [Initialized sAppInstance (mSendPort,"HashLoco")]}
+  initializedDb <- stateInitializer
+  let
+    ts = TersusService sDeliveryChannel (mSendPort,mRecvPort) (aSendPort,aRecvPort) sAppInstance sClusterList databaseConf $ initializedDb
+    initNotification = [Initialized sAppInstance (mSendPort,"HashLoco")]
   mapM_ (\c -> sendNotifications initNotification sClusterList c >> (liftIO $ putStrLn "sent stuff")) clusters
   -- The acknowledgement port is stripped from the envelope since acknowledgement is enforced
   _ <- spawnLocal $ recvListenerFun ts mRecvPort [acknowledgeMsg,\(msg,_) -> mFun msg]
@@ -139,9 +152,16 @@ makeTersusService' sAppInstance mFun aFun sDeliveryChannel sClusterList tersusEn
     Just f -> recvListenerFun ts aRecvPort [f]
     Nothing -> recvListenerFun ts aRecvPort [defaultAckwFun]
 
+  where
+    TersusServerApp aRep uRep mFun aFun _ _ = tersusServerApp
+    sAppInstance = getAppInstance $ Address uRep aRep
+    stateInitializer = case (initialState tersusServerApp) of
+      Nothing -> return Nothing
+      Just s -> liftIO s >>= return.Just
+
 -- Default acknowledgement function ignores the message
 -- acknowledgement
-defaultAckwFun :: MessageResultEnvelope -> TersusServiceM ()
+defaultAckwFun :: MessageResultEnvelope -> TersusServiceM store ()
 defaultAckwFun _ = return ()
 
 -- notifyCreateProcess' (TersusService nChannel deliveryChannel mPorts aPorts appInstance clusterList) = do
@@ -157,34 +177,49 @@ defaultAckwFun _ = return ()
 
 -- getMessages = TersusServiceM getMessages'
 
-getMessage' :: TersusService -> Process (TersusService,TMessageEnvelope)
-getMessage' (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList databaseConfig) = do
+getMessage' :: (SafeCopy store) => TersusService store -> Process (TersusService store,TMessageEnvelope)
+getMessage' (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList databaseConfig state) = do
   msg <- receiveChan mRecvPort
-  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList databaseConfig,msg)
+  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList databaseConfig state,msg)
 
 -- Get the next message delivered to this particular server side application.
 -- Ie. message located in the delivery channle created for this app
-getMessage :: TersusServiceM (TMessageEnvelope)
+getMessage ::(SafeCopy store) => TersusServiceM store (TMessageEnvelope)
 getMessage = TersusServiceM getMessage'
 
-sendMessage' :: TMessage -> TersusService -> Process (TersusService,())
-sendMessage' msg (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort) appInstance' sClusterList databaseConfig) = do
+sendMessageInt :: (SafeCopy store) => TMessage -> TersusService store -> Process (TersusService store,())
+sendMessageInt msg (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort) appInstance' sClusterList databaseConfig state) = do
   liftIO $ atomically $ writeTChan sDeliveryChannel (msg,aSendPort)
-  return (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort)  appInstance' sClusterList databaseConfig,())
+  return (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort)  appInstance' sClusterList databaseConfig state,())
   
 -- Send a message from a server side application it uses the message queue
 -- form the server where it's actually running
-sendMessage :: TMessage -> TersusServiceM ()
-sendMessage msg = TersusServiceM $ sendMessage' msg
+sendMessage :: (SafeCopy store) => TMessage -> TersusServiceM store ()
+sendMessage msg = TersusServiceM $ sendMessageInt msg
 
-acknowledgeMsg' :: TMessageEnvelope -> TersusService -> Process (TersusService,())
+-- | Send a message without timestamp, the timestamp will be added automatically
+sendMessage' :: (SafeCopy store) => (UTCTime -> TMessage) -> TersusServiceM store ()
+sendMessage' pMsg = do
+  msg <- (liftIO getCurrentTime) >>= return.pMsg
+  sendMessage msg
+
+acknowledgeMsg' :: (SafeCopy store) => TMessageEnvelope -> TersusService store -> Process (TersusService store,())
 acknowledgeMsg' (msg,aPort) ts = do
   sendChan aPort (generateHash msg, Delivered , getSendAppInstance msg)
   return (ts,())
 
+-- | Get the acid state of the given Tersus Server Application
+getDb :: (SafeCopy store) => TersusServiceM store (AcidState store)
+getDb = TersusServiceM getDb'
+  where
+    getDb' tersusService = case memDb tersusService of
+      Nothing -> throw NoStateException
+      Just s -> return (tersusService,s)
+
+
 -- Acknowledge a received message as received and infomr the 
 -- sender that the message was received
-acknowledgeMsg :: TMessageEnvelope -> TersusServiceM ()
+acknowledgeMsg :: (SafeCopy store) => TMessageEnvelope -> TersusServiceM store ()
 acknowledgeMsg msgEnv = TersusServiceM $ acknowledgeMsg' msgEnv
 
 type MaybeQuery = MaybeT (SqlPersist IO)
