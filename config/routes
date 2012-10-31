@@ -7,12 +7,12 @@
 /                                        HomeR                         GET
 /about                                   AboutR                        GET
 /admin                                   AdminR                        GET
-/admin/as/manage                         TApplicationsAdminR           GET
-/admin/a/edit/#ApplicationIdentifier     TApplicationEditR             GET POST
-/admin/a/#ApplicationIdentifier          TApplicationR                 DELETE
+/admin/applications/manage                         TApplicationsAdminR           GET
+/admin/application/edit/#ApplicationIdentifier     TApplicationEditR             GET POST
+/admin/application/#ApplicationIdentifier          TApplicationR                 DELETE
 
 -- AJAX
-/ajax/u/search/#Query                    UsernameSearchR               GET            
+/ajax/user/search/#Query                    UsernameSearchR               GET            
 
 -- JS API
 /api/user                                LoggedUserR                   GET
