@@ -27,11 +27,35 @@ $('#typeahead').typeahead({
         }).done(function(response){
             //add label with administrator
             user = response.result
+        
+            if (response.httpStatusCode=="Success"){
+                adminItem = '<li id="'+user.username+'" class="admin-item"><span class="label label-inverse">'+user.username+'<a onClick="removeAdmin(user.username)"><i class="icon-remove"></i></a></span></li>';
+        
+                alert(adminItem);
+                $('#adminList').append(adminItem); //append nickname to admins; 
+            } else if (response.httpStatusCode=="SuccessDontUpdate"){
+                //it is already an admin, highlight it or (remove and add again) or something else.
+                alert("TODO: already exists")   
+            }   
 
-            $('#typeahead').parent().append('<span class="label label-inverse">'+user.username+'<a href="javascript:$(this).remove();"><i class="icon-remove"></i></a></span>'); //append nickname to admins; 
-        });
+        }); 
             
         return nickname;
     }
 });
+
+var removeAdmin = function(nickname){
+    $.ajax({
+        type: "DELETE",
+        url: "/ajax/admin/application/" + #{show appname},
+        data: { adminNickname: nickname}
+    }).done(function(response){
+        user = response.result
+
+        if (response.httpStatusCode=="Success"){
+            //remove admin-item
+            $("#"+nickname+".admin-item").remove();
+        }
+    });
+}
 

@@ -8,12 +8,12 @@
 /about                                   AboutR                        GET
 /admin                                   AdminR                        GET
 /admin/applications/manage                         TApplicationsAdminR           GET
-/admin/application/edit/#ApplicationIdentifier     TApplicationEditR             GET POST
+/admin/application/edit/#ApplicationIdentifier     TApplicationEditR             GET POST 
 /admin/application/#ApplicationIdentifier          TApplicationR                 DELETE
 
 -- AJAX
 /ajax/user/search/#Query                           UsernameSearchR        GET        
-/ajax/admin/application/#ApplicationIdentifier     TApplicationAdminR     PUT
+/ajax/admin/application/#ApplicationIdentifier     TApplicationAdminR     PUT DELETE
 
 -- JS API
 /api/user                                LoggedUserR                   GET

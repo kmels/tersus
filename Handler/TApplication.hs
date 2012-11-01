@@ -241,6 +241,7 @@ postDeployTAppR appIdentifier  = do
 -- Ajax calls
 ----------------------------------------
 
+-- | Adds an admin to an application
 putTApplicationAdminR :: ApplicationIdentifier -> Handler RepJson
 putTApplicationAdminR appIdentifier = do
   _ <- requireAdminFor $ appIdentifier
@@ -256,17 +257,38 @@ putTApplicationAdminR appIdentifier = do
         --exists?
         existing <- runDB $ selectFirst [UserApplicationApplication ==. tappkey, UserApplicationUser ==. userkey, UserApplicationIsAdmin ==. True] []
         case existing of
-          Just (Entity uappkey uapp) -> entityCreated user
+          Just _ -> entityExists user
           _ -> do 
-            uapp <- runDB $ insert $ UserApplication userkey tappkey True
+            _ <- runDB $ insert $ UserApplication userkey tappkey True
             entityCreated user
       Nothing -> invalidArguments "User doesnt exist"
+
+-- | Deletes an admin from an application
+deleteTApplicationAdminR :: ApplicationIdentifier -> Handler RepJson
+deleteTApplicationAdminR appIdentifier = do
+  _ <- requireAdminFor appIdentifier
+  Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+  
+  --get the admin
+  maybeAdmin <- runMaybeT $ do 
+    adminNickname <- MaybeT $ lookupPostParam "adminNickname"
+    MaybeT $ runDB $ getBy $ UniqueNickname adminNickname    
+  
+  case maybeAdmin of
+    Just (Entity userkey user) -> do
+      uappRelation <- runDB $ selectFirst [UserApplicationApplication ==. tappkey, UserApplicationUser ==. userkey, UserApplicationIsAdmin ==. True] []
+      case uappRelation of
+        Just (Entity uapprkey _) -> do
+          runDB $ delete uapprkey
+          entityDeleted user
+        _ -> invalidArguments $ "User is not an administrator of this application"
+    _ -> invalidArguments $ "User was not provided or does not exist"
 
 -- | Returns a list of admins given an application
 fetchAdminsOf :: (YesodPersist m,
                  YesodPersistBackend m ~ SqlPersist) => ApplicationIdentifier -> GHandler s m [User]
 fetchAdminsOf appIdentifier = do
-  Entity tappkey tapp <- runDB $ getBy404 $ UniqueIdentifier appIdentifier
+  Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier appIdentifier
   uapps <- runDB $ selectList [UserApplicationApplication ==. tappkey, UserApplicationIsAdmin ==. True] []
   adminMaybes <- mapM userAppToUser uapps
   return $ catMaybes adminMaybes

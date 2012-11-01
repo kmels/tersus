@@ -14,4 +14,4 @@
         ^{manageTAppAdminsWidget}
         <ul id=adminList>
             $forall user <- adminList
-                <li><h5><span class="label label-inverse">#{userNickname user}<a href="javascript:$(this).parent().parent().remove();"><i class="icon-remove"></i></a></span></h5>
+                <li id=#{userNickname user} class=admin-item><span class="label label-inverse">#{userNickname user}<a onClick="removeAdmin('#{userNickname user}')"><i class="icon-remove"></i></a></span></li>

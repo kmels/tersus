@@ -27,3 +27,9 @@ invalidArguments t = jsonToRepJson $ TRequestResponse RequestError (Message t)
 
 entityCreated :: (ToJSON val) => val -> Handler RepJson
 entityCreated e = jsonToRepJson $ TRequestResponse Success (JsonResult $ toJSON e)
+
+entityExists :: (ToJSON val) => val -> Handler RepJson
+entityExists e = jsonToRepJson $ TRequestResponse SuccessDontUpdate (JsonResult $ toJSON e)
+
+entityDeleted :: (ToJSON val) => val -> Handler RepJson
+entityDeleted e = jsonToRepJson $ TRequestResponse Success (JsonResult $ toJSON e)
