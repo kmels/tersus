@@ -28,7 +28,7 @@ $('#typeahead').typeahead({
             //add label with administrator
             user = response.result
 
-            $('#typeahead').parent().append('<h5><span class="label label-inverse">'+user.username+'<a href="javascript:$(this).parent().parent().remove();"><i class="icon-remove"></i></a></span></h5>'); //append nickname to admins; 
+            $('#typeahead').parent().append('<span class="label label-inverse">'+user.username+'<a href="javascript:$(this).remove();"><i class="icon-remove"></i></a></span>'); //append nickname to admins; 
         });
             
         return nickname;

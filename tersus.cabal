@@ -52,6 +52,7 @@ library
                      Tersus.Global
                      Tersus.TFiles
                      Tersus.Responses
+                     Tersus.Yesod.Persistent
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT

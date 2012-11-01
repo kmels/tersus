@@ -12,3 +12,6 @@
     <div class=span4>
         <h2> Manage administrators </h2>
         ^{manageTAppAdminsWidget}
+        <ul id=adminList>
+            $forall user <- adminList
+                <li><h5><span class="label label-inverse">#{userNickname user}<a href="javascript:$(this).parent().parent().remove();"><i class="icon-remove"></i></a></span></h5>

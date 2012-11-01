@@ -21,7 +21,14 @@ import           Prelude                  (last)
 import           Tersus.AccessKeys        (newAccessKey, newRandomKey)
 import           Text.Regex.TDFA
 import           Tersus.Global(orElse)
---types
+--haskell platform
+import           Data.Maybe(catMaybes)
+
+--persistent
+import           Database.Persist.GenericSql.Raw(SqlPersist(..))
+import           Tersus.Yesod.Persistent
+
+--json
 import           Data.Aeson(toJSON)
 
 --monads
@@ -125,7 +132,9 @@ getTApplicationEditR appIdentifier = do
   Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier  
   (formWidget, enctype) <- generateFormPost $ tAppForm [] $ Just tapp
   let appname = appIdentifier
+  adminList <- fetchAdminsOf appIdentifier
   let manageTAppAdminsWidget = $(widgetFile "admin/TApplication/manageTAppAdminsWidget")
+  
   defaultLayout $(widgetFile "admin/TApplication/edit")
 
 -- | processes a form produced by TApplicationeditR GET
@@ -148,6 +157,7 @@ postTApplicationEditR appIdentifier = do
       (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages $ Just tapp
       let appname = appIdentifier
       let manageTAppAdminsWidget = $(widgetFile "admin/TApplication/manageTAppAdminsWidget")
+      adminList <- fetchAdminsOf appIdentifier
       defaultLayout $(widgetFile "admin/TApplication/edit")
     -- form missing
     _ -> getTApplicationEditR appIdentifier
@@ -251,4 +261,13 @@ putTApplicationAdminR appIdentifier = do
             uapp <- runDB $ insert $ UserApplication userkey tappkey True
             entityCreated user
       Nothing -> invalidArguments "User doesnt exist"
+
+-- | Returns a list of admins given an application
+fetchAdminsOf :: (YesodPersist m,
+                 YesodPersistBackend m ~ SqlPersist) => ApplicationIdentifier -> GHandler s m [User]
+fetchAdminsOf appIdentifier = do
+  Entity tappkey tapp <- runDB $ getBy404 $ UniqueIdentifier appIdentifier
+  uapps <- runDB $ selectList [UserApplicationApplication ==. tappkey, UserApplicationIsAdmin ==. True] []
+  adminMaybes <- mapM userAppToUser uapps
+  return $ catMaybes adminMaybes
   
