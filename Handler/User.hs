@@ -19,6 +19,7 @@ module Handler.User(
   --GHandler function helpers  
   getValidUser, --match authkey with username
   requireSuperAdmin, --get a superadmin user
+  requireAdminFor,
   verifyUserKey, --validate accesskey for given username
   verifyUserKeyM --monadic version of verifyUserKey    
   ) where
@@ -102,7 +103,28 @@ requireSuperAdmin = runMaybeT $ do
   guard (userIsSuperAdmin user)
   return user
   
-
+-- | A method that returns Just the logged user if it has admin permissions over an application, Nothing otherwise
+requireAdminFor :: ( YesodAuth m
+             , b ~ YesodPersistBackend m
+             , b ~ PersistEntityBackend val
+             , Key b val ~ AuthId m
+             , PersistStore b (GHandler s m)
+             , PersistEntity val
+             , YesodPersist m
+             , val ~ UserGeneric b
+             , PersistUnique b (GHandler s m)
+             , PersistQuery b (GHandler s m)
+             , b ~ SqlPersist
+             ) => ApplicationIdentifier -> GHandler s m (Entity val)
+requireAdminFor appIdentifier = do 
+  userEntity@(Entity userid user) <- requireAuth
+  Entity tappkey tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+  permission <- runDB $ selectFirst [UserApplicationApplication ==. tappkey, UserApplicationUser ==. userid, UserApplicationIsAdmin ==. True] []
+  case permission of 
+    Just _ -> return $ userEntity
+    _ -> permissionDenied "Permission denied. The logged user is not an application administrator"
+  
+    
 -- | This function is written in the spirit of fromPersistValues in Database.Persist, it takes a list of persist values (equivalent to columns coming from a sql query) and extracts the ones who have only one element of text (intented to use in getUsernameSearchR because only the `nickname` field is SELECT'ed
 extractNickname :: [PersistValue] -> Either String Text
 extractNickname [PersistText x] = Right x
@@ -116,3 +138,4 @@ getUsernameSearchR query = do
   let sql = "SELECT nickname FROM public.user WHERE nickname LIKE '%" `T.append` stripped_query `T.append` "%' LIMIT 5;" 
   extracts <- runDB $ C.runResourceT $ withStmt sql ([]::[PersistValue]) C.$= CL.map extractNickname C.$$ CL.consume
   jsonToRepJson . array . rights $ extracts
+

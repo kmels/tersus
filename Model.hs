@@ -28,7 +28,6 @@ type ApplicationIdentifier = Text --this has the property that has no spaces in 
 type AccessKey = Text
 type UrlK = Text
 type Query = Text
-type Message = String
 
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)
 
@@ -46,10 +45,11 @@ instance PersistField FileType where
   fromPersistValue _ = Left $ "Expected PersistText as PersistValue for FileType"
   sqlType _ = SqlString
 
-data TersusResultCode = Success | InexistentFile | NotEnoughPrivileges | DirectoryNotEmpty | OutOfRange deriving (Show, Eq)
+data TersusResultCode = Success | RequestError | InexistentFile | NotEnoughPrivileges | DirectoryNotEmpty | OutOfRange deriving (Show, Eq)
 
-data TRequestError = TRequestError TersusResultCode Message
-data TRequestResponse = TRequestResponse TersusResultCode Message
+data TRequestError = TRequestError TersusResultCode Text
+data TRequestResponseBody = Message Text | JsonResult Value
+data TRequestResponse = TRequestResponse TersusResultCode TRequestResponseBody
 
 data TersusResult = TersusResult Int TersusResultCode
 

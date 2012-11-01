@@ -50,6 +50,7 @@ library
                      Tersus.Cluster.TersusServiceApp
                      Tersus.Global
                      Tersus.TFiles
+                     Tersus.Responses
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT

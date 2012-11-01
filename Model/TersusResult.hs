@@ -17,5 +17,5 @@ instance ToJSON TRequestError where
                                                                   (T.pack "message") .= errorMessage]
 
 instance ToJSON TRequestResponse where
-         toJSON (TRequestResponse httpStatusCode message') = J.object [(T.pack "httpStatusCode") .= httpStatusCode,
-                                                                  (T.pack "message") .= message']
+         toJSON (TRequestResponse httpStatusCode (Message message')) = J.object [(T.pack "httpStatusCode") .= httpStatusCode, (T.pack "message") .= message']
+         toJSON (TRequestResponse httpStatusCode (JsonResult j')) = J.object [(T.pack "httpStatusCode") .= httpStatusCode, (T.pack "result") .= j']

@@ -8,7 +8,7 @@
 module Handler.TApplication where
 
 import           Control.Arrow            ((&&&))
-import Control.Monad(when)
+import           Control.Monad(when)
 import           Data.ByteString          (ByteString)
 import           Data.Maybe               (isJust)
 import qualified Data.Text                as T
@@ -20,13 +20,17 @@ import           Import
 import           Prelude                  (last)
 import           Tersus.AccessKeys        (newAccessKey, newRandomKey)
 import           Text.Regex.TDFA
-import Tersus.Global(orElse)
+import           Tersus.Global(orElse)
 --types
-import Data.Aeson(toJSON)
+import           Data.Aeson(toJSON)
+
+--monads
+import           Control.Monad.Trans.Maybe
 
 --tersus
-import Handler.User(requireSuperAdmin)
-import Handler.Admin(getTApplicationsAdminR)
+import           Handler.Admin(getTApplicationsAdminR)
+import           Handler.User(requireSuperAdmin,requireAdminFor)
+import           Tersus.Responses
 
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
@@ -83,7 +87,7 @@ deleteTApplicationR appIdentifier = do
     Just _ -> do
       Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
       runDB $ delete tappkey
-      return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ T.unpack appIdentifier ++ " deleted"
+      return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ (Message $ appIdentifier `T.append` T.pack " deleted")
     _ -> permissionDenied "Permission denied " --return $ toContent .toJSON $ TRequestError NotEnoughPrivileges "Permission denied. You are not administrator of this application"
   
 -- | Handles the form that registers a new TApplication
@@ -120,6 +124,7 @@ getTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml
 getTApplicationEditR appIdentifier = do
   Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier  
   (formWidget, enctype) <- generateFormPost $ tAppForm [] $ Just tapp
+  let appname = appIdentifier
   let manageTAppAdminsWidget = $(widgetFile "admin/TApplication/manageTAppAdminsWidget")
   defaultLayout $(widgetFile "admin/TApplication/edit")
 
@@ -141,6 +146,7 @@ postTApplicationEditR appIdentifier = do
     --form isn't success
     FormFailure errorMessages -> do
       (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages $ Just tapp
+      let appname = appIdentifier
       let manageTAppAdminsWidget = $(widgetFile "admin/TApplication/manageTAppAdminsWidget")
       defaultLayout $(widgetFile "admin/TApplication/edit")
     -- form missing
@@ -220,3 +226,29 @@ postDeployTAppR appIdentifier  = do
   liftIO $ pullChanges tapp
   defaultLayout $ [whamlet||]
 
+
+----------------------------------------
+-- Ajax calls
+----------------------------------------
+
+putTApplicationAdminR :: ApplicationIdentifier -> Handler RepJson
+putTApplicationAdminR appIdentifier = do
+  _ <- requireAdminFor $ appIdentifier
+  Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+  
+  --get new user (does it exist?)
+  maybeNewAdmin <- runMaybeT $ do 
+    adminNickname <- MaybeT $ lookupPostParam "newAdminNickname"
+    MaybeT $ runDB $ getBy $ UniqueNickname adminNickname
+  
+  case maybeNewAdmin of
+      Just (Entity userkey user ) -> do -- insert new admin
+        --exists?
+        existing <- runDB $ selectFirst [UserApplicationApplication ==. tappkey, UserApplicationUser ==. userkey, UserApplicationIsAdmin ==. True] []
+        case existing of
+          Just (Entity uappkey uapp) -> entityCreated user
+          _ -> do 
+            uapp <- runDB $ insert $ UserApplication userkey tappkey True
+            entityCreated user
+      Nothing -> invalidArguments "User doesnt exist"
+  

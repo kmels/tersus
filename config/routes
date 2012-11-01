@@ -12,7 +12,8 @@
 /admin/application/#ApplicationIdentifier          TApplicationR                 DELETE
 
 -- AJAX
-/ajax/user/search/#Query                    UsernameSearchR               GET            
+/ajax/user/search/#Query                           UsernameSearchR        GET        
+/ajax/admin/application/#ApplicationIdentifier     TApplicationAdminR     PUT
 
 -- JS API
 /api/user                                LoggedUserR                   GET
