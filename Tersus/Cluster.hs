@@ -17,6 +17,7 @@ import           Control.Distributed.Process.Node
                                                                      runProcess)
 -- import           Control.Monad.Trans                                (liftIO)
 import           Data.HashTable                                     as H
+import           Data.SafeCopy                                       (SafeCopy)
 import           GHC.Int
 import           Model
 import           Network.Wai.Handler.Warp                          
@@ -35,18 +36,20 @@ import           System.Posix.Signals                               (sigTERM,
                                                                      signalProcess)
 import           Tersus.Cluster.MessageBackend
 import           Tersus.Cluster.TersusService                      
-                                                                     (makeTersusService)
+                                                                     (makeTersusService,TersusServerApp)
 import           Tersus.Cluster.TersusServiceApp                   
                                                                      (tersusServiceApp)
+import           Tersus.Cluster.TersusNotificationsApp               (tersusNotificationsApp)
 import           Tersus.Cluster.Types
 import           Tersus.Global
 import           Yesod.Default.Config                               (fromArgs)
 import           Yesod.Default.Main                                
                                                                      (defaultMain)
+import Data.Text as T
 
 -- |Hash function for a user application combo instance
 hashUserApp :: AppInstance -> GHC.Int.Int32
-hashUserApp (AppInstance name tApplication)  = H.hashString $ name ++ tApplication
+hashUserApp appInst = H.hashString $ T.unpack $ appInstanceAsText appInst
 
 -- |Produce all the data structures needed to communicate data between Tersusland and Clould Haskell
 -- addresses: Matches (user,app) to the processId where it's running
@@ -79,7 +82,7 @@ createTersusDevelInstance back = do
   (sChannel,rChannel,aChannel,appEnvs,addresses,(mSendPort,mRecvPort),(aSendPort,aRecvPort),(nSendPort,nRecvPort),clusterList) <- initDataStructures
 
   _ <- runTersusMessaging back (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvPort) sChannel rChannel aChannel appEnvs addresses clusterList 1
-  _ <- spawnLocal $ makeTersusService tersusServiceApp sChannel clusterList Development
+  _ <- initTersusServices sChannel clusterList Development
   liftIO $ do (port, app') <- getApplicationDev (sChannel,rChannel,aChannel,appEnvs,aSendPort)
               runSettings defaultSettings
                               { settingsPort = port
@@ -97,13 +100,23 @@ loop = do
 terminateDevel :: IO ()
 terminateDevel = exitSuccess
 
+-- | Container for all tersus server applications
+data ServerAppT where
+  ServerAppT :: SafeCopy store => TersusServerApp store -> ServerAppT
+
+tersusServices :: [ServerAppT]
+tersusServices = [ServerAppT tersusNotificationsApp,ServerAppT tersusServiceApp]
+
+initTersusServices :: TMessageQueue -> TersusClusterList -> TersusEnvoiernment -> Process [ProcessId]
+initTersusServices sChannel clusterList env = mapM (\(ServerAppT app) -> spawnLocal $ makeTersusService app sChannel clusterList env) tersusServices
+
 -- |Process that runs Tersus and Yesod in producction mode
 -- This will be executed when Tersus is deployed
 createTersusInstance :: Backend -> Process ()
 createTersusInstance back = do
   (sChannel,rChannel,nChannel,appEnvs,addresses,(mSendPort,mRecvPort),(aSendPort,aRecvPort),(nSendPort,nRecvPort),clusterList) <- initDataStructures
   _ <- runTersusMessaging back (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvPort) sChannel rChannel nChannel appEnvs addresses clusterList 1
-  _ <- spawnLocal $ makeTersusService tersusServiceApp sChannel clusterList Development
+  _ <- initTersusServices sChannel clusterList Development
   liftIO $ defaultMain (fromArgs parseExtra) $ makeApplicationWrapper (sChannel,rChannel,nChannel,appEnvs,aSendPort)
   return ()
 
