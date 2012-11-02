@@ -93,7 +93,12 @@ deleteTApplicationR appIdentifier = do
   case superAdmin of
     Just _ -> do
       Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+      
+      --delete administrators (or users) first (foreign keys)
+      runDB $ deleteWhere [UserApplicationApplication ==. tappkey]      
+      --delete app
       runDB $ delete tappkey
+      
       return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ (Message $ appIdentifier `T.append` T.pack " deleted")
     _ -> permissionDenied "Permission denied " --return $ toContent .toJSON $ TRequestError NotEnoughPrivileges "Permission denied. You are not administrator of this application"
   
