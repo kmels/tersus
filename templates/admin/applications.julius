@@ -2,7 +2,7 @@ function deleteApplication(tappName){
 
     $.ajax({
         type: "DELETE",
-        url: "/admin/a/"+tappName,
+        url: "/admin/application/"+tappName,
         context: document.body
     }).done(function(t) { 
         alert(t);
