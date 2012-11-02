@@ -49,10 +49,11 @@ library
                      Tersus.Cluster.TersusService
                      Tersus.Cluster.TersusServiceApp
                      Tersus.Cluster.TersusNotificationsApp
+                     Tersus.Filesystem
                      Tersus.Global
                      Tersus.TFiles
                      Tersus.Responses
-                     Tersus.Yesod.Persistent
+                     Tersus.Yesod.Persistent                     
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT

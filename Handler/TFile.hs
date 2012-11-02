@@ -14,8 +14,6 @@ import Data.Maybe
 import Data.Text                    as T
 import Handler.User                 (verifyUserKeyM)
 import Import                       hiding (catch)
-import Prelude                      (writeFile,last)
-import System.Directory             (createDirectoryIfMissing,getDirectoryContents,doesDirectoryExist,doesFileExist)
 import Text.Regex.TDFA
 import Data.ByteString          (ByteString)
 import Data.Aeson as J
@@ -24,8 +22,8 @@ import Yesod.Json(Value(..))
 import Model.TersusResult
 
 --OS file system
-import System.Directory(getAppUserDataDirectory)
-import System.IO.Unsafe
+import Tersus.Filesystem
+import System.Directory             (doesDirectoryExist,doesFileExist)
 
 {- Handler methods for operations on files. -}
 
@@ -104,39 +102,4 @@ putFileR username' accessToken filePath = do
 
       Nothing -> jsonToRepJson $ (show "No content provided")
     Nothing -> jsonToRepJson $ (show "No user could be deduced")
-
--- | Creates necessary directories in the filesystem for the given file path
-mkDirsFor :: Path -> IO ()
-mkDirsFor path = createDirectoryIfMissing createParents (T.unpack dir)
-                 where
-                   createParents = True
-		   init' [x] = []
-		   init' (x:xs) =  x : init' xs
-		   init' [] =  error "ERROR: mkDirsFor init"
-                   dir = pathToText (init' path)
-
--- | Writes a file to the filesystem
-writeFileContents :: Path -> Text -> IO ()
-writeFileContents path content = mkDirsFor path >>= \_ -> writeFile (T.unpack . pathToText $ path) (T.unpack content)
-
--- | Converts a list of path components into a Text by interacalating a "/"
-pathToText :: Path -> Text
-pathToText p = (T.pack "/") `T.append` T.intercalate (T.pack "/") p
-
--- | Converts a list of path components into a String by interacalating a "/"
-pathToString :: Path -> String
-pathToString = T.unpack . pathToText
-
--- | Returns the user director in the filesystem
-userDirPath :: Username -> Path
-userDirPath uname = 
-  let
-    datadir = unsafePerformIO $ getAppUserDataDirectory "tersus-data"
-  in (T.pack datadir) : [uname]
-
-fullPathForUser :: Path -> Username -> Path
-fullPathForUser filePath username = 
-  let 
-    userDirPath' = userDirPath username
-  in userDirPath' ++ filePath
 
