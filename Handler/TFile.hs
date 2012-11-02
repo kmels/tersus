@@ -16,12 +16,17 @@ import Handler.User                 (verifyUserKeyM)
 import Import                       hiding (catch)
 import Prelude                      (writeFile,last)
 import System.Directory             (createDirectoryIfMissing,getDirectoryContents,doesDirectoryExist,doesFileExist)
-import           Text.Regex.TDFA
-import           Data.ByteString          (ByteString)
+import Text.Regex.TDFA
+import Data.ByteString          (ByteString)
 import Data.Aeson as J
 import Tersus.TFiles
 import Yesod.Json(Value(..))
 import Model.TersusResult
+
+--OS file system
+import System.Directory(getAppUserDataDirectory)
+import System.IO.Unsafe
+
 {- Handler methods for operations on files. -}
 
 -- A way to convert between urls and a file path.
@@ -60,14 +65,16 @@ getFileR username' accessToken path = do
   maybeValidUser <- accessToken `verifyUserKeyM` username'
   case maybeValidUser of
     Just username'' -> do
-      let fsPath = T.unpack . pathToText $ path `fullPathForUser` username''
-      liftIO $ putStrLn $ "Looking: " ++ fsPath
-      isDirectory <- liftIO $ doesDirectoryExist fsPath
-      fileExists <- liftIO $ doesFileExist fsPath
+      let fsPath = path `fullPathForUser` username''
+      let fsPathStr = pathToString fsPath
+      
+      liftIO $ putStrLn $ "Looking: " ++ show fsPath
+      isDirectory <- liftIO $ doesDirectoryExist fsPathStr
+      fileExists <- liftIO $ doesFileExist fsPathStr
       if isDirectory
-      then liftIO $ directoryContents fsPath >>= \fs -> return $ (jsonContentType, toContent $ fs)
+      then liftIO $ directoryContents fsPathStr >>= \fs -> return $ (jsonContentType, toContent $ fs)
       else if fileExists
-      then return $ (filenameContentType fsPath, ContentFile fsPath Nothing)
+      then return $ (filenameContentType fsPathStr, ContentFile fsPathStr Nothing)
       else return $ (typeJson, toContent . toJSON $ fileDoesNotExistError)
     _ -> return $ (typeJson, toContent ("todo: error, invalid access key for user" :: String))
     where
@@ -88,11 +95,12 @@ putFileR username' accessToken filePath = do
   case maybeUsername of
     Just user' -> case content of
       Just content' -> do
-        let userLocalPath = userDirPath username'
-            fileLocalPath = userLocalPath ++ filePath
+        let 
+          userLocalPath = userDirPath username'
+          fsPath = filePath `fullPathForUser` username'
 
-        liftIO $ writeFileContents fileLocalPath content'
-        jsonToRepJson $ (show "Wrote file "++(T.unpack $ pathToText fileLocalPath))
+        liftIO $ writeFileContents fsPath content'
+        jsonToRepJson $ (show "Wrote file "++(T.unpack $ pathToText fsPath))
 
       Nothing -> jsonToRepJson $ (show "No content provided")
     Nothing -> jsonToRepJson $ (show "No user could be deduced")
@@ -111,14 +119,24 @@ mkDirsFor path = createDirectoryIfMissing createParents (T.unpack dir)
 writeFileContents :: Path -> Text -> IO ()
 writeFileContents path content = mkDirsFor path >>= \_ -> writeFile (T.unpack . pathToText $ path) (T.unpack content)
 
--- | Converts a list of path components into a list by interacalating a "/"
+-- | Converts a list of path components into a Text by interacalating a "/"
 pathToText :: Path -> Text
 pathToText p = (T.pack "/") `T.append` T.intercalate (T.pack "/") p
 
+-- | Converts a list of path components into a String by interacalating a "/"
+pathToString :: Path -> String
+pathToString = T.unpack . pathToText
+
 -- | Returns the user director in the filesystem
 userDirPath :: Username -> Path
-userDirPath uname = (T.pack "tmp") : [uname]
+userDirPath uname = 
+  let
+    datadir = unsafePerformIO $ getAppUserDataDirectory "tersus-data"
+  in (T.pack datadir) : [uname]
 
 fullPathForUser :: Path -> Username -> Path
-fullPathForUser p u = userDirPath u ++ p
+fullPathForUser filePath username = 
+  let 
+    userDirPath' = userDirPath username
+  in userDirPath' ++ filePath
 
