@@ -27,7 +27,10 @@
 /r/#ApplicationIdentifier/*Texts         TAppResourceR                 GET
 
 -- FILES
-/file/#Username/#AccessKey/*Texts        FileR                         GET PUT
+/file/#Username/#AccessKey/*Texts        FileR                GET PUT
+-- permissions
+/permission/file/with-user/#Username/READ/*Texts   ReadFilePermissionForUserR PUT DELETE
+
 
 -- MESSAGES
 /service/message/receive                 ReceiveMessagesR              GET

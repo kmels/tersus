@@ -38,6 +38,7 @@ library
                      Handler.Admin
                      Handler.Home
                      Handler.Messages
+                     Handler.Permission 
                      Handler.TApplication
                      Handler.TApplication.Git
                      Handler.TFile

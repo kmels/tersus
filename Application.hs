@@ -26,6 +26,7 @@ import Tersus.Cluster.Types
 import Handler.Admin
 import Handler.Home
 import Handler.Messages
+import Handler.Permission
 import Handler.TApplication
 import Handler.TFile
 import Handler.User
