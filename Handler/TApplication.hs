@@ -7,36 +7,38 @@
 
 module Handler.TApplication where
 
-import           Control.Arrow            ((&&&))
-import           Control.Monad(when)
-import           Data.ByteString          (ByteString)
-import           Data.Maybe               (isJust)
-import qualified Data.Text                as T
-import           Data.Time.Clock          (getCurrentTime)
-import           Handler.Messages         (initApplication)
-import           Handler.TApplication.Git (pullChanges)
-import           Handler.TFile(filenameContentType)
+import           Control.Arrow                   ((&&&))
+import           Control.Monad                   (when)
+import           Data.ByteString                 (ByteString)
+import           Data.Maybe                      (isJust)
+import qualified Data.Text                       as T
+import           Data.Time.Clock                 (getCurrentTime)
+import           Handler.Messages                (initApplication)
+import           Handler.TApplication.Git        (pullChanges)
+import           Handler.TFile                   (filenameContentType)
 import           Import
-import           Prelude                  (last)
-import           Tersus.AccessKeys        (newAccessKey, newRandomKey)
+import           Prelude                         (last)
+import           Tersus.AccessKeys               (newAccessKey, newRandomKey)
+import           Tersus.Global                   (orElse)
 import           Text.Regex.TDFA
-import           Tersus.Global(orElse)
 --haskell platform
-import           Data.Maybe(catMaybes)
+import           Data.Maybe                      (catMaybes)
 
 --persistent
-import           Database.Persist.GenericSql.Raw(SqlPersist(..))
+import           Database.Persist.GenericSql.Raw (SqlPersist (..))
 import           Tersus.Yesod.Persistent
 
 --json
-import           Data.Aeson(toJSON)
+import           Data.Aeson                      (toJSON)
 
 --monads
 import           Control.Monad.Trans.Maybe
 
 --tersus
-import           Handler.Admin(getTApplicationsAdminR)
-import           Handler.User(requireSuperAdmin,requireAdminFor)
+import           Handler.Admin                   (getTApplicationsAdminR)
+import           Handler.User                    (requireAdminFor,
+                                                  requireSuperAdmin)
+import           Tersus.Filesystem               (pathToString, tAppDirPath)
 import           Tersus.Responses
 
 -- The data type that is expected from registerAppForm
@@ -66,9 +68,9 @@ tAppForm errormessages defaultValues extra = do
   return (appLikeResult, widget)
   where
     --field that verifies that an application doesn't exist already.
-    identifierField = checkM validateIdentifier textField      
-    validateIdentifier appidfier =        
-       case (tApplicationIdentifier <$> defaultValues) of 
+    identifierField = checkM validateIdentifier textField
+    validateIdentifier appidfier =
+       case (tApplicationIdentifier <$> defaultValues) of
          Just defaultAppIdentifier -> do
            tapp <- runDB $ getBy $ UniqueIdentifier $ appidfier
            return $ if (isJust tapp && defaultAppIdentifier /= appidfier)
@@ -78,7 +80,7 @@ tAppForm errormessages defaultValues extra = do
            tapp <- runDB $ getBy $ UniqueIdentifier $ appidfier
            return $ if (isJust tapp)
                   then Left ("Error: application identifier exists" :: Text)
-                  else Right appidfier       
+                  else Right appidfier
 
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
@@ -93,21 +95,21 @@ deleteTApplicationR appIdentifier = do
   case superAdmin of
     Just _ -> do
       Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
-      
+
       --delete administrators (or users) first (foreign keys)
-      runDB $ deleteWhere [UserApplicationApplication ==. tappkey]      
+      runDB $ deleteWhere [UserApplicationApplication ==. tappkey]
       --delete app
       runDB $ delete tappkey
-      
+
       return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ (Message $ appIdentifier `T.append` T.pack " deleted")
     _ -> permissionDenied "Permission denied " --return $ toContent .toJSON $ TRequestError NotEnoughPrivileges "Permission denied. You are not administrator of this application"
-  
+
 -- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml
-postRegisterTAppR = do  
+postRegisterTAppR = do
   Entity userid user <- requireAuth
-    
-  ((result, _), _) <- runFormPost $ tAppForm [] Nothing 
+
+  ((result, _), _) <- runFormPost $ tAppForm [] Nothing
   case result of
     FormSuccess appLike -> do
       -- get data from the form
@@ -119,10 +121,10 @@ postRegisterTAppR = do
 
       --insert in database
       tapp <- runDB $ insert $ TApplication appName appIdentifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey
-      
+
       --insert owner
-      _ <- runDB $ insert $ UserApplication userid tapp True 
-      
+      _ <- runDB $ insert $ UserApplication userid tapp True
+
       defaultLayout $(widgetFile "TApplication/created")
 
     --form isn't success
@@ -130,16 +132,16 @@ postRegisterTAppR = do
       (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages Nothing
       defaultLayout $(widgetFile "TApplication/register")
     -- form missing
-    _ -> getRegisterTAppR 
+    _ -> getRegisterTAppR
 
-getTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml 
+getTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml
 getTApplicationEditR appIdentifier = do
-  Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier  
+  Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
   (formWidget, enctype) <- generateFormPost $ tAppForm [] $ Just tapp
   let appname = appIdentifier
   adminList <- fetchAdminsOf appIdentifier
   let manageTAppAdminsWidget = $(widgetFile "admin/TApplication/manageTAppAdminsWidget")
-  
+
   defaultLayout $(widgetFile "admin/TApplication/edit")
 
 -- | processes a form produced by TApplicationeditR GET
@@ -152,7 +154,7 @@ postTApplicationEditR appIdentifier = do
       -- get data from the form
       let
         (appName,(appDescription,(appRepositoryUrl,(appContactEmail,appIdentifier')))) = (appLikeName &&& unTextarea . appLikeDescription &&& appLikeRepositoryURL &&& appLikeContactEmail &&& appLikeIdentifier) appLike
-        
+
       --update in database
       _ <- runDB $ update tappkey [TApplicationName =. appName,TApplicationDescription =. appDescription,TApplicationRepositoryUrl =. appRepositoryUrl, TApplicationContactEmail =. appContactEmail, TApplicationIdentifier =. appIdentifier']
       getTApplicationsAdminR
@@ -221,18 +223,18 @@ fsResourcePrefix = T.concat [fsResourceSep,"tmp",fsResourceSep]
 -- | Matches a resource given as name and path with the mime type
 -- of the resource. The mime type is matched using the extension
 -- of the file.
-extension :: [T.Text] -> ContentType
-extension = filenameContentType . T.unpack . Prelude.last
+contentTypeOf :: [T.Text] -> ContentType
+contentTypeOf = filenameContentType . T.unpack . Prelude.last
 
 -- | Request that delivers a resource belonging to a particular application. Resource means
 -- any file in the application's repository
 getTAppResourceR :: ApplicationIdentifier -> [T.Text] -> Handler (ContentType,Content)
 getTAppResourceR _ [] = do
   return $ ("text/plain",toContent ("TODO: error, invalid resource " :: String))
-getTAppResourceR appIdentifier resource = do
-  return $ (extension resource,ContentFile (T.unpack $ T.concat [fsResourcePrefix,appIdentifier,path]) Nothing)
+getTAppResourceR appIdentifier resourcePath = do
+  return $ (contentTypeOf resourcePath, contentFile Nothing)
   where
-    path = T.concat $ foldl (\x y -> x ++ [fsResourceSep] ++ [y]) [] resource
+    contentFile = ContentFile $ pathToString $ tAppDirPath appIdentifier ++ resourcePath
 
 -- | Request that deploys an application (it pulls from its repository)
 postDeployTAppR :: ApplicationIdentifier -> Handler RepHtml
@@ -251,19 +253,19 @@ putTApplicationAdminR :: ApplicationIdentifier -> Handler RepJson
 putTApplicationAdminR appIdentifier = do
   _ <- requireAdminFor $ appIdentifier
   Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
-  
+
   --get new user (does it exist?)
-  maybeNewAdmin <- runMaybeT $ do 
+  maybeNewAdmin <- runMaybeT $ do
     adminNickname <- MaybeT $ lookupPostParam "newAdminNickname"
     MaybeT $ runDB $ getBy $ UniqueNickname adminNickname
-  
+
   case maybeNewAdmin of
       Just (Entity userkey user ) -> do -- insert new admin
         --exists?
         existing <- runDB $ selectFirst [UserApplicationApplication ==. tappkey, UserApplicationUser ==. userkey, UserApplicationIsAdmin ==. True] []
         case existing of
           Just _ -> entityExists user
-          _ -> do 
+          _ -> do
             _ <- runDB $ insert $ UserApplication userkey tappkey True
             entityCreated user
       Nothing -> invalidArguments "User doesnt exist"
@@ -273,12 +275,12 @@ deleteTApplicationAdminR :: ApplicationIdentifier -> Handler RepJson
 deleteTApplicationAdminR appIdentifier = do
   _ <- requireAdminFor appIdentifier
   Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
-  
+
   --get the admin
-  maybeAdmin <- runMaybeT $ do 
+  maybeAdmin <- runMaybeT $ do
     adminNickname <- MaybeT $ lookupPostParam "adminNickname"
-    MaybeT $ runDB $ getBy $ UniqueNickname adminNickname    
-  
+    MaybeT $ runDB $ getBy $ UniqueNickname adminNickname
+
   case maybeAdmin of
     Just (Entity userkey user) -> do
       uappRelation <- runDB $ selectFirst [UserApplicationApplication ==. tappkey, UserApplicationUser ==. userkey, UserApplicationIsAdmin ==. True] []
@@ -297,4 +299,4 @@ fetchAdminsOf appIdentifier = do
   uapps <- runDB $ selectList [UserApplicationApplication ==. tappkey, UserApplicationIsAdmin ==. True] []
   adminMaybes <- mapM userAppToUser uapps
   return $ catMaybes adminMaybes
-  
+
