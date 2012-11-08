@@ -27,10 +27,8 @@ Email
 TFile
     owner UserId
     rawpath RawPath
-    ancestors [Double]
     parent Double Maybe
     filename Text
-    content Text Maybe
     contentType Text Maybe
     fileType FileType
     UniqueRawPath rawpath
