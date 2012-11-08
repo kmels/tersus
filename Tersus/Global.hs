@@ -2,15 +2,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tersus.Global where
 
-import Prelude
+import           Prelude
 
-import Import
-import Data.Aeson as J
-import qualified Data.Text as T
-import Data.Text.Lazy.Internal (foldlChunks)
-import Data.Text.Lazy.Internal as LT (Text)
-import Data.Text.Lazy.Encoding (decodeUtf8,encodeUtf8)
-import Data.Text.Lazy (fromChunks)
+import           Data.Aeson              as J
+import qualified Data.Text               as T
+import           Data.Text.Lazy          (fromChunks)
+import           Data.Text.Lazy.Encoding (decodeUtf8, encodeUtf8)
+import           Data.Text.Lazy.Internal (foldlChunks)
+import           Data.Text.Lazy.Internal as LT (Text)
+import           Import
 
 -- Datatypes and functions that are general for many of the Tersus components
 
@@ -41,3 +41,7 @@ orElse :: Maybe a -> Maybe a -> Maybe a
 x `orElse` y = case x of
                  Just _  -> x
                  Nothing -> y
+
+-- | The get parameter under which the access key is provided
+accessKeyParameterName :: T.Text
+accessKeyParameterName = "access_key"

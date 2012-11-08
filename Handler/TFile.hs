@@ -1,29 +1,31 @@
+{-# LANGUAGE DoAndIfThenElse       #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE DoAndIfThenElse          #-}
-{-# LANGUAGE UndecidableInstances          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 module Handler.TFile where
 
 
-import Control.Exception.Extensible hiding (Handler, handle)
-import Control.Monad(when)
-import Data.Maybe
-import Data.Text                    as T
-import Handler.User                 (verifyUserKeyM)
-import Import                       hiding (catch)
-import Text.Regex.TDFA
-import Data.ByteString          (ByteString)
-import Data.Aeson as J
-import Tersus.TFiles
-import Yesod.Json(Value(..))
-import Model.TersusResult
+import           Control.Exception.Extensible hiding (Handler, handle)
+import           Control.Monad                (when)
+import           Data.Aeson                   as J
+import           Data.ByteString              (ByteString)
+import           Data.Maybe
+import           Data.Text                    as T
+import           Handler.User                 (verifyUserKeyM)
+import           Import                       hiding (catch)
+import           Model.TersusResult
+import           Tersus.TFiles
+import           Text.Regex.TDFA
+import           Yesod.Json                   (Value (..))
 
 --OS file system
-import Tersus.Filesystem
-import System.Directory             (doesDirectoryExist,doesFileExist)
+import           System.Directory             (doesDirectoryExist,
+                                               doesFileExist)
+import           Tersus.Filesystem
+import           Tersus.Global                (accessKeyParameterName)
 
 {- Handler methods for operations on files. -}
 
@@ -54,18 +56,19 @@ newtype JsonFileList = FileList [FilePath]
 
 instance ToJSON JsonFileList where
   toJSON (FileList fs) = array (Import.filter (\f -> f /= "." && f /= "..") fs) -- drop the "." and ".."
-  
+
 instance ToContent JsonFileList where
   toContent = toContent . toJSON
-              
-getFileR :: Text -> AccessKey -> Path -> Handler (ContentType,Content)
-getFileR username' accessToken path = do
-  maybeValidUser <- accessToken `verifyUserKeyM` username'
+
+getFileR :: Text -> Path -> Handler (ContentType,Content)
+getFileR username' path = do
+  accessKey <- lookupGetParam accessKeyParameterName
+  maybeValidUser <- (fromJust accessKey) `verifyUserKeyM` username'
   case maybeValidUser of
     Just username'' -> do
       let fsPath = path `fullPathForUser` username''
       let fsPathStr = pathToString fsPath
-      
+
       liftIO $ putStrLn $ "Looking: " ++ show fsPath
       isDirectory <- liftIO $ doesDirectoryExist fsPathStr
       fileExists <- liftIO $ doesFileExist fsPathStr
@@ -84,20 +87,24 @@ getFileR username' accessToken path = do
 fileDoesNotExistError :: TRequestError
 fileDoesNotExistError = TRequestError InexistentFile "File does not exist"
 
--- Temporal function to test uploading of documents
-putFileR :: Username -> AccessKey -> Path -> Handler RepJson
-putFileR username' accessToken filePath = do
-  maybeUsername <- accessToken `verifyUserKeyM` username'
+-- | Temporal function to test uploading of documents
+putFileR :: Username -> Path -> Handler RepJson
+putFileR username' filePath = do
+  accessKey <- lookupGetParam accessKeyParameterName
+  maybeUsername <- (fromJust accessKey) `verifyUserKeyM` username'
   content <- lookupPostParam "content"
 
   case maybeUsername of
     Just user' -> case content of
       Just content' -> do
-        let 
+        let
           userLocalPath = userDirPath username'
           fsPath = filePath `fullPathForUser` username'
 
         liftIO $ writeFileContents fsPath content'
+        $(logInfo) $ "Wrote file " `T.append` pathToText fsPath
+        liftIO $ putStrLn $ T.unpack $ "Wrote file " `T.append` pathToText filePath
+        liftIO $ putStrLn $ T.unpack $ "Wrote file " `T.append` pathToText fsPath
         jsonToRepJson $ (show "Wrote file "++(T.unpack $ pathToText fsPath))
 
       Nothing -> jsonToRepJson $ (show "No content provided")

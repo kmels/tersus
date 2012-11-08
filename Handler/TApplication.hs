@@ -39,8 +39,8 @@ import           Handler.Admin                   (getTApplicationsAdminR)
 import           Handler.User                    (requireAdminFor,
                                                   requireSuperAdmin)
 import           Tersus.Filesystem               (pathToString, tAppDirPath)
+import           Tersus.Global
 import           Tersus.Responses
-
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
   appLikeName            :: Text
@@ -172,10 +172,6 @@ postTApplicationEditR appIdentifier = do
 userNotLogged :: ApplicationIdentifier -> Handler RepHtml
 userNotLogged appIdentifier = defaultLayout $ do [whamlet|<h3>TODO: user not logged, application index of #{appIdentifier}|]
 
--- | The get parameter under which the access key is provided
-accessKeyParam :: Text
-accessKeyParam = "accessKey"
-
 -- | The startup parameters for an application
 argvParam :: Text
 argvParam = "argv"
@@ -189,7 +185,7 @@ getTAppHomeR :: ApplicationIdentifier -> Handler RepHtml
 getTAppHomeR appIdentifier = do
   Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
   maybeUserId <- maybeAuth
-  maybeKey <- lookupGetParam accessKeyParam
+  maybeKey <- lookupGetParam accessKeyParameterName
   maybeArgv <- lookupGetParam argvParam
   let
     argv = case maybeArgv of
@@ -206,11 +202,11 @@ getTAppHomeR appIdentifier = do
       accessKey <- liftIO $ newAccessKey nickname appIdentifier
       initApplication $ AppInstance nickname appIdentifier
       home <- toTextUrl $ TAppHomeR appIdentifier
-      redirect $ T.unpack $ T.concat [home,"?",accessKeyParam,"=",accessKey,argv]
+      redirect $ T.unpack $ T.concat [home,"?",accessKeyParameterName,"=",accessKey,argv]
 
     redirectToIndex accessKey argv = do
       resources <- toTextUrl $ TAppResourceR appIdentifier ["index.html" :: T.Text]
-      redirect $ T.unpack $ T.concat [resources,"?",accessKeyParam,"=",accessKey,argv]
+      redirect $ T.unpack $ T.concat [resources,"?",accessKeyParameterName,"=",accessKey,argv]
 
 -- | The slash used to separate folders in the filesystem.
 fsResourceSep :: T.Text
