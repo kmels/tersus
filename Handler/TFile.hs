@@ -1,3 +1,15 @@
+----------------------------------------------------------------------------
+-- |
+-- Module      :  Tersus.TFiles.Permissions
+-- Copyright   :  (c) Carlos López-Camey, Ernesto Rodriguez
+-- License     :  
+--
+-- Maintainer  :  c.lopez@kmels.net
+-- Stability   :  stable
+--
+--
+-- Contains handler functions for the Files API
+-----------------------------------------------------------------------------
 {-# LANGUAGE DoAndIfThenElse       #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
@@ -5,30 +17,41 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
+
+
+
 module Handler.TFile where
 
 
-import           Control.Exception.Extensible hiding (Handler, handle)
-import           Control.Monad                (when)
-import           Data.Aeson                   as J
-import           Data.ByteString              (ByteString)
-import           Data.Maybe
-import           Data.Text                    as T
-import           Handler.User                 (verifyUserKeyM)
-import           Import                       hiding (catch)
-import           Model.TersusResult
-import           Tersus.TFiles
-import           Text.Regex.TDFA
-import           Yesod.Json                   (Value (..))
+import Control.Exception.Extensible hiding (Handler, handle)
+
+import Data.Aeson                   as J
+import Data.ByteString              (ByteString)
+import Data.Maybe
+import Data.Text                    as T
+import Handler.User                 (verifyUserKeyM)
+import Import                       hiding (catch)
+import Model.TersusResult
+import Tersus.TFiles
+import Text.Regex.TDFA
+import Yesod.Json                   (Value (..))
 import Prelude
 --OS file system
-import           System.Directory             (doesDirectoryExist,
+import System.Directory             (doesDirectoryExist,
                                                doesFileExist)
-import           Tersus.Filesystem (byteStringToText,fullPathForUser,pathToText,pathToString,userDirPath,writeFileContents)
-import           Tersus.Global                (accessKeyParameterName)
+import Tersus.Filesystem (byteStringToText,fullPathForUser,pathToText,pathToString,userDirPath,writeFileContents)
+import Tersus.Global                (accessKeyParameterName)
 
+-- Yesod
+import Database.Persist.GenericSql.Raw(SqlPersist(..))
 
-{- Handler methods for operations on files. -}
+-- Control
+import Control.Monad.Trans.Maybe
+import Control.Monad                (when)
+
+-- Tersus
+import Tersus.AccessKeys(decomposeM)
+import Tersus.TFiles.Permissions
 
 -- A way to convert between urls and a file path.
 -- See: Dynamic multi in http://www.yesodweb.com/book/routing-and-handlers
@@ -105,8 +128,8 @@ putFileR :: Username -> Path -> Handler RepJson
 putFileR username' filePath = do
   --verify user
   accessKey <- lookupGetParam accessKeyParameterName
-  maybeUsername <- (fromJust accessKey) `verifyUserKeyM` username'
-  
+  maybeUsername <- (fromJust accessKey) `verifyUserKeyM` username' --TODO: if accessKey is not provided, we should return an error (do it in a generic way)  
+
   --get content parameter
   content <- lookupPostParam "content"
   
@@ -135,10 +158,14 @@ putFileR username' filePath = do
             case user of
               Just (Entity ownerid _) -> do
                 parentTFile <- runDB $ getBy $ UniqueRawPath $ (getParent filePath)
-                let parentTFileID = case parentTFile of
+                let                   
+                  parentTFileID = case parentTFile of
                       Just (Entity tpfi _) -> Just tpfi
-                      _ -> Nothing                
-                fm <- runDB $ insert $ TFile ownerid rawFilePath parentTFileID (getFilename filePath) ({- TODO, see contentTypeOf -} Just $ byteStringToText $ pathContentType filePath) fileType []
+                      _ -> Nothing
+ 
+                tappKey <- applicationKey
+                sharePermission <- ownerid `permissionToShareId` (fromJust tappKey)
+                fm <- runDB $ insert $ TFile ownerid rawFilePath parentTFileID (getFilename filePath) ({- TODO, see contentTypeOf -} Just $ byteStringToText $ pathContentType filePath) fileType [sharePermission]
                 return . Just $ fm
               _ -> return Nothing --no user found                                        
             
@@ -156,3 +183,14 @@ putFileR username' filePath = do
     getFilename = Prelude.last
     getParent = pathToText . Prelude.init
     fileType = File --TODO: Directory
+    --only called if we are creating a new permission (iff inserting new file metadata). 
+    applicationKey :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => GHandler s m (Maybe TApplicationId)
+    applicationKey = runMaybeT $ do 
+      accessKey' <- MaybeT $ lookupGetParam accessKeyParameterName
+      userAppAuthPair <- MaybeT $ decomposeM accessKey'
+      app <- MaybeT $ runDB $ getBy $ UniqueIdentifier $ snd userAppAuthPair      
+      MaybeT $ entityKeyM app
+      
+
+entityKeyM :: Entity entity -> GHandler s m (Maybe (Key (PersistEntityBackend entity) entity))
+entityKeyM e = return $ Just $ entityKey e

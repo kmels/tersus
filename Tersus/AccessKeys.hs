@@ -13,6 +13,7 @@ import           Data.Word                  (Word8)
 import           Import
 import           System.Random              (newStdGen, randomRs)
 
+type AuthPair = (Username,ApplicationIdentifier)
 
 -- | Converts UTF8 text to a Bytestring
 textToBytestring :: T.Text -> B.ByteString
@@ -37,7 +38,7 @@ keySeparator :: String
 keySeparator = "$"
 
 -- | Extract a UserNickname and a ApplicationIdentifier from a hexadecimal access key
-decompose :: AccessKey -> Maybe (Username,ApplicationIdentifier)
+decompose :: AccessKey -> Maybe AuthPair
 decompose key = do  
   case (Data.List.Split.splitOn keySeparator encodedAuth) of
     [random,nickname,appname,_] -> do
@@ -56,7 +57,7 @@ decompose key = do
     encodedAuth = T.unpack $ bytestringToText $ aes decodedAccessKey AES.Decrypt
 
 -- | Wraps decomposed access key in a GHandler monad
-decomposeM :: AccessKey -> GHandler s m (Maybe (Username,ApplicationIdentifier))
+decomposeM :: AccessKey -> GHandler s m (Maybe AuthPair)
 decomposeM = return . decompose
 
 -- | The size of the access key. Must be a multiple of 64 because that's the AES block size

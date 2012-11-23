@@ -53,6 +53,7 @@ library
                      Tersus.Filesystem
                      Tersus.Global
                      Tersus.TFiles
+                     Tersus.TFiles.Permissions
                      Tersus.Responses
                      Tersus.Yesod.Persistent                     
 
