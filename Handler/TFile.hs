@@ -20,12 +20,13 @@ import           Model.TersusResult
 import           Tersus.TFiles
 import           Text.Regex.TDFA
 import           Yesod.Json                   (Value (..))
-
+import Prelude
 --OS file system
 import           System.Directory             (doesDirectoryExist,
                                                doesFileExist)
-import           Tersus.Filesystem
+import           Tersus.Filesystem (byteStringToText,fullPathForUser,pathToText,pathToString,userDirPath,writeFileContents)
 import           Tersus.Global                (accessKeyParameterName)
+
 
 {- Handler methods for operations on files. -}
 
@@ -42,6 +43,7 @@ jsonContentType :: ContentType
 jsonContentType = "application/json"
 
 -- | Finds an appropiate mime-type given a filename (or path to filename) with an extension. Returns "text/plain" as default.
+-- TODO: Change signature to Maybe ContentType
 filenameContentType :: FilePath -> ContentType
 filenameContentType f = let
   ext :: Maybe String
@@ -51,6 +53,13 @@ filenameContentType f = let
     Just ".js" -> "text/javascript"
     Just ".css" -> "text/css"
     _ -> "text/plain"
+
+-- | Matches a resource given as name and path with the mime type
+-- of the resource. The mime type is matched using the extension
+-- of the file.
+-- TODO: Change signature to Maybe ContentType
+pathContentType :: Path -> ContentType
+pathContentType = filenameContentType . T.unpack . Prelude.last
 
 newtype JsonFileList = FileList [FilePath]
 
@@ -87,26 +96,63 @@ getFileR username' path = do
 fileDoesNotExistError :: TRequestError
 fileDoesNotExistError = TRequestError InexistentFile "File does not exist"
 
--- | Temporal function to test uploading of documents
+-- | Handler that writes a new file, if successful
+-- It is successful if and only if:
+--   * The access key represents a user with permissions 
+--   * The user has permissions iff he's the owner/has write permissions to the folder or file
+-- Expected GET Parameters: "content", the content of the file to write.
 putFileR :: Username -> Path -> Handler RepJson
 putFileR username' filePath = do
+  --verify user
   accessKey <- lookupGetParam accessKeyParameterName
   maybeUsername <- (fromJust accessKey) `verifyUserKeyM` username'
+  
+  --get content parameter
   content <- lookupPostParam "content"
-
+  
   case maybeUsername of
-    Just user' -> case content of
+    Just username -> case content of
       Just content' -> do
         let
+          --get file path for the file
           userLocalPath = userDirPath username'
           fsPath = filePath `fullPathForUser` username'
+          rawFilePath = pathToText filePath
 
+        -- check if the file already exists
+        file <- runDB $ getBy $ UniqueRawPath $ rawFilePath
+                            
+        fileMetadataId <- case file of
+          -- if found, return the one that exists
+          Just (Entity tfi tf) -> return . Just $ tfi
+          
+          -- if the file doesn't exist, create it :: Maybe TFile
+          -- where the owner is the username in the request
+          Nothing -> do
+            --ensure that username from accesskey is in DB
+            user <- runDB $ getBy $ UniqueNickname $ username
+ 
+            case user of
+              Just (Entity ownerid _) -> do
+                parentTFile <- runDB $ getBy $ UniqueRawPath $ (getParent filePath)
+                let parentTFileID = case parentTFile of
+                      Just (Entity tpfi _) -> Just tpfi
+                      _ -> Nothing                
+                fm <- runDB $ insert $ TFile ownerid rawFilePath parentTFileID (getFilename filePath) ({- TODO, see contentTypeOf -} Just $ byteStringToText $ pathContentType filePath) fileType []
+                return . Just $ fm
+              _ -> return Nothing --no user found                                        
+            
+        -- write to the file system
         liftIO $ writeFileContents fsPath content'
         $(logInfo) $ "Wrote file " `T.append` pathToText fsPath
-        liftIO $ putStrLn $ T.unpack $ "Wrote file " `T.append` pathToText filePath
-        liftIO $ putStrLn $ T.unpack $ "Wrote file " `T.append` pathToText fsPath
+
         jsonToRepJson $ (show "Wrote file "++(T.unpack $ pathToText fsPath))
 
       Nothing -> jsonToRepJson $ (show "No content provided")
     Nothing -> jsonToRepJson $ (show "No user could be deduced")
 
+  where
+    getParent,getFilename :: Path -> Text
+    getFilename = Prelude.last
+    getParent = pathToText . Prelude.init
+    fileType = File --TODO: Directory

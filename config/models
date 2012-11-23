@@ -26,13 +26,13 @@ Email
 
 TFile
     owner UserId
-    rawpath RawPath
-    parent Double Maybe
+    rawpath Text
+    parent TFileId Maybe
     filename Text
     contentType Text Maybe
-    fileType FileType
-    UniqueRawPath rawpath
+    fileType FileType    
     permissions [PermissionId]
+    UniqueRawPath rawpath
     
 Permission
     user UserId

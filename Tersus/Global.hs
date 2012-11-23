@@ -1,7 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Tersus.Global where
-
 import           Prelude
 
 import           Data.Aeson              as J

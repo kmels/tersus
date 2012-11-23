@@ -24,8 +24,8 @@ import System.Directory(getAppUserDataDirectory)
 import System.Directory             (createDirectoryIfMissing,getDirectoryContents,doesDirectoryExist,doesFileExist)
 
 --types
+import Data.ByteString.Char8 as BS
 import Data.Text                    as T
-
 -- | Creates necessary directories in the filesystem for the given file path
 makeDir :: Path -> IO ()
 makeDir path = createDirectoryIfMissing createParents (T.unpack dir)
@@ -40,7 +40,7 @@ makeDir path = createDirectoryIfMissing createParents (T.unpack dir)
 
 -- | Writes a file to the filesystem
 writeFileContents :: Path -> Text -> IO ()
-writeFileContents path content = makeDir path >>= \_ -> writeFile (T.unpack . pathToText $ path) (T.unpack content)
+writeFileContents path content = makeDir path >>= \_ -> Prelude.writeFile (T.unpack . pathToText $ path) (T.unpack content)
 
 -- | Converts a list of path components into a Text by interacalating a "/"
 pathToText :: Path -> Text
@@ -49,6 +49,9 @@ pathToText p = (T.pack "/") `T.append` T.intercalate (T.pack "/") p
 -- | Converts a list of path components into a String by interacalating a "/"
 pathToString :: Path -> String
 pathToString = T.unpack . pathToText
+
+byteStringToText :: ByteString -> Text
+byteStringToText = T.pack . BS.unpack
 
 -- | Returns the user directory in the filesystem
 userDirPath :: Username -> Path

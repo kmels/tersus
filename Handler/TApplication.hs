@@ -15,7 +15,7 @@ import qualified Data.Text                       as T
 import           Data.Time.Clock                 (getCurrentTime)
 import           Handler.Messages                (initApplication)
 import           Handler.TApplication.Git        (pullChanges)
-import           Handler.TFile                   (filenameContentType)
+import           Handler.TFile                   (filenameContentType,pathContentType)
 import           Import
 import           Prelude                         (last)
 import           Tersus.AccessKeys               (newAccessKey, newRandomKey)
@@ -216,19 +216,13 @@ fsResourceSep = "/"
 fsResourcePrefix :: T.Text
 fsResourcePrefix = T.concat [fsResourceSep,"tmp",fsResourceSep]
 
--- | Matches a resource given as name and path with the mime type
--- of the resource. The mime type is matched using the extension
--- of the file.
-contentTypeOf :: [T.Text] -> ContentType
-contentTypeOf = filenameContentType . T.unpack . Prelude.last
-
 -- | Request that delivers a resource belonging to a particular application. Resource means
 -- any file in the application's repository
 getTAppResourceR :: ApplicationIdentifier -> [T.Text] -> Handler (ContentType,Content)
 getTAppResourceR _ [] = do
   return $ ("text/plain",toContent ("TODO: error, invalid resource " :: String))
 getTAppResourceR appIdentifier resourcePath = do
-  return $ (contentTypeOf resourcePath, contentFile Nothing)
+  return $ (pathContentType resourcePath, contentFile Nothing)
   where
     contentFile = ContentFile $ pathToString $ tAppDirPath appIdentifier ++ resourcePath
 
