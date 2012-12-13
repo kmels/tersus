@@ -123,7 +123,7 @@ fileDoesNotExistError = TRequestError InexistentFile "File does not exist"
 -- It is successful if and only if:
 --   * The access key represents a user with permissions 
 --   * The user has permissions iff he's the owner/has write permissions to the folder or file
--- Expected GET Parameters: "content", the content of the file to write.
+-- Expected GET Parameters: "access_key" and content", the content of the file to write.
 putFileR :: Username -> Path -> Handler RepJson
 putFileR username' filePath = do
   --verify user
@@ -191,6 +191,6 @@ putFileR username' filePath = do
       app <- MaybeT $ runDB $ getBy $ UniqueIdentifier $ snd userAppAuthPair      
       MaybeT $ entityKeyM app
       
-
+-- TODO: Move to Tersus.Helpers.Persistent or Tersus.Tranformers or something
 entityKeyM :: Entity entity -> GHandler s m (Maybe (Key (PersistEntityBackend entity) entity))
 entityKeyM e = return $ Just $ entityKey e

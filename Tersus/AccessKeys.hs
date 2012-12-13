@@ -13,6 +13,8 @@ import           Data.Word                  (Word8)
 import           Import
 import           System.Random              (newStdGen, randomRs)
 
+import Tersus.Global(accessKeyParameterName)
+
 type AuthPair = (Username,ApplicationIdentifier)
 
 -- | Converts UTF8 text to a Bytestring
@@ -93,3 +95,12 @@ newRandomKey n = do
       | i < 26 = toEnum $ i + fromEnum 'A'
       | i < 52 = toEnum $ i + fromEnum 'a' - 26
       | otherwise = toEnum $ i + fromEnum '0' - 52
+
+-- | GHandler helper that gets the access key from the GET request parameters. If it is missing, returns a permission denied page.
+requireAccessKey :: GHandler s m AccessKey
+requireAccessKey = lookupGetParam accessKeyParameterName >>= maybe accessKeyRequired return
+
+-- | Request response that indicates that the access_key is missing
+accessKeyRequired :: GHandler s m a
+accessKeyRequired = permissionDenied $ accessKeyParameterName `T.append` (T.pack " is missing")
+

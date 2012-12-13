@@ -30,6 +30,8 @@
 /file/#Username/*Texts                   FileR                         GET PUT
 -- permissions
 /permission/file/READ/#Username/*Texts   ReadFilePermissionForUserR PUT DELETE
+/permission/file/WRITE/#Username/*Texts  WriteFilePermissionForUserR PUT DELETE
+/permission/file/SHARE/#Username/*Texts  ShareFilePermissionForUserR PUT DELETE
 
 
 -- MESSAGES
