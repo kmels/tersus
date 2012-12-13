@@ -41,6 +41,7 @@ import System.Directory             (doesDirectoryExist,
                                                doesFileExist)
 import Tersus.Filesystem (byteStringToText,fullPathForUser,pathToText,pathToString,userDirPath,writeFileContents)
 import Tersus.Global                (accessKeyParameterName)
+import Tersus.AccessKeys (requireAccessKey)
 
 -- Yesod
 import Database.Persist.GenericSql.Raw(SqlPersist(..))
@@ -94,8 +95,8 @@ instance ToContent JsonFileList where
 
 getFileR :: Text -> Path -> Handler (ContentType,Content)
 getFileR username' path = do
-  accessKey <- lookupGetParam accessKeyParameterName
-  maybeValidUser <- (fromJust accessKey) `verifyUserKeyM` username'
+  accessKey <- requireAccessKey
+  maybeValidUser <- accessKey `verifyUserKeyM` username'
   case maybeValidUser of
     Just username'' -> do
       let fsPath = path `fullPathForUser` username''
@@ -127,8 +128,8 @@ fileDoesNotExistError = TRequestError InexistentFile "File does not exist"
 putFileR :: Username -> Path -> Handler RepJson
 putFileR username' filePath = do
   --verify user
-  accessKey <- lookupGetParam accessKeyParameterName
-  maybeUsername <- (fromJust accessKey) `verifyUserKeyM` username' --TODO: if accessKey is not provided, we should return an error (do it in a generic way)  
+  accessKey <- requireAccessKey
+  maybeUsername <- accessKey `verifyUserKeyM` username' --TODO: if accessKey is not provided, we should return an error (do it in a generic way)  
 
   --get content parameter
   content <- lookupPostParam "content"
