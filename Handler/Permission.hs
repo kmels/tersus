@@ -31,7 +31,27 @@ import Tersus.Filesystem
 -- | Returns 404 if the username doesn't exist.
 -- Returns permissionDenied if filePath is not valid
 putReadFilePermissionForUserR :: Username -> Path -> Handler RepJson
-putReadFilePermissionForUserR username filePath = do
+putReadFilePermissionForUserR = putPermission permissionToRead
+  
+deleteReadFilePermissionForUserR :: Username -> Path -> Handler RepJson
+deleteReadFilePermissionForUserR username filePath = jsonToRepJson $ show "TODO"
+
+putWriteFilePermissionForUserR :: Username -> Path -> Handler RepJson
+putWriteFilePermissionForUserR = putPermission permissionToWrite
+
+deleteWriteFilePermissionForUserR :: Username -> Path -> Handler RepJson
+deleteWriteFilePermissionForUserR username filePath = jsonToRepJson $ show "TODO"
+
+putShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
+putShareFilePermissionForUserR = putPermission permissionToShare
+
+deleteShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
+deleteShareFilePermissionForUserR username filePath = jsonToRepJson $ show "TODO"
+
+data PermissionType = READ | WRITE | SHARE
+
+putPermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist, m ~ App, s ~ App) => (UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)) -> Username -> Path -> Handler RepJson
+putPermission permissionConstructor username filePath = do
   --verify that the accesskey has the power to share filePath
   accessKey <- requireAccessKey
   (_,_,appEntity) <- (accessKey `requirePermission` SHARE) filePath
@@ -39,13 +59,10 @@ putReadFilePermissionForUserR username filePath = do
   
   --add a new permission to file for `username`
   Entity fid file <- runDB $ getBy404 $ UniqueRawPath $ pathToText filePath -- 404 shouldn't be thrown, fp was already verified
-  newPermission <- permissionToRead uid (entityKey appEntity)
-  _ <- runDB $ update fid [TFilePermissions =. newPermission : (tFilePermissions file)]
-  
-  jsonToRepJson $ show "Added read permission"
+  newPermission <- permissionConstructor uid (entityKey appEntity)
+  _ <- runDB $ update fid [TFilePermissions =. newPermission : (tFilePermissions file)]  
+  jsonToRepJson $ show $ "Added  permission"
 
-    
-    --permissionDenied $ " You don't have permissions to share this file"
 
 -- | This function checks that a given access key has permission `permissionType` on the given file path. It returns a triple, to avoid refetching entities.
 requirePermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => AccessKey -> PermissionType -> Path -> GHandler s m (Entity (PermissionGeneric SqlPersist),Entity (UserGeneric SqlPersist), Entity (TApplicationGeneric SqlPersist))
@@ -71,33 +88,6 @@ requirePermission ak pt fp = do
     getPermission WRITE uid aid = runDB $ selectFirst [PermissionWrite ==. True, PermissionUser ==. uid, PermissionApp ==. aid] []
     getPermission SHARE uid aid = runDB $ selectFirst [PermissionShare ==. True, PermissionUser ==. uid, PermissionApp ==. aid] []
 
-deleteReadFilePermissionForUserR :: Username -> Path -> Handler RepJson
-deleteReadFilePermissionForUserR username filePath = jsonToRepJson $ show "TODO"
-
-putWriteFilePermissionForUserR :: Username -> Path -> Handler RepJson
-putWriteFilePermissionForUserR username filePath = jsonToRepJson $ show "TODO"
-
-deleteWriteFilePermissionForUserR :: Username -> Path -> Handler RepJson
-deleteWriteFilePermissionForUserR username filePath = jsonToRepJson $ show "TODO"
-
-putShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
-putShareFilePermissionForUserR username filePath = jsonToRepJson $ show "TODO"
-
-deleteShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
-deleteShareFilePermissionForUserR username filePath = jsonToRepJson $ show "TODO"
-
-data PermissionType = READ | WRITE | SHARE
-
--- | If a user has the power of sharing a file with others, then the
--- powers of writing and reading are certainly implicit
-permissionToShare :: UserId -> TApplicationId -> Permission
-permissionToShare uid tappid = 
-  let
-    write = True
-    read = True
-    share = True
-  in Permission uid read write share tappid
-
 -- | Permission that only allows to read
 permissionToRead :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)
 permissionToRead uid tappid = do
@@ -112,6 +102,32 @@ permissionToRead uid tappid = do
             in Permission uid read write share tappid
       runDB $ insert p
       
-    
-permissionToShareId :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => UserId -> TApplicationId -> GHandler s m PermissionId
-permissionToShareId uid tappid = runDB $ insert $ permissionToShare uid tappid
+-- | Permission that allows to read and write
+permissionToWrite :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)
+permissionToWrite = permissionTo share read write where
+  share = False
+  read = True
+  write = True
+
+-- | Permission that allows to read and write
+permissionToShare :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)
+permissionToShare = permissionTo share read write where
+  share = True
+  read = True
+  write = True
+        
+-- | If a user has the power of sharing a file with others, then the
+-- powers of writing and reading are certainly implicit
+permissionTo :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => Bool -> Bool -> Bool -> UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)
+permissionTo write' read' share' uid tappid = do
+  permission <- runDB $ selectFirst [PermissionUser ==. uid, PermissionApp ==. tappid, PermissionWrite ==. write', PermissionRead ==. read', PermissionShare ==. share'] []
+  case permission of
+    Just (Entity pid _) -> return pid
+    _ -> do
+      let p = let
+            write = write'
+            read = read'
+            share = share'
+            in Permission uid read write share tappid
+      runDB $ insert p
+      

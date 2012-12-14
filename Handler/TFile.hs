@@ -52,7 +52,7 @@ import Control.Monad                (when)
 
 -- Tersus
 import Tersus.AccessKeys(decomposeM)
-import Handler.Permission(permissionToShareId)
+import Handler.Permission(permissionToShare)
 
 -- A way to convert between urls and a file path.
 -- See: Dynamic multi in http://www.yesodweb.com/book/routing-and-handlers
@@ -165,7 +165,7 @@ putFileR username' filePath = do
                       _ -> Nothing
  
                 tappKey <- applicationKey
-                sharePermission <- ownerid `permissionToShareId` (fromJust tappKey)
+                sharePermission <- ownerid `permissionToShare` (fromJust tappKey)
                 fm <- runDB $ insert $ TFile ownerid rawFilePath parentTFileID (getFilename filePath) ({- TODO, see contentTypeOf -} Just $ byteStringToText $ pathContentType filePath) fileType [sharePermission]
                 return . Just $ fm
               _ -> return Nothing --no user found                                        
