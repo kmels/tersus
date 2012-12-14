@@ -12,9 +12,17 @@ import           Data.Time.Clock            (UTCTime, getCurrentTime)
 import           Data.Word                  (Word8)
 import           Import
 import           System.Random              (newStdGen, randomRs)
+import Data.Maybe(fromJust)
 
 import Tersus.Global(accessKeyParameterName)
 
+--yesod
+import Database.Persist.GenericSql.Raw(SqlPersist(..))
+
+--monads/control
+import Control.Monad.Trans.Maybe
+
+--types
 type AuthPair = (Username,ApplicationIdentifier)
 
 -- | Converts UTF8 text to a Bytestring
@@ -62,6 +70,10 @@ decompose key = do
 decomposeM :: AccessKey -> GHandler s m (Maybe AuthPair)
 decomposeM = return . decompose
 
+-- | Returns an invalid access key response if the given access key doesn't decode a well formed auth pair
+reqValidAuthPair :: AccessKey -> GHandler s m AuthPair
+reqValidAuthPair ak = maybe invalidAccessKey return (decompose ak)
+
 -- | The size of the access key. Must be a multiple of 64 because that's the AES block size
 keySize :: Int
 keySize = 128
@@ -108,3 +120,30 @@ maybeAccessKey = lookupGetParam accessKeyParameterName
 accessKeyRequired :: GHandler s m a
 accessKeyRequired = invalidArgs $ [accessKeyParameterName]
 
+invalidAccessKey :: GHandler s m a
+invalidAccessKey = invalidArgs $ [accessKeyParameterName]
+
+-- | Returns invalidAccessKey if it can't deduce a tuple (user,application)
+requireValidAuthPairEntities :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => AccessKey -> GHandler s m (Entity (UserGeneric SqlPersist),Entity (TApplicationGeneric SqlPersist))
+requireValidAuthPairEntities ak = do
+  accessKey <- requireAccessKey
+  authPair <- reqValidAuthPair accessKey 
+  
+  maybeUserEntity <- runMaybeT $ do
+    username' <- MaybeT $ return . Just . fst $ authPair
+    MaybeT $ runDB $ getBy $ UniqueNickname $ username'
+  
+  maybeAppEntity <- runMaybeT $ do
+    appid' <- MaybeT $ return . Just . snd $ authPair
+    MaybeT $ runDB $ getBy $ UniqueIdentifier $ appid'
+    
+  user <- maybe invalidAccessKey return maybeUserEntity
+  tapp <- maybe invalidAccessKey return maybeAppEntity
+  return $ (user,tapp)
+  
+-- | Returns invalidAccessKey if it can't deduce a tuple (user,application)
+requireValidAuthPair :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => AccessKey -> GHandler s m (User,TApplication)
+requireValidAuthPair ak = do
+  (ue,ae) <- requireValidAuthPairEntities ak
+  return (entityVal ue, entityVal ae)  
+  

@@ -189,9 +189,11 @@ getTAppHomeR appIdentifier = do
   Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
   maybeUserId <- maybeAuth
   maybeKey <- maybeAccessKey
-  argv' <- requireGetParameter argvParam
+  maybeArgv <- lookupGetParam argvParam
   let
-    argv = T.concat ["&",argvParam,"=",argv']
+    argv = case maybeArgv of 
+      Just argv' -> T.concat ["&",argvParam,"=",argv']
+      _ -> ""
   case (maybeUserId,maybeKey) of
     (Just (Entity _ u),Nothing) -> (liftIO $ pullChanges tapp) >>= \_ -> redirectToApplication u argv
     (_,Just accessKey) -> redirectToIndex accessKey argv

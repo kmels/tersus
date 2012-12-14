@@ -40,7 +40,7 @@ Permission
     write Bool
     share Bool
     app TApplicationId
-    deriving
+    deriving Show
 
 UserApplication
     user UserId

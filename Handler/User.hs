@@ -17,11 +17,11 @@ module Handler.User(
   --Handlers
   getUsernameSearchR,
   --GHandler function helpers  
-  getValidUser, --match authkey with username
   requireSuperAdmin, --get a superadmin user
   requireAdminFor,
   verifyUserKey, --validate accesskey for given username
-  verifyUserKeyM --monadic version of verifyUserKey    
+  verifyUserKeyM, --monadic version of verifyUserKey    
+  verifyValidUser --match authkey with username
   ) where
   
 import Import
@@ -44,6 +44,8 @@ import Data.Either (lefts,rights)
 import Control.Monad(guard)
 import Control.Monad.Trans.Maybe
 
+import Tersus.Global(accessKeyParameterName)
+
 -- | Returns a JSON representation of the logged user. Returns a 412 status code (Precondition failed) with an empty string
 getLoggedUserR :: Handler RepJson
 getLoggedUserR = do
@@ -65,21 +67,15 @@ getUserAccessKeyR appId = do
     Nothing -> error "Result: Empty user"
       
 -- | Returns Nothing iff the access key doesn't correspond to the given username. Returns a user if the access key is valid for the given username.
-getValidUser :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => Username -> AccessKey -> GHandler s m (Maybe User)
-getValidUser u ak = do  
-  liftIO $ putStrLn $ "Recibido u:"++(show u)
+verifyValidUser :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => Username -> AccessKey -> GHandler s m (Maybe User)
+verifyValidUser u ak = do  
   userMaybe <- runDB $ getBy $ UniqueNickname $ u --query db
-  liftIO $ putStrLn $ show $ ak `verifyUserKey` u
   case ak `verifyUserKey` u of
     Just uname -> do  
       case userMaybe of
         Just (Entity _ user') -> return $ Just user'
         Nothing -> return Nothing
     _ -> return Nothing
-
--- | Monadic version of `verifyUser`
-verifyUserKeyM :: AccessKey -> Username -> GHandler s m (Maybe Username)
-verifyUserKeyM ak u = return $ ak `verifyUserKey` u
 
 -- | Returns Nothing iff the access key doesn't correspond to the given username. Returns the given username if the access key belongs to him.
 verifyUserKey :: AccessKey -> Username -> Maybe Username
@@ -139,3 +135,10 @@ getUsernameSearchR query = do
   extracts <- runDB $ C.runResourceT $ withStmt sql ([]::[PersistValue]) C.$= CL.map extractNickname C.$$ CL.consume
   jsonToRepJson . array . rights $ extracts
 
+-- | Helper function that decomposes
+requireValidAccessKey :: GHandler s m (Maybe AuthPair)
+requireValidAccessKey = requireAccessKey >>= decomposeM
+
+-- | Monadic version of `verifyUserKey`
+verifyUserKeyM :: AccessKey -> Username -> GHandler s m (Maybe Username)
+verifyUserKeyM ak u = return $ ak `verifyUserKey` u

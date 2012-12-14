@@ -52,7 +52,7 @@ import Control.Monad                (when)
 
 -- Tersus
 import Tersus.AccessKeys(decomposeM)
-import Tersus.TFiles.Permissions
+import Handler.Permission(permissionToShareId)
 
 -- A way to convert between urls and a file path.
 -- See: Dynamic multi in http://www.yesodweb.com/book/routing-and-handlers
