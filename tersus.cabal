@@ -55,7 +55,8 @@ library
                      Tersus.TFiles
                      Tersus.TFiles.Permissions
                      Tersus.Responses
-                     Tersus.Yesod.Persistent                     
+                     Tersus.Yesod.Handler
+                     Tersus.Yesod.Persistent
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT

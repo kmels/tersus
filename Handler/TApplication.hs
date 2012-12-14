@@ -41,6 +41,9 @@ import           Handler.User                    (requireAdminFor,
 import           Tersus.Filesystem               (pathToString, tAppDirPath)
 import           Tersus.Global
 import           Tersus.Responses
+import Tersus.AccessKeys(maybeAccessKey)
+import Tersus.Yesod.Handler(requireGetParameter)
+
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
   appLikeName            :: Text
@@ -185,17 +188,14 @@ getTAppHomeR :: ApplicationIdentifier -> Handler RepHtml
 getTAppHomeR appIdentifier = do
   Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
   maybeUserId <- maybeAuth
-  maybeKey <- lookupGetParam accessKeyParameterName
-  maybeArgv <- lookupGetParam argvParam
+  maybeKey <- maybeAccessKey
+  argv' <- requireGetParameter argvParam
   let
-    argv = case maybeArgv of
-      Just argv' -> T.concat ["&",argvParam,"=",argv']
-      Nothing -> ""
+    argv = T.concat ["&",argvParam,"=",argv']
   case (maybeUserId,maybeKey) of
     (Just (Entity _ u),Nothing) -> (liftIO $ pullChanges tapp) >>= \_ -> redirectToApplication u argv
     (_,Just accessKey) -> redirectToIndex accessKey argv
     _ -> userNotLogged appIdentifier
-
   where
     redirectToApplication u argv = do
       let nickname = userNickname u

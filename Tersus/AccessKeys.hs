@@ -96,11 +96,15 @@ newRandomKey n = do
       | i < 52 = toEnum $ i + fromEnum 'a' - 26
       | otherwise = toEnum $ i + fromEnum '0' - 52
 
--- | GHandler helper that gets the access key from the GET request parameters. If it is missing, returns a permission denied page.
+-- | GHandler helper that gets the access key from the GET request parameters. If it is missing, returns an invalid arguments response.
 requireAccessKey :: GHandler s m AccessKey
 requireAccessKey = lookupGetParam accessKeyParameterName >>= maybe accessKeyRequired return
 
+-- | GHandler helper that gets the access key from the GET request parameters.
+maybeAccessKey :: GHandler s m (Maybe AccessKey)
+maybeAccessKey = lookupGetParam accessKeyParameterName
+
 -- | Request response that indicates that the access_key is missing
 accessKeyRequired :: GHandler s m a
-accessKeyRequired = permissionDenied $ accessKeyParameterName `T.append` (T.pack " is missing")
+accessKeyRequired = invalidArgs $ [accessKeyParameterName]
 
