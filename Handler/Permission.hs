@@ -34,19 +34,19 @@ putReadFilePermissionForUserR :: Username -> Path -> Handler RepJson
 putReadFilePermissionForUserR = putPermission permissionToRead
   
 deleteReadFilePermissionForUserR :: Username -> Path -> Handler RepJson
-deleteReadFilePermissionForUserR username filePath = jsonToRepJson $ show "TODO"
+deleteReadFilePermissionForUserR = deletePermission permissionToRead
 
 putWriteFilePermissionForUserR :: Username -> Path -> Handler RepJson
 putWriteFilePermissionForUserR = putPermission permissionToWrite
 
 deleteWriteFilePermissionForUserR :: Username -> Path -> Handler RepJson
-deleteWriteFilePermissionForUserR username filePath = jsonToRepJson $ show "TODO"
+deleteWriteFilePermissionForUserR = deletePermission permissionToWrite
 
 putShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
 putShareFilePermissionForUserR = putPermission permissionToShare
 
 deleteShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
-deleteShareFilePermissionForUserR username filePath = jsonToRepJson $ show "TODO"
+deleteShareFilePermissionForUserR = deletePermission permissionToShare
 
 data PermissionType = READ | WRITE | SHARE
 
@@ -63,7 +63,19 @@ putPermission permissionConstructor username filePath = do
   _ <- runDB $ update fid [TFilePermissions =. newPermission : (tFilePermissions file)]  
   jsonToRepJson $ show $ "Added  permission"
 
-
+deletePermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist, m ~ App, s ~ App) => (UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)) -> Username -> Path -> Handler RepJson
+deletePermission permissionConstructor username filePath = do
+  --verify that the accesskey has the power to delete (share) filePath
+  accessKey <- requireAccessKey
+  (_,_,appEntity) <- (accessKey `requirePermission` SHARE) filePath
+  Entity uid _ <- runDB $ getBy404 $ UniqueNickname $ username
+  
+  --delete existing permission to file for `username`
+  Entity fid file <- runDB $ getBy404 $ UniqueRawPath $ pathToText filePath -- 404 shouldn't be thrown, fp was already verified
+  permissionToDelete <- permissionConstructor uid (entityKey appEntity)
+  _ <- runDB $ update fid [TFilePermissions =. filter (/= permissionToDelete) (tFilePermissions file)]  
+  jsonToRepJson $ show $ "Added  permission"
+  
 -- | This function checks that a given access key has permission `permissionType` on the given file path. It returns a triple, to avoid refetching entities.
 requirePermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => AccessKey -> PermissionType -> Path -> GHandler s m (Entity (PermissionGeneric SqlPersist),Entity (UserGeneric SqlPersist), Entity (TApplicationGeneric SqlPersist))
 requirePermission ak pt fp = do
