@@ -37,15 +37,15 @@ tersusServiceRecv (TMessage uSender uReceiver aSender aReceiver _ _) = do
     sendMessage $ TMessage uReceiver uSender aReceiver aSender (encodeAsText users) currTime
     return ()
 
-getAppUsersQuery :: forall (m :: * -> *) (backend :: (* -> *) -> * -> *).
+{-getAppUsersQuery :: forall (m :: * -> *) (backend :: (* -> *) -> * -> *).
                     (PersistUnique backend m, PersistQuery backend m) =>
-                    Text -> backend m [UserGeneric backend]
+                    Text -> backend m [UserGeneric backend]-}
 getAppUsersQuery app' = (runMaybeT $ getAppUsersQuery' app') >>= \res -> case res of
                                                                            Nothing -> return []
                                                                            Just a -> return a
-getAppUsersQuery' :: forall (m :: * -> *) (backend :: (* -> *) -> * -> *).
+{-getAppUsersQuery' :: forall (m :: * -> *) (backend :: (* -> *) -> * -> *).
                      (PersistUnique backend m,
-                      PersistQuery backend m) => Text -> MaybeT (backend m) [UserGeneric backend]
+                      PersistQuery backend m) => Text -> MaybeT (backend m) [UserGeneric backend]-}
 getAppUsersQuery' applicationIdentifier = do
   Entity key _ <- maybeGetBy $ UniqueIdentifier applicationIdentifier
   appUsers <- maybeSelectList [UserApplicationApplication <-. [key]] [] -- :: MaybeT

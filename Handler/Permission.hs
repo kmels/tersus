@@ -30,27 +30,27 @@ import Tersus.Filesystem
 
 -- | Returns 404 if the username doesn't exist.
 -- Returns permissionDenied if filePath is not valid
-putReadFilePermissionForUserR :: Username -> Path -> Handler RepJson
+--putReadFilePermissionForUserR :: Username -> Path -> Handler RepJson
 putReadFilePermissionForUserR = putPermission permissionToRead
   
-deleteReadFilePermissionForUserR :: Username -> Path -> Handler RepJson
+--deleteReadFilePermissionForUserR :: Username -> Path -> Handler RepJson
 deleteReadFilePermissionForUserR = deletePermission permissionToRead
 
-putWriteFilePermissionForUserR :: Username -> Path -> Handler RepJson
+--putWriteFilePermissionForUserR :: Username -> Path -> Handler RepJson
 putWriteFilePermissionForUserR = putPermission permissionToWrite
 
-deleteWriteFilePermissionForUserR :: Username -> Path -> Handler RepJson
+--deleteWriteFilePermissionForUserR :: Username -> Path -> Handler RepJson
 deleteWriteFilePermissionForUserR = deletePermission permissionToWrite
 
-putShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
+--putShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
 putShareFilePermissionForUserR = putPermission permissionToShare
 
-deleteShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
+--deleteShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
 deleteShareFilePermissionForUserR = deletePermission permissionToShare
 
 data PermissionType = READ | WRITE | SHARE
 
-putPermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist, m ~ App, s ~ App) => (UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)) -> Username -> Path -> Handler RepJson
+{-putPermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist, m ~ App, s ~ App) => (UserId -> TApplicationId -> GHandler s m PermissionId) -> Username -> Path -> Handler RepJson-}
 putPermission permissionConstructor username filePath = do
   --verify that the accesskey has the power to share filePath
   accessKey <- requireAccessKey
@@ -63,7 +63,7 @@ putPermission permissionConstructor username filePath = do
   _ <- runDB $ update fid [TFilePermissions =. newPermission : (tFilePermissions file)]  
   jsonToRepJson $ show $ "Added  permission"
 
-deletePermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist, m ~ App, s ~ App) => (UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)) -> Username -> Path -> Handler RepJson
+{-deletePermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist, m ~ App, s ~ App) => (UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend PermissionId))) -> Username -> Path -> Handler RepJson-}
 deletePermission permissionConstructor username filePath = do
   --verify that the accesskey has the power to delete (share) filePath
   accessKey <- requireAccessKey
@@ -77,7 +77,7 @@ deletePermission permissionConstructor username filePath = do
   jsonToRepJson $ show $ "Added  permission"
   
 -- | This function checks that a given access key has permission `permissionType` on the given file path. It returns a triple, to avoid refetching entities.
-requirePermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => AccessKey -> PermissionType -> Path -> GHandler s m (Entity (PermissionGeneric SqlPersist),Entity (UserGeneric SqlPersist), Entity (TApplicationGeneric SqlPersist))
+{-requirePermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => AccessKey -> PermissionType -> Path -> GHandler s m (Entity (PermissionGeneric SqlPersist),Entity (UserGeneric SqlPersist), Entity (TApplicationGeneric SqlPersist))-}
 requirePermission ak pt fp = do
   (userEntity,appEntity) <- requireValidAuthPairEntities ak
   let 
@@ -101,7 +101,7 @@ requirePermission ak pt fp = do
     getPermission SHARE uid aid = runDB $ selectFirst [PermissionShare ==. True, PermissionUser ==. uid, PermissionApp ==. aid] []
 
 -- | Permission that only allows to read
-permissionToRead :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)
+{-permissionToRead :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => UserId -> TApplicationId -> GHandler s m PermissionId-}
 permissionToRead uid tappid = do
   permission <- runDB $ selectFirst [PermissionUser ==. uid, PermissionApp ==. tappid, PermissionWrite ==. False, PermissionRead ==. True, PermissionShare ==. False] []
   case permission of
@@ -115,14 +115,14 @@ permissionToRead uid tappid = do
       runDB $ insert p
       
 -- | Permission that allows to read and write
-permissionToWrite :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)
+{-permissionToWrite :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => UserId -> TApplicationId -> GHandler s m PermissionId-}
 permissionToWrite = permissionTo share read write where
   share = False
   read = True
   write = True
 
 -- | Permission that allows to read and write
-permissionToShare :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)
+{-permissionToShare :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => UserId -> TApplicationId -> GHandler s m PermissionId-}
 permissionToShare = permissionTo share read write where
   share = True
   read = True
@@ -130,7 +130,7 @@ permissionToShare = permissionTo share read write where
         
 -- | If a user has the power of sharing a file with others, then the
 -- powers of writing and reading are certainly implicit
-permissionTo :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => Bool -> Bool -> Bool -> UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)
+{-permissionTo :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => Bool -> Bool -> Bool -> UserId -> TApplicationId -> GHandler s m PermissionId-}
 permissionTo write' read' share' uid tappid = do
   permission <- runDB $ selectFirst [PermissionUser ==. uid, PermissionApp ==. tappid, PermissionWrite ==. write', PermissionRead ==. read', PermissionShare ==. share'] []
   case permission of

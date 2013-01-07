@@ -112,7 +112,10 @@ getFileR username' path = do
       else return $ (typeJson, toContent . toJSON $ fileDoesNotExistError)
     _ -> return $ (typeJson, toContent ("todo: error, invalid access key for user" :: String))
     where
-        addUserPath (Resource n _ t) = return $ Resource n (pathToText path) t
+        addUserPath (Resource n _ t) = return $ Resource n (folderPath) t
+        folderPath = case (pathToText path) of
+            "/" -> "/"
+            p -> T.concat [p,"/"]
         directoryContents fsPath = do
            files <- getDirectoryContentsTyped fsPath
            mapM addUserPath files
@@ -193,5 +196,5 @@ putFileR username' filePath = do
       MaybeT $ entityKeyM app
       
 -- TODO: Move to Tersus.Helpers.Persistent or Tersus.Tranformers or something
-entityKeyM :: Entity entity -> GHandler s m (Maybe (Key (PersistEntityBackend entity) entity))
+{-entityKeyM :: Entity entity -> GHandler s m (Maybe (Key (PersistEntityBackend entity) entity))-}
 entityKeyM e = return $ Just $ entityKey e

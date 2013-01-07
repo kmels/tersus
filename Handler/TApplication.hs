@@ -27,6 +27,7 @@ import           Data.Maybe                      (catMaybes)
 --persistent
 import           Database.Persist.GenericSql.Raw (SqlPersist (..))
 import           Tersus.Yesod.Persistent
+import           Database.Persist.Store (deleteCascade)
 
 --json
 import           Data.Aeson                      (toJSON)
@@ -43,6 +44,12 @@ import           Tersus.Global
 import           Tersus.Responses
 import Tersus.AccessKeys(maybeAccessKey)
 import Tersus.Yesod.Handler(requireGetParameter)
+
+-- Temporary fix of a yesod bug
+import Text.Julius
+instance ToJavascript String where
+         toJavascript = toJavascript . rawJS
+--
 
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
@@ -98,12 +105,7 @@ deleteTApplicationR appIdentifier = do
   case superAdmin of
     Just _ -> do
       Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
-
-      --delete administrators (or users) first (foreign keys)
-      runDB $ deleteWhere [UserApplicationApplication ==. tappkey]
-      --delete app
-      runDB $ delete tappkey
-
+      runDB $ deleteCascade tappkey
       return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ (Message $ appIdentifier `T.append` T.pack " deleted")
     _ -> permissionDenied "Permission denied " --return $ toContent .toJSON $ TRequestError NotEnoughPrivileges "Permission denied. You are not administrator of this application"
 

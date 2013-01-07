@@ -124,7 +124,7 @@ invalidAccessKey :: GHandler s m a
 invalidAccessKey = invalidArgs $ [accessKeyParameterName]
 
 -- | Returns invalidAccessKey if it can't deduce a tuple (user,application)
-requireValidAuthPairEntities :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => AccessKey -> GHandler s m (Entity (UserGeneric SqlPersist),Entity (TApplicationGeneric SqlPersist))
+{-requireValidAuthPairEntities :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => AccessKey -> GHandler s m (Entity (UserGeneric SqlPersist),Entity (TApplicationGeneric SqlPersist))-}
 requireValidAuthPairEntities ak = do
   accessKey <- requireAccessKey
   authPair <- reqValidAuthPair accessKey 
