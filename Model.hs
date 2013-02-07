@@ -10,7 +10,7 @@ import           Data.Text.Encoding     (encodeUtf8,decodeUtf8)
 import           Data.Time              (UTCTime)
 import           Data.Typeable.Internal (Typeable)
 import           Database.Persist.Quasi
-import           Database.Persist.Store (PersistValue (..), SqlType (..))
+import           Database.Persist.Store --(PersistValue (..), SqlType (..),DeleteCascade)
 import           Prelude
 import           Yesod
 import Data.SafeCopy (deriveSafeCopy,base,SafeCopy)
@@ -66,7 +66,7 @@ data MessageResult = Delivered | ENoAppInstance | EInvalidAppKey | EBufferFull |
 msgResultsNums :: [(Int,MessageResult)]
 msgResultsNums = [(1,Delivered),(2,ENoAppInstance),(3,EInvalidAppKey),(4,EBufferFull),(5,EInvalidHashCode),(6,InvalidMsgFormat)]
 
-share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFileWith lowerCaseSettings "config/models")
+share [mkSave "myDefs", mkPersist sqlSettings, mkMigrate "migrateAll",mkDeleteCascade sqlSettings] $(persistFileWith lowerCaseSettings "config/models")
 
 -- | Represents a app being run by a user
 data AppInstance = AppInstance {username :: Text, application :: Text} deriving (Eq,Typeable,Show)

@@ -177,7 +177,7 @@ instance RenderMessage App FormMessage where
 --
 -- https://github.com/yesodweb/yesod/wiki/Sending-email
 
-maybeUserTApps :: ( YesodAuth m
+{-maybeUserTApps :: ( YesodAuth m
                   , val ~ UserGeneric SqlPersist
                   , b ~ YesodPersistBackend m
                   , b ~ PersistEntityBackend val
@@ -185,7 +185,7 @@ maybeUserTApps :: ( YesodAuth m
                   , PersistStore b (GHandler s m)
                   , PersistEntity val
                   , YesodPersist m
-                  ) => GHandler s m [Maybe TApplication]
+                  ) => GHandler s m [Maybe TApplication]-}
 maybeUserTApps = do
   auth <- maybeAuth
   case auth of

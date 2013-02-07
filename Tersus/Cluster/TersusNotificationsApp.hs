@@ -166,6 +166,7 @@ $(makeAcidic ''TopicsDb ['addSubscription,'rmSubscription,'getSubscriptions,'rmS
 tersusNotificationsRecv :: TMessage -> TersusServiceM TopicsDb ()
 tersusNotificationsRecv message = do
 
+  liftIO $ putStrLn $ show message
   case operation of
     Nothing -> sendResponse $ encodeAsText FormatError
     Just op -> runOperation op
@@ -194,11 +195,14 @@ tersusNotificationsRecv message = do
         notificationMsg (TopicSubscription s _) = do
           let
             AppInstance uSubs aSubs = s
-            msg = TMessage uSender uSubs aSender aSubs (encodeAsText notification)
+            resp = case notification of
+              Nothing -> ""
+              Just n -> n
+            msg = TMessage uSender uSubs aSender aSubs resp
           sendMessage' msg
 
 
 -- | Notifications App. This app allows applications to create topics to which they can send messages and theese messages
 -- will be delivered to every application that is subscribed to the topic
 tersusNotificationsApp :: TersusServerApp TopicsDb
-tersusNotificationsApp = TersusServerApp tersusNotificationsApp' tersusServiceUser tersusNotificationsRecv Nothing Nothing $ Just $ openLocalState $ TopicsDb $ empty
+tersusNotificationsApp = TersusServerApp tersusNotificationsApp' tersusServiceUser tersusNotificationsRecv Nothing Nothing $ Just $ openLocalStateFrom "/tmp/TNA" $ TopicsDb $ empty

@@ -32,7 +32,7 @@ import Data.Acid (AcidState)
 import Data.SafeCopy (SafeCopy)
 import Control.Exception (Exception,throw)
 import Data.Time.Clock (getCurrentTime,UTCTime)
-
+import Control.Monad.Trans.Resource
 import Database.Persist.Query.Internal(Filter,PersistQuery,SelectOpt)
 import Database.Persist.Store(Key,PersistEntity,PersistEntityBackend,PersistUnique,PersistStore,Unique)
 -- | Exceptions that can result from server side applications
@@ -112,16 +112,16 @@ mkDbConf tersusEnv = liftIO $ do
   poolConf <- Database.Persist.Store.createPoolConfig dbConn
   return (dbConn,poolConf)
   
-runQuery :: (SafeCopy store) => forall a. SqlPersist IO a -> TersusServiceM store a
+{-runQuery :: (SafeCopy store) => forall a. SqlPersist IO a -> TersusServiceM store a-}
 runQuery query = TersusServiceM $ runQuery' query
 
-runQuery' :: (SafeCopy store) => SqlPersist IO a -> TersusService store -> Process (TersusService store,a)
+{-runQuery' :: (SafeCopy store) => SqlPersist IO a -> TersusService store -> Process (TersusService store,a)-}
 runQuery' query (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf) state) = do 
   res <- runQuery'' dbConn poolConf query
   return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf) state,res)
 
-runQuery'' :: PersistConfig -> Database.Persist.Store.PersistConfigPool PersistConfig -> SqlPersist IO a -> Process a
-runQuery'' dbConn poolConf query = liftIO $ Database.Persist.Store.runPool dbConn query poolConf
+{-runQuery'' :: PersistConfig -> Database.Persist.Store.PersistConfigPool PersistConfig -> SqlPersist IO a -> Process a-}
+runQuery'' dbConn poolConf query = liftIO $ runResourceT $ Database.Persist.Store.runPool dbConn query poolConf
 
 -- Run a TersusServiceM with the given TersusService state ts. Usually the initial
 -- state which are all the messaging pipeings as defined in the datatype
@@ -224,19 +224,19 @@ acknowledgeMsg msgEnv = TersusServiceM $ acknowledgeMsg' msgEnv
 
 type MaybeQuery = MaybeT (SqlPersist IO)
 
-maybeGetBy :: forall (m :: * -> *) val. (PersistEntity val,
+{-maybeGetBy :: forall (m :: * -> *) val. (PersistEntity val,
                                          PersistUnique
                                          (PersistEntityBackend val) m) =>
               Unique val (PersistEntityBackend val)
               -> MaybeT
-              (PersistEntityBackend val m) (Database.Persist.Store.Entity val)
+              (PersistEntityBackend val m) (Database.Persist.Store.Entity val)-}
 maybeGetBy criterion = MaybeT $ getBy criterion
 
-maybeGet :: forall a (backend :: (* -> *) -> * -> *) (m :: * -> *). (PersistEntity a, PersistStore backend m) =>
-                           Key backend a -> MaybeT (backend m) a
+{-maybeGet :: forall a (backend :: (* -> *) -> * -> *) (m :: * -> *). (PersistEntity a, PersistStore backend m) =>
+                           Key backend a -> MaybeT (backend m) a-}
 maybeGet id' = MaybeT $ get id'
 
-maybeSelectList :: forall val (m :: * -> *).
+{-maybeSelectList :: forall val (m :: * -> *).
                    (PersistEntity val,
                     PersistQuery
                     (PersistEntityBackend val) m) =>
@@ -244,7 +244,7 @@ maybeSelectList :: forall val (m :: * -> *).
                    -> [SelectOpt val]
                    -> MaybeT
                    (Database.Persist.Store.PersistEntityBackend val m)
-                   [Database.Persist.Store.Entity val]
+                   [Database.Persist.Store.Entity val]-}
 maybeSelectList l1 l2 = MaybeT $ selectList l1 l2 >>= \res -> case res of
                                                                 [] -> return Nothing
                                                                 a -> return $ Just a

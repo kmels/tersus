@@ -97,6 +97,7 @@ instance ToContent JsonFileList where
 getFileR :: Text -> Path -> Handler (ContentType,Content)
 getFileR username' path = do
   accessKey <- requireAccessKey
+
   -- logged user (access key) should have READ permissions over `path`
   -- snd of tuple is the tapp Entity
   (Entity uid user, _) <- (accessKey `requirePermission` READ) path
@@ -193,5 +194,5 @@ putFileR username' filePath = do
       MaybeT $ entityKeyM app
       
 -- TODO: Move to Tersus.Helpers.Persistent or Tersus.Tranformers or something
-entityKeyM :: Entity entity -> GHandler s m (Maybe (Key (PersistEntityBackend entity) entity))
+{-entityKeyM :: Entity entity -> GHandler s m (Maybe (Key (PersistEntityBackend entity) entity))-}
 entityKeyM e = return $ Just $ entityKey e

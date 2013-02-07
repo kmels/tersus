@@ -84,7 +84,7 @@ verifyUserKey key uname = decompose key >>= \(u',_) -> if (u'==uname)
                                                      else Nothing
  
 -- | A method wrapped in the GHandler monad, returning a Maybe u iff the logged user `u` has super admin rights
-requireSuperAdmin :: ( YesodAuth m
+{-requireSuperAdmin :: ( YesodAuth m
              , b ~ YesodPersistBackend m
              , b ~ PersistEntityBackend val
              , Key b val ~ AuthId m
@@ -92,7 +92,7 @@ requireSuperAdmin :: ( YesodAuth m
              , PersistEntity val
              , YesodPersist m
              , val ~ UserGeneric b
-             ) => GHandler s m (Maybe val)
+             ) => GHandler s m (Maybe val)-}
 requireSuperAdmin = runMaybeT $ do
   aid <- MaybeT $ maybeAuthId
   user   <- MaybeT $ runDB $ get aid
@@ -100,7 +100,7 @@ requireSuperAdmin = runMaybeT $ do
   return user
   
 -- | A method that returns Just the logged user if it has admin permissions over an application, Nothing otherwise
-requireAdminFor :: ( YesodAuth m
+{-requireAdminFor :: ( YesodAuth m
              , b ~ YesodPersistBackend m
              , b ~ PersistEntityBackend val
              , Key b val ~ AuthId m
@@ -111,7 +111,7 @@ requireAdminFor :: ( YesodAuth m
              , PersistUnique b (GHandler s m)
              , PersistQuery b (GHandler s m)
              , b ~ SqlPersist
-             ) => ApplicationIdentifier -> GHandler s m (Entity val)
+             ) => ApplicationIdentifier -> GHandler s m (Entity val)-}
 requireAdminFor appIdentifier = do 
   userEntity@(Entity userid user) <- requireAuth
   Entity tappkey tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
