@@ -117,8 +117,8 @@ getFileR username' path = do
            files <- getDirectoryContentsTyped fsPath
            mapM addUserPath files
 
-fileDoesNotExistError :: TRequestError
-fileDoesNotExistError = TRequestError InexistentFile "File does not exist"
+fileDoesNotExistError :: TersusResult
+fileDoesNotExistError = TersusErrorResult InexistentFile "File does not exist"
 
 -- | Handler that writes a new file, if successful
 -- It is successful if and only if:

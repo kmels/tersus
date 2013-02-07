@@ -51,11 +51,10 @@ instance PersistField FileType where
 
 data TersusResultCode = Success | SuccessDontUpdate | RequestError | InexistentFile | NotEnoughPrivileges | DirectoryNotEmpty | OutOfRange deriving (Show, Eq)
 
-data TRequestError = TRequestError TersusResultCode Text
 data TRequestResponseBody = Message Text | JsonResult Value
 data TRequestResponse = TRequestResponse TersusResultCode TRequestResponseBody
 
-data TersusResult = TersusResult Int TersusResultCode
+data TersusResult = TersusResult Int TersusResultCode | TersusErrorResult TersusResultCode Text
 
 -- Update the function msgResultNums as well since it's used to
 -- convert the result into binary data
