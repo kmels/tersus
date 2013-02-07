@@ -64,8 +64,8 @@ getUserAccessKeyR appId = do
     Just (Entity _ u) -> do
       accessKey <- liftIO $ newAccessKey (userNickname u) appId
       jsonToRepJson $ accessKey
-    Nothing -> error "Result: Empty user"
-      
+    Nothing -> error "Result: Empty user"    
+
 -- | Returns Nothing iff the access key doesn't correspond to the given username. Returns a user if the access key is valid for the given username.
 verifyValidUser :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => Username -> AccessKey -> GHandler s m (Maybe User)
 verifyValidUser u ak = do  

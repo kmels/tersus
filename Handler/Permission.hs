@@ -20,12 +20,18 @@
 --    app TApplicationId
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE DoAndIfThenElse       #-}
+
 module Handler.Permission where
 
-import           Import
-import Tersus.AccessKeys(requireAccessKey)
+--Prelude
+import Data.List(intersect)
 import Database.Persist.GenericSql.Raw(SqlPersist(..))
-import Tersus.AccessKeys(reqValidAuthPair,requireValidAuthPairEntities)
+import Import
+
+-- Tersus
+import Tersus.Responses(fileDoesNotExistError)
+import Tersus.AccessKeys(requireAccessKey,reqValidAuthPair,requireValidAuthPairEntities)
 import Tersus.Filesystem
 
 -- | Returns 404 if the username doesn't exist.
@@ -48,13 +54,13 @@ putShareFilePermissionForUserR = putPermission permissionToShare
 deleteShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
 deleteShareFilePermissionForUserR = deletePermission permissionToShare
 
-data PermissionType = READ | WRITE | SHARE
+data PermissionType = READ | WRITE | SHARE deriving Show
 
 putPermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist, m ~ App, s ~ App) => (UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)) -> Username -> Path -> Handler RepJson
 putPermission permissionConstructor username filePath = do
   --verify that the accesskey has the power to share filePath
   accessKey <- requireAccessKey
-  (_,_,appEntity) <- (accessKey `requirePermission` SHARE) filePath
+  (_, appEntity) <- (accessKey `requirePermission` SHARE) filePath
   Entity uid _ <- runDB $ getBy404 $ UniqueNickname $ username
   
   --add a new permission to file for `username`
@@ -67,7 +73,7 @@ deletePermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist, m ~ App
 deletePermission permissionConstructor username filePath = do
   --verify that the accesskey has the power to delete (share) filePath
   accessKey <- requireAccessKey
-  (_,_,appEntity) <- (accessKey `requirePermission` SHARE) filePath
+  (_, appEntity) <- (accessKey `requirePermission` SHARE) filePath
   Entity uid _ <- runDB $ getBy404 $ UniqueNickname $ username
   
   --delete existing permission to file for `username`
@@ -76,29 +82,35 @@ deletePermission permissionConstructor username filePath = do
   _ <- runDB $ update fid [TFilePermissions =. filter (/= permissionToDelete) (tFilePermissions file)]  
   jsonToRepJson $ show $ "Added  permission"
   
--- | This function checks that a given access key has permission `permissionType` on the given file path. It returns a triple, to avoid refetching entities.
-requirePermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => AccessKey -> PermissionType -> Path -> GHandler s m (Entity (PermissionGeneric SqlPersist),Entity (UserGeneric SqlPersist), Entity (TApplicationGeneric SqlPersist))
+-- | This function checks that a given access key has permission `permissionType` on the given file path. It returns a tuple to avoid refetching entities
+requirePermission :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => AccessKey -> PermissionType -> Path -> GHandler s m (Entity (UserGeneric SqlPersist), Entity (TApplicationGeneric SqlPersist))
+--access key, permission type and file path
 requirePermission ak pt fp = do
-  (userEntity,appEntity) <- requireValidAuthPairEntities ak
+  (userEntity,appEntity) <- requireValidAuthPairEntities ak -- goes to login otherwise
   let 
     uid = entityKey userEntity
     aid = entityKey appEntity
-  permission <- getPermission pt uid aid
-  file <- runDB $ getBy $ UniqueRawPath $ pathToText fp -- :: Maybe TFile
-  let 
-    filePermissions = file >>= Just . tFilePermissions . entityVal -- :: Maybe [PermissionId]
-    ifElemJust x xs = case x `elem` xs of
-      True -> Just x
-      _ -> Nothing
-    requiredPermission = filePermissions >>= \fps -> permission >>= \p -> case (entityKey p) `elem` fps of
-      True -> Just p
-      _ -> Nothing
-  let response = requiredPermission >>= \rp -> Just (rp,userEntity,appEntity)
-  maybe (permissionDenied "Not enough permissions on file for that accesskey") return response where
+    
+  permissionEntities <- getPermissions pt uid aid -- permissions that **contain** this permission
   
-    getPermission READ uid aid = runDB $ selectFirst [PermissionRead ==. True, PermissionUser ==. uid, PermissionApp ==. aid] []
-    getPermission WRITE uid aid = runDB $ selectFirst [PermissionWrite ==. True, PermissionUser ==. uid, PermissionApp ==. aid] []
-    getPermission SHARE uid aid = runDB $ selectFirst [PermissionShare ==. True, PermissionUser ==. uid, PermissionApp ==. aid] []
+  maybeFile <- runDB $ getBy $ UniqueRawPath $ pathToText fp      
+        
+  case maybeFile of
+    Just file -> 
+      let 
+        filePermissions = tFilePermissions . entityVal $ file -- [PermissionId]
+        permissionKeys = map entityKey permissionEntities
+      in 
+       if (not . null $ permissionKeys `intersect` filePermissions)
+       then return $ (userEntity,appEntity)
+       else do
+         liftIO . putStrLn . show $ filePermissions
+         permissionDenied "Not enough permissions on file for that accesskey"
+    Nothing -> permissionDenied "TODO!!! fileDoesNotExistErrorResponse - AND LOGIN REQUIRED"
+  where
+    getPermissions READ uid aid = runDB $ selectList [PermissionRead ==. True, PermissionUser ==. uid, PermissionApp ==. aid] []
+    getPermissions WRITE uid aid = runDB $ selectList [PermissionWrite ==. True, PermissionUser ==. uid, PermissionApp ==. aid] []
+    getPermissions SHARE uid aid = runDB $ selectList [PermissionShare ==. True, PermissionUser ==. uid, PermissionApp ==. aid] []
 
 -- | Permission that only allows to read
 permissionToRead :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => UserId -> TApplicationId -> GHandler s m (Key (PersistEntityBackend Permission) Permission)
@@ -142,4 +154,4 @@ permissionTo write' read' share' uid tappid = do
             share = share'
             in Permission uid read write share tappid
       runDB $ insert p
-      
+            

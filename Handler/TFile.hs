@@ -52,7 +52,8 @@ import Control.Monad                (when)
 
 -- Tersus
 import Tersus.AccessKeys(decomposeM)
-import Handler.Permission(permissionToShare)
+import Handler.Permission(permissionToShare,requirePermission,PermissionType(READ))
+import Tersus.Responses(fileDoesNotExistError)
 
 -- A way to convert between urls and a file path.
 -- See: Dynamic multi in http://www.yesodweb.com/book/routing-and-handlers
@@ -96,29 +97,28 @@ instance ToContent JsonFileList where
 getFileR :: Text -> Path -> Handler (ContentType,Content)
 getFileR username' path = do
   accessKey <- requireAccessKey
-  maybeValidUser <- accessKey `verifyUserKeyM` username'
-  case maybeValidUser of
-    Just username'' -> do
-      let fsPath = path `fullPathForUser` username''
-      let fsPathStr = pathToString fsPath
+  -- logged user (access key) should have READ permissions over `path`
+  -- snd of tuple is the tapp Entity
+  (Entity uid user, _) <- (accessKey `requirePermission` READ) path
+  let 
+    --logged_username'' = userNickname user
+    fsPath = path `fullPathForUser` username'
+    fsPathStr = pathToString fsPath
 
-      liftIO $ putStrLn $ "Looking: " ++ show fsPath
-      isDirectory <- liftIO $ doesDirectoryExist fsPathStr
-      fileExists <- liftIO $ doesFileExist fsPathStr
-      if isDirectory
-      then liftIO $ directoryContents fsPathStr >>= \fs -> return $ (jsonContentType, toContent $ fs)
-      else if fileExists
-      then return $ (filenameContentType fsPathStr, ContentFile fsPathStr Nothing)
-      else return $ (typeJson, toContent . toJSON $ fileDoesNotExistError)
-    _ -> return $ (typeJson, toContent ("todo: error, invalid access key for user" :: String))
-    where
-        addUserPath (Resource n _ t) = return $ Resource n (pathToText path) t
-        directoryContents fsPath = do
-           files <- getDirectoryContentsTyped fsPath
-           mapM addUserPath files
-
-fileDoesNotExistError :: TersusResult
-fileDoesNotExistError = TersusErrorResult InexistentFile "File does not exist"
+  liftIO $ putStrLn $ "Looking: " ++ show fsPath
+  isDirectory <- liftIO $ doesDirectoryExist fsPathStr
+  fileExists <- liftIO $ doesFileExist fsPathStr
+  if isDirectory
+  then liftIO $ directoryContents fsPathStr >>= \fs -> return $ (jsonContentType, toContent $ fs)
+  else if fileExists
+     then return $ (filenameContentType fsPathStr, ContentFile fsPathStr Nothing)
+     else return $ (typeJson, toContent . toJSON $ fileDoesNotExistError)
+--    _ -> return $ (typeJson, toContent ("todo: error, invalid access key for user" :: String))
+  where
+    addUserPath (Resource n _ t) = return $ Resource n (pathToText path) t
+    directoryContents fsPath = do 
+        files <- getDirectoryContentsTyped fsPath
+        mapM addUserPath files
 
 -- | Handler that writes a new file, if successful
 -- It is successful if and only if:
