@@ -81,63 +81,83 @@ library
 
     build-depends: base                          >= 4          && < 5
                  , AES                           >= 0.2.8
-                 , time                          >= 1.1.4
-                 , yesod-platform                >= 1.1        && <= 1.1.7.2
-                 , yesod                         >= 1.1        && < 1.2
-                 , yesod-core                    >= 1.1        && < 1.2
-                 , yesod-auth                    >= 1.1        && < 1.2
-                 , yesod-static                  >= 1.1        && < 1.2
-                 , yesod-default                 >= 1.1        && < 1.2
-                 , yesod-form                    >= 1.1        && <= 1.2.1
-                 , yesod-test                    >= 0.3        && < 0.4
-                 , clientsession                 >= 0.8      && < 0.9
+                 , time                          >= 1.4
+                 , directory                     >= 1.1        && < 1.2
                  , bytestring                    >= 0.9        && < 0.10
                  , text                          >= 0.11       && < 0.12
-                 , persistent                    >= 1.0        && < 1.2
-                 , persistent-postgresql         >= 1.0        && <= 1.2
+-- yesod-platform & dependencies
+                 , yesod-platform                == 1.1.7.1
+                 , yesod                         == 1.1.7.2
+                 , yesod-core                    == 1.1.7.1
+                 , yesod-auth                    == 1.1.3
+                 , yesod-static                  == 1.1.1.2
+                 , yesod-default                 == 1.1.3
+                 , yesod-form                    == 1.2.0.2
+                 , yesod-test                    == 0.3.3
+                 , aeson                         == 0.6.1.0
+                 , ansi-terminal                 == 0.5.5.1
+                 , attoparsec                    == 0.10.3.0
+                 , authenticate                  == 1.3.2
+                 , base64-bytestring             == 1.0.0.0
+                 , blaze-builder                 == 0.3.1.0
+                 , http-types                    == 0.7.3.0.1
+                 , case-insensitive              == 0.4.0.4
+                 , classy-prelude                == 0.4.3
+                 , classy-prelude-conduit        == 0.4.3
+                 , conduit                       == 0.5.6
+                 , clientsession                 == 0.8.1
+                 , email-validate                == 0.3.2
+                 , persistent                    == 1.1.4
+                 , persistent-postgresql         == 1.1.2.1
+                 , project-template              == 0.1.1
                  , template-haskell
-                 , hamlet                        >= 1.1        && < 1.2
-                 , shakespeare-css               >= 1.0        && < 1.2
-                 , shakespeare-js                >= 1.0        && < 1.2
-                 , shakespeare-text              >= 1.0        && < 1.2
-                 , hjsmin                        >= 0.1        && < 0.2
-                 , monad-control                 >= 0.3        && < 0.4
-                 , wai-extra                     >= 1.3        && < 1.4
-                 , yaml                          >= 0.7        && <= 0.8.2
-                 , http-conduit                  >= 1.6        && < 1.9
-                 , directory                     >= 1.1        && < 1.2
-                 , warp                          >= 1.3        && < 1.4                 
+                 , hamlet                        == 1.1.3.1
+                 , shakespeare-css               == 1.0.2
+                 , shakespeare-js                == 1.1.1
+                 , shakespeare-text              == 1.0.0.5
+                 , hjsmin                        == 0.1.4
+                 , mime-types                    == 0.1.0.2
+                 , monad-control                 == 0.3.1.4
+                 , wai-extra                     == 1.3.2
+                 , yaml                          == 0.8.2
+                 , http-conduit                  == 1.8.7
+                 , safe                          == 0.3.3
+                 , split                         == 0.2.1.1
+                 , utf8-string                   == 0.3.7
+                 , warp                          == 1.3.7.1
+                 , yesod-json                    == 1.1.2
                  , data-default
---added by kmels
-                 , utf8-string                   >= 0.3.7
+                 , wai-test                      == 1.3.0
+                 , shakespeare                   == 1.0.2
+                 , tls                           == 1.1.1
+                 , wai                           == 1.3.0.1
+                 , hashable                      == 1.1.2.5
+                 , hspec                         == 1.4.3
+--meta (to avoid dependency hell)
+                 , parsec                        == 3.1.3
+                 , network                       == 2.3.2.0
+                 , regex-base                    == 0.93.2
+                 , HUnit                         == 1.2.5.1
+--added by kmels                 
                  , random                        >= 1.0.1
                  , process-conduit               >= 0.4.1
-                 , conduit                       >= 0.4.2
-                 , split                         >= 0.1.4.3
-                 , transformers                  >= 0.2
-                 , http-types                    >= 0.6.11
-                 , yesod-json                    >= 1.1        && < 1.2
                  , extensible-exceptions         >= 0.1.1.4
-                 , base64-bytestring             >= 0.1.2
                  , regex-tdfa	                 >= 1.1.8
+                 , transformers                  >= 0.2.0.0
 --added by neto
-                 , aeson                         >= 0.6.0.0                 
-                 , distributed-process           >= 0.4.0
-                 , distributed-process-simplelocalnet >= 0.2.0.6
-                 , binary                        >= 0.5.1
+                 , distributed-process           >= 0.4.1 && < 0.4.2
+                 , distributed-process-simplelocalnet >= 0.2.0.8
+                 , binary                        >= 0.5.1.0
                  , mtl                           >= 2.0.0.0
                  , MissingH                      >= 1.1.1.0
-                 , array                         >= 0.3
+                 , array                         >= 0.3.0.0
                  , stm                           >= 2.3
                  , unix                          >= 2.5.1
-                 , MaybeT                        >= 0.1
-                 , wai-eventsource               >= 1.3
-                 , blaze-builder                 >= 0.3.1.0
+                 , MaybeT                        >= 0.1.0
+                 , wai-eventsource               >= 1.3.0.0
                  , safecopy                      >= 0.7.1
                  , acid-state                    >= 0.8.1
                  , ixset                         >= 1.0.5
-                 , safe                          >= 0.3.3
-                 , resourcet                     >= 0.4.4
 
 executable         tersus
     if flag(library-only)
@@ -154,7 +174,6 @@ test-suite test
     main-is:           main.hs
     hs-source-dirs:    tests
     ghc-options:       -Wall
-                       -ddump-splices
     extensions:        TemplateHaskell
                        QuasiQuotes
                        OverloadedStrings
