@@ -26,6 +26,9 @@ import System.Directory             (createDirectoryIfMissing,getDirectoryConten
 --types
 import Data.ByteString.Char8 as BS
 import Data.Text                    as T
+-- tersus
+import Tersus.DataTypes.TypeSynonyms
+import Yesod
 -- | Creates necessary directories in the filesystem for the given file path
 makeDir :: Path -> IO ()
 makeDir path = createDirectoryIfMissing createParents (T.unpack dir)

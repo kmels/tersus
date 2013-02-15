@@ -1,6 +1,5 @@
 module Tersus.DataTypes.User where
 
-
 import Data.Text
 import Database.Redis
 import Prelude
@@ -16,3 +15,6 @@ data User = User {
   
 type Email = Text
 type Password = Text
+
+getUserByNickname :: Connection -> Username -> IO (Maybe User)
+getUserByNickname conn userid = return Nothing

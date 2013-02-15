@@ -1,10 +1,15 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-module Model.TersusResult where
+module Tersus.DataTypes.Responses where
 
-
-import Import
 import Data.Aeson as J
 import qualified Data.Text as T
+import Import
+
+data TersusResultCode = Success | SuccessDontUpdate | RequestError | InexistentFile | NotEnoughPrivileges | DirectoryNotEmpty | OutOfRange deriving (Show, Eq)
+
+data TRequestResponseBody = Message Text | JsonResult Value
+data TRequestResponse = TRequestResponse TersusResultCode TRequestResponseBody
+
+data TersusResult = TersusResult Int TersusResultCode | TersusErrorResult TersusResultCode Text
 
 instance ToJSON TersusResultCode where
          toJSON resultCode = (J.String (T.pack (show resultCode)))

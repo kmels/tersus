@@ -15,10 +15,11 @@ import           System.Directory     (doesDirectoryExist)
 import           System.IO
 
 --os filesystem
-import Tersus.Filesystem
+import           Tersus.Filesystem
 
+import           Tersus.DataTypes.TApplication
 tApplicationDirectory :: TApplication -> String
-tApplicationDirectory = pathToString . tAppDirPath . tApplicationIdentifier
+tApplicationDirectory = pathToString . tAppDirPath . identifier
 
 -- TODO: implement
 repositoryExists :: TApplication -> IO Bool
@@ -42,7 +43,7 @@ clone :: TApplication -> IO ()
 clone tapp = C.runResourceT $ do
 --  liftIO $(logDebug) "Cloning repository.."
   let
-    (repoUrl',repoName) = (T.unpack $ tApplicationRepositoryUrl tapp, T.unpack $ tApplicationIdentifier tapp)
+    (repoUrl',repoName) = (T.unpack . repositoryUrl $ tapp, T.unpack . identifier $ tapp)
     cloneCmd = "git clone --quiet " ++ repoUrl' ++ " " ++ tApplicationDirectory tapp
 --  $(logDebug) "Spawning: " ++ cloneCmd
   sourceCmd cloneCmd C.$$ CB.sinkHandle stdout
@@ -50,6 +51,6 @@ clone tapp = C.runResourceT $ do
 pull :: TApplication -> IO ()
 pull tapp = C.runResourceT $ do
   let
-    repoName = T.unpack $ tApplicationIdentifier tapp
-    pullCmd = "cd "++tApplicationDirectory tapp ++ " git pull"
+    repoName = T.unpack . identifier $ tapp
+    pullCmd = "cd "++ tApplicationDirectory tapp ++ " git pull"
   sourceCmd pullCmd C.$$ CB.sinkHandle stdout

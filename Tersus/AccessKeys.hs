@@ -16,6 +16,9 @@ import Data.Maybe(fromJust)
 
 import Tersus.Global(accessKeyParameterName)
 
+--models
+import Tersus.DataTypes
+
 --monads/control
 import Control.Monad.Trans.Maybe
 
@@ -120,27 +123,23 @@ accessKeyRequired = invalidArgs $ [accessKeyParameterName]
 invalidAccessKey :: GHandler s m a
 invalidAccessKey = invalidArgs $ [accessKeyParameterName]
 
--- | Returns invalidAccessKey if it can't deduce a tuple (user,application)
-requireValidAuthPairEntities :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => AccessKey -> GHandler s m (Entity (UserGeneric SqlPersist),Entity (TApplicationGeneric SqlPersist))
-requireValidAuthPairEntities ak = do
+-- | Returns an invalidAccessKey response if it can't deduce a tuple (user,application) from a given access key
+requireValidAuthPair :: AccessKey -> GHandler s m (User, TApplication)
+requireValidAuthPair ak = do
   accessKey <- requireAccessKey
   authPair <- reqValidAuthPair accessKey 
+  master <- getYesod
+  let conn = redisConnection master
   
-  maybeUserEntity <- runMaybeT $ do
+  {-maybeUser <- runMaybeT $ do
     username' <- MaybeT $ return . Just . fst $ authPair
-    MaybeT $ runDB $ getBy $ UniqueNickname $ username'
+    MaybeT $ liftIO $ getUserByNickname conn username'
   
-  maybeAppEntity <- runMaybeT $ do
+  maybeTApp <- runMaybeT $ do
     appid' <- MaybeT $ return . Just . snd $ authPair
-    MaybeT $ runDB $ getBy $ UniqueIdentifier $ appid'
+    MaybeT $ liftIO $ getTApplicationById conn appid'
     
-  user <- maybe invalidAccessKey return maybeUserEntity
-  tapp <- maybe invalidAccessKey return maybeAppEntity
+  user <- maybe invalidAccessKey return maybeUser
+  tapp <- maybe invalidAccessKey return maybeTApp -}
   return $ (user,tapp)
-  
--- | Returns invalidAccessKey if it can't deduce a tuple (user,application)
-requireValidAuthPair :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => AccessKey -> GHandler s m (User,TApplication)
-requireValidAuthPair ak = do
-  (ue,ae) <- requireValidAuthPairEntities ak
-  return (entityVal ue, entityVal ae)  
   

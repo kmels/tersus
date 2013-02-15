@@ -22,25 +22,17 @@ import           Tersus.DataTypes.User
 -- at:
 -- http://www.yesodweb.com/book/persistent/
 
-type Path = [Text]
+
 type Id = Double
 type IdList = [Id]
 type ApplicationName = ByteString
 
-
 type UrlK = Text
---type Query = Text
 
 data WriteMode = Override | AppendToFile | Create | Delete deriving (Show, Eq, Enum)
 
 data ReadMode = FileMetadata | GetContent | Pagination deriving (Show, Eq, Enum)
 
-
 data FileType = File | Directory deriving Show
 
-data TersusResultCode = Success | SuccessDontUpdate | RequestError | InexistentFile | NotEnoughPrivileges | DirectoryNotEmpty | OutOfRange deriving (Show, Eq)
 
-data TRequestResponseBody = Message Text | JsonResult Value
-data TRequestResponse = TRequestResponse TersusResultCode TRequestResponseBody
-
-data TersusResult = TersusResult Int TersusResultCode | TersusErrorResult TersusResultCode Text

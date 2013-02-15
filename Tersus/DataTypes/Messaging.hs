@@ -1,5 +1,8 @@
 module Tersus.DataTypes.Messaging where
 
+import           Control.Applicative
+import           Control.Monad (mzero)
+import           Data.Aeson as J
 import qualified Data.Binary            as B
 import           Data.ByteString
 import qualified Data.ByteString  as BS
@@ -8,14 +11,14 @@ import           Data.IxSet (Indexable(..),ixSet,ixFun)
 import           Data.List
 import           Data.Maybe(fromJust)
 import           Data.SafeCopy (deriveSafeCopy,base,SafeCopy)
-import           qualified Data.Text as T
 import           Data.Text
+import qualified Data.Text as T
 import           Data.Time.Clock
 import           Data.Typeable
 import           Prelude
-import           Tersus.DataTypes.User
-import           Tersus.DataTypes.TypeSynonyms
 import           Tersus.DataTypes.TApplication
+import           Tersus.DataTypes.TypeSynonyms
+import           Tersus.DataTypes.User
 
 -- | Represents a app being run by a user
 data AppInstance = AppInstance {
@@ -159,3 +162,11 @@ instance B.Binary MessageResult where
 $(deriveSafeCopy 0 'base ''AppInstance)
 
 
+instance FromJSON AuthMessage where
+  parseJSON (Object authMessage) = AuthMessage <$>
+                                   authMessage .: "senderAppKey" <*>
+                                   authMessage .: "userReceiver" <*>
+                                   authMessage .: "appReceiver"  <*>
+                                   authMessage .: "content"
+  parseJSON _ = mzero
+                                   

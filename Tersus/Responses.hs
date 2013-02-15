@@ -20,7 +20,7 @@ import Data.Aeson(ToJSON)
 import Import
 
 --tersus
-import Model.TersusResult
+import Tersus.DataTypes.Responses
 
 invalidArguments :: Text -> Handler RepJson
 invalidArguments t = jsonToRepJson $ TRequestResponse RequestError (Message t)

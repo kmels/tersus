@@ -6,8 +6,8 @@
         <a href="/applications" class="btn btn-primary btn-large">Explore applications &raquo;
 
 <div class="row">   
-   $forall Entity _ tapp <- take 3 $ tapps
+   $forall tapp <- take 3 $ tapps
     <div class="span4">
-        <h3>#{tApplicationName tapp}
-        <p>#{tApplicationDescription tapp}
-        <p><a class="btn" href="@{TAppHomeR $ tApplicationIdentifier tapp}">Go to application</a></p>
+        <h3>#{name tapp}
+        <p>#{description tapp}
+        <p><a class="btn" href="@{TAppHomeR $ identifier tapp}">Go to application</a></p>

@@ -20,7 +20,6 @@ import           Data.Text.Lazy.Encoding      (encodeUtf8)
 import           Data.Time.Clock              (getCurrentTime)
 import           Import
 import           Model                        ()
-import           Model.AuthMessages           ()
 import           Model.TMessage               ()
 import           System.Timeout               (timeout)
 import           Tersus.AccessKeys            (decompose)
