@@ -1,4 +1,4 @@
-User
+{-User
     email Text
     nickname Text
     password Text Maybe
@@ -48,3 +48,4 @@ UserApplication
     isAdmin Bool 
     deriving Show
 
+-}

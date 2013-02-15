@@ -5,7 +5,6 @@
 -- declared in the Foundation.hs file.
 module Settings
     ( widgetFile
-    , PersistConfig
     , staticRoot
     , staticDir
     , Extra (..)
@@ -15,7 +14,6 @@ module Settings
 import Prelude
 import Text.Shakespeare.Text (st)
 import Language.Haskell.TH.Syntax
-import Database.Persist.Postgresql (PostgresConf)
 import Yesod.Default.Config
 import Yesod.Default.Util
 import Data.Text (Text)
@@ -24,9 +22,6 @@ import Control.Applicative
 import Settings.Development
 import Data.Default(def)
 import Text.Hamlet
-
--- | Which Persistent backend this site is using.
-type PersistConfig = PostgresConf
 
 -- Static setting below. Changing these requires a recompile
 

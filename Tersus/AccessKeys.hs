@@ -16,9 +16,6 @@ import Data.Maybe(fromJust)
 
 import Tersus.Global(accessKeyParameterName)
 
---yesod
-import Database.Persist.GenericSql.Raw(SqlPersist(..))
-
 --monads/control
 import Control.Monad.Trans.Maybe
 

@@ -25,7 +25,6 @@ import           Text.Regex.TDFA
 import           Data.Maybe                      (catMaybes)
 
 --persistent
-import           Database.Persist.GenericSql.Raw (SqlPersist (..))
 import           Tersus.Yesod.Persistent
 
 --json

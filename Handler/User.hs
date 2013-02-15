@@ -28,16 +28,12 @@ import Import
 import Tersus.AccessKeys(decompose)
 import Yesod.Json(jsonToRepJson)
 import Yesod.Auth
-import Model.User
 import Data.Aeson(encode)
-import Database.Persist.GenericSql.Raw(SqlPersist(..))
 import Tersus.AccessKeys
 import           Data.Text                as T
 
 import qualified Data.Conduit as C
-import Database.Persist.GenericSql.Raw (withStmt)
 import qualified Data.Conduit.List as CL
-import Database.Persist.Store
 import Data.Either (lefts,rights)
 
 --monads
@@ -142,3 +138,4 @@ requireValidAccessKey = requireAccessKey >>= decomposeM
 -- | Monadic version of `verifyUserKey`
 verifyUserKeyM :: AccessKey -> Username -> GHandler s m (Maybe Username)
 verifyUserKeyM ak u = return $ ak `verifyUserKey` u
+

@@ -4,8 +4,6 @@ module Model.AuthMessages where
 
 import Import
 import Data.Aeson as J
-import Model.User ()
-import Model.TApplication ()
 import Control.Monad (mzero)
 
 instance FromJSON AuthMessage where

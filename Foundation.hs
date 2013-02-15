@@ -1,51 +1,53 @@
 module Foundation
-    ( App (..)
+    ( Tersus (..)
     , Route (..)
-    , AppMessage (..)
-    , resourcesApp
+--    , AppMessage (..)
+--    , resourcesApp
     , Handler
     , Widget
     , Form
     , maybeAuth
     , requireAuth
     , module Settings
-    , module Model
+    
     ) where
 
-import Prelude
-import Yesod
-import Yesod.Static
-import Yesod.Auth
-import Yesod.Auth.BrowserId
-import Yesod.Auth.GoogleEmail
-import Yesod.Default.Config
-import Yesod.Default.Util (addStaticContentExternal)
+import           Prelude
+import           Yesod
+import           Yesod.Static
+import           Yesod.Auth
+import           Yesod.Auth.BrowserId
+import           Yesod.Auth.GoogleEmail
+import           Yesod.Default.Config
+import           Yesod.Default.Util (addStaticContentExternal)
 --import Yesod.Logger (Logger, logMsg, formatLogText)
-import Network.HTTP.Conduit (Manager)
+import           Network.HTTP.Conduit (Manager)
 import qualified Settings
-import qualified Database.Persist.Store
-import Settings.StaticFiles
-import Database.Persist.GenericSql
-import Settings (widgetFile, Extra (..))
-import Model
-import Text.Jasmine (minifym)
-import Web.ClientSession (getKey)
-import Text.Hamlet (hamletFile)
-import Database.Persist.Query.Join (SelectOneMany (..), selectOneMany)
-import Control.Monad.Maybe
+import           Settings.StaticFiles
+import           Settings (widgetFile, Extra (..))
+import           Text.Jasmine (minifym)
+import           Web.ClientSession (getKey)
+import           Text.Hamlet (hamletFile)
+import           Control.Monad.Maybe
 --Tersus
-import Tersus.Cluster.Types
+import           Tersus.Cluster.Types
+import           Tersus.DataTypes
+import           Tersus.Users
+import           qualified Tersus.Auth as TersusAuth
+-- Hedis
+import           Database.Redis
+-- Text
+import           Data.Text.Encoding
 
 -- | The site argument for your application. This can be a good place to
 -- keep settings and values requiring initialization before your application
 -- starts running, such as database connections. Every handler will have
 -- access to the data present here.
-data App = App
+data Tersus = Tersus
     { settings :: AppConfig DefaultEnv Extra
     , getStatic :: Static -- ^ Settings for static file serving.
-    , connPool :: Database.Persist.Store.PersistConfigPool Settings.PersistConfig -- ^ Database connection pool.
+    , redisConnection :: Connection
     , httpManager :: Manager
-    , persistConfig :: Settings.PersistConfig
     -- Channel for writing messages that should be sent
     , getSendChannel :: TMessageQueue
     -- Channel for writing the messages that were delivered, 
@@ -61,7 +63,7 @@ data App = App
     }
 
 -- Set up i18n messages. See the message folder.
-mkMessage "App" "messages" "en"
+mkMessage "Tersus" "messages" "en"
 
 -- This is where we define all of the routes in our application. For a full
 -- explanation of the syntax, please see:
@@ -82,13 +84,13 @@ mkMessage "App" "messages" "en"
 -- for our application to be in scope. However, the handler functions
 -- usually require access to the AppRoute datatype. Therefore, we
 -- split these actions into two functions and place them in separate files.
-mkYesodData "App" $(parseRoutesFile "config/routes")
+mkYesodData "Tersus" $(parseRoutesFile "config/routes")
 
-type Form x = Html -> MForm App App (FormResult x, Widget)
+type Form x = Html -> MForm Tersus Tersus (FormResult x, Widget)
 
 -- Please see the documentation for the Yesod typeclass. There are a number
 -- of settings which can be configured by overriding methods here.
-instance Yesod App where
+instance Yesod Tersus where
     approot = ApprootMaster $ appRoot . settings
 
     -- Store session data on the client in encrypted cookies,
@@ -98,8 +100,8 @@ instance Yesod App where
         return . Just $ clientSessionBackend key 120
 
     defaultLayout widget = do
-        master <- getYesod
-        maybeAuth <- maybeAuth
+        master <- getYesod        
+        maybeAuth <- TersusAuth.maybeLoggedUser (redisConnection master)
         mmsg <- getMessage
 
         -- Returns a list of tersus applications owned by the logged user
@@ -135,30 +137,25 @@ instance Yesod App where
     -- Place Javascript at bottom of the body tag so the rest of the page loads first
     jsLoader _ = BottomOfBody
 
--- How to run database actions.
-instance YesodPersist App where
-    type YesodPersistBackend App = SqlPersist
-    runDB f = do
-        master <- getYesod
-        Database.Persist.Store.runPool
-            (persistConfig master)
-            f
-            (connPool master)
-
-instance YesodAuth App where
-    type AuthId App = UserId
+instance YesodAuth Tersus where
+    type AuthId Tersus = UserId
 
     -- Where to send a user after successful login
     loginDest _ = HomeR
     -- Where to send a user after logout
     logoutDest _ = HomeR
 
-    getAuthId creds = runDB $ do
-        x <- getBy $ UniqueNickname $ credsIdent creds
-        case x of
-            Just (Entity uid _) -> return $ Just uid
-            Nothing -> do
-                fmap Just $ insert $ User (credsIdent creds) (credsIdent creds) Nothing False
+    getAuthId creds = do
+      master <- getYesod
+      let conn = redisConnection master
+      -- check if the user is already in our database
+      maybeUserId <- liftIO $ getUserIdByUsername (credsIdent creds) conn
+      --x <- getBy $ UniqueNickname $ credsIdent creds
+      case maybeUserId of
+        Just uid -> return $ maybeUserId
+        Nothing -> do
+          uid <- liftIO $ insertNewUser (credsIdent creds) (credsIdent creds) Nothing False conn 
+          return . Just $ uid
                 
     -- You can add other plugins like BrowserID, email or OAuth here
     authPlugins _ = [authBrowserId, authGoogleEmail]
@@ -167,7 +164,7 @@ instance YesodAuth App where
 
 -- This instance is required to use forms. You can modify renderMessage to
 -- achieve customized and internationalized form validation messages.
-instance RenderMessage App FormMessage where
+instance RenderMessage Tersus FormMessage where
     renderMessage _ _ = defaultFormMessage
 
 -- Note: previous versions of the scaffolding included a deliver function to
@@ -177,15 +174,10 @@ instance RenderMessage App FormMessage where
 --
 -- https://github.com/yesodweb/yesod/wiki/Sending-email
 
-maybeUserTApps :: ( YesodAuth m
-                  , val ~ UserGeneric SqlPersist
-                  , b ~ YesodPersistBackend m
-                  , b ~ PersistEntityBackend val
-                  , Key b val ~ AuthId m
-                  , PersistStore b (GHandler s m)
-                  , PersistEntity val
-                  , YesodPersist m
-                  ) => GHandler s m [Maybe TApplication]
+maybeUserTApps :: GHandler s m [Maybe TApplication]
+maybeUserTApps = return []
+
+{-
 maybeUserTApps = do
   auth <- maybeAuth
   case auth of
@@ -197,8 +189,8 @@ maybeUserTApps = do
                          return $ (app :: Maybe TApplication)
            ) uapps
 --      return $ (apps :: [Entity TApplication])
-    _ -> return $ []
+    _ -> return $ [] -}
 
-maybeGet id' = MaybeT $ get id'
+maybeGet id' = MaybeT $ Yesod.get id'
 
 

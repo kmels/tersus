@@ -31,7 +31,7 @@ import           Control.Monad                                      (forever)
 import           Control.Monad                                      (foldM)
 import           Data.Array.IO                                      (readArray)
 import           Data.HashTable                                     as H
-import           Model                                             
+import           Tersus.DataTypes.Messaging                                             
                                                                      (MessageResult (Delivered, ENoAppInstance),
                                                                      getAppInstance,
                                                                      getSendAppInstance)

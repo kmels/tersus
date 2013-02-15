@@ -18,8 +18,6 @@ import Import
 --haskell platform
 import Data.Maybe(isJust)
 
---persistent
-import Database.Persist.GenericSql.Raw(SqlPersist(..))
 
 {--- | Given a unique, determine if it already exists. 
 uniqueExists :: GHandler s m Boolean

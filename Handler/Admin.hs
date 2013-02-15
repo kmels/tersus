@@ -17,12 +17,9 @@ module Handler.Admin(
 ) where
 
 import Import
-import Model
 import Data.Maybe
 import Yesod.Auth
 import           Control.Arrow            ((&&&))
-
-import Database.Persist.Store
 
 import Model
 import Handler.User(requireSuperAdmin)

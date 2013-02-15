@@ -21,20 +21,15 @@ import Model (AppInstance,MessageResult(Delivered),getAppInstance,Address(Addres
 import Tersus.Cluster.MessageBackend (sendNotifications)
 import Data.Typeable.Internal (Typeable)
 import Data.Binary (Binary)
-import qualified Database.Persist.Store
-import Database.Persist.GenericSql (SqlPersist)
 import Settings (PersistConfig)
 import Tersus.Global
 import Yesod.Default.Config (withYamlEnvironment)
 import Control.Monad.Maybe
-import Database.Persist (getBy,selectList,get)
 import Data.Acid (AcidState)
 import Data.SafeCopy (SafeCopy)
 import Control.Exception (Exception,throw)
 import Data.Time.Clock (getCurrentTime,UTCTime)
 
-import Database.Persist.Query.Internal(Filter,PersistQuery,SelectOpt)
-import Database.Persist.Store(Key,PersistEntity,PersistEntityBackend,PersistUnique,PersistStore,Unique)
 -- | Exceptions that can result from server side applications
 -- | NoStateException: raised if an application that dosen't use acid state tries to access it's acid state
 data TersusServiceExceptions = NoStateException deriving (Show,Typeable)
@@ -79,7 +74,7 @@ data (SafeCopy store) => TersusService store = TersusService
       -- is sent when the app is created
       clusterList :: TersusClusterList,
       -- Database configuration
-      dbConf :: (PersistConfig,Database.Persist.Store.PersistConfigPool PersistConfig),
+      --dbConf :: (PersistConfig,Database.Persist.Store.PersistConfigPool PersistConfig),
       -- In memory database of the application
       memDb :: Maybe (AcidState store)
     }

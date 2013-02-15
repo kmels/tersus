@@ -2,14 +2,15 @@
 {-# LANGUAGE TupleSections     #-}
 module Handler.Home where
 
-import           Import
-import           Yesod.Auth
-
+import Import
+import Tersus.TApplications
+import Yesod.Auth
 -- Respondes to URL: /
 getHomeR :: Handler RepHtml
 getHomeR = do
     maid <- maybeAuthId
-    tapps <- runDB $ selectList [] [Desc TApplicationIdentifier]
+    --
+    tapps <- getApplications --runDB $ selectList [] [Desc TApplicationIdentifier]
     defaultLayout $ do
       aDomId <- lift newIdent
       setTitle "Tersusland!"

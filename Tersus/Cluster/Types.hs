@@ -14,9 +14,8 @@ import           Data.HashTable               as H
 import qualified Data.List                    as L
 import           Data.Text                    as T
 import           Data.Typeable.Internal       (Typeable)
-import           Model
 import           Prelude
-
+import Tersus.DataTypes
 type THashCode = String
 
 -- Hash code was introduced to handle uncoordinated registration

@@ -7,8 +7,6 @@ module Application
     ) where
 
 import           Data.Int()
-import           Database.Persist.GenericSql (runMigration)
-import qualified Database.Persist.Store
 import           Import
 import           Network.HTTP.Conduit (newManager, def)
 import Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)

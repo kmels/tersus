@@ -24,7 +24,6 @@ module Handler.Permission where
 
 import           Import
 import Tersus.AccessKeys(requireAccessKey)
-import Database.Persist.GenericSql.Raw(SqlPersist(..))
 import Tersus.AccessKeys(reqValidAuthPair,requireValidAuthPairEntities)
 import Tersus.Filesystem
 

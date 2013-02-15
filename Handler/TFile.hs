@@ -31,7 +31,6 @@ import Data.Maybe
 import Data.Text                    as T
 import Handler.User                 (verifyUserKeyM)
 import Import                       hiding (catch)
-import Model.TersusResult
 import Tersus.TFiles
 import Text.Regex.TDFA
 import Yesod.Json                   (Value (..))
@@ -42,9 +41,6 @@ import System.Directory             (doesDirectoryExist,
 import Tersus.Filesystem (byteStringToText,fullPathForUser,pathToText,pathToString,userDirPath,writeFileContents)
 import Tersus.Global                (accessKeyParameterName)
 import Tersus.AccessKeys (requireAccessKey)
-
--- Yesod
-import Database.Persist.GenericSql.Raw(SqlPersist(..))
 
 -- Control
 import Control.Monad.Trans.Maybe

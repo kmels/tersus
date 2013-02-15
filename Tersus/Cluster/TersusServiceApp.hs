@@ -2,15 +2,11 @@
 {-# LANGUAGE RankNTypes #-}
 module Tersus.Cluster.TersusServiceApp where
 
-import Model
 import Prelude
 import Control.Monad.Maybe
 import Control.Monad.Trans          (liftIO)
 import Data.Text                    (Text)
 import Data.Time.Clock              (getCurrentTime)
-import Database.Persist             ((<-.))
-import Database.Persist.Query.Internal
-import Database.Persist.Store
 import Model.User()
 import System.IO.Unsafe             (unsafePerformIO)
 import Tersus.Cluster.TersusService (TersusServerApp(..),TersusServiceM,sendMessage,maybeGetBy,maybeSelectList,maybeGet,runQuery)
