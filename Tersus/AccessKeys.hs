@@ -124,22 +124,20 @@ invalidAccessKey :: GHandler s m a
 invalidAccessKey = invalidArgs $ [accessKeyParameterName]
 
 -- | Returns an invalidAccessKey response if it can't deduce a tuple (user,application) from a given access key
-requireValidAuthPair :: AccessKey -> GHandler s m (User, TApplication)
+requireValidAuthPair :: AccessKey -> GHandler s Tersus (User, TApplication)
 requireValidAuthPair ak = do
   accessKey <- requireAccessKey
   authPair <- reqValidAuthPair accessKey 
   master <- getYesod
   let conn = redisConnection master
   
-  {-maybeUser <- runMaybeT $ do
-    username' <- MaybeT $ return . Just . fst $ authPair
-    MaybeT $ liftIO $ getUserByNickname conn username'
-  
-  maybeTApp <- runMaybeT $ do
-    appid' <- MaybeT $ return . Just . snd $ authPair
-    MaybeT $ liftIO $ getTApplicationById conn appid'
+  eitherUser <- liftIO $ getUserByNickname conn $ fst authPair
+  eitherTApp <- liftIO $ getTApplicationById conn $ snd authPair
     
-  user <- maybe invalidAccessKey return maybeUser
-  tapp <- maybe invalidAccessKey return maybeTApp -}
-  return $ (user,tapp)
+  -- TODO : \todo -> invaliAccessKey should be replaced by a function
+  -- of type TError -> GHandler s m RepJson 
   
+  user <- either (\todo -> invalidAccessKey) return eitherUser
+  tapp <- either (\todo -> invalidAccessKey) return eitherTApp
+  return $ (user,tapp)
+

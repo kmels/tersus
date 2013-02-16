@@ -4,9 +4,10 @@ import Data.Text
 import Database.Redis
 import Prelude
 import Tersus.DataTypes.TypeSynonyms
+import Tersus.DataTypes.TError
 import Yesod
 data User = User {
-  id :: UserId
+  uid :: UserId
   , email :: Email
   , nickname :: Username
   , password :: Maybe Text
@@ -16,5 +17,5 @@ data User = User {
 type Email = Text
 type Password = Text
 
-getUserByNickname :: Connection -> Username -> IO (Maybe User)
-getUserByNickname conn userid = return Nothing
+getUserByNickname :: Connection -> Username -> IO (Either TError User)
+getUserByNickname conn userid = return . Left . TheImpossibleHappened $ "Not implemented yet"

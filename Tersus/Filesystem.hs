@@ -15,8 +15,8 @@
 module Tersus.Filesystem where
 
 --haskell platform
-import Import
-import Prelude                      (writeFile,last)
+--import Import
+import Prelude
 
 --os
 import System.IO.Unsafe

@@ -23,3 +23,6 @@ type ApplicationIdentifier = Text  --this has the property that has no spaces in
 -- users
 type UserId = Integer -- 64 bit integers
 type Username = Text
+
+-- files
+type FileId = Integer
