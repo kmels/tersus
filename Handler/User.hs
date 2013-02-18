@@ -25,53 +25,61 @@ module Handler.User(
   ) where
   
 import Import
-import Tersus.AccessKeys(decompose)
-import Yesod.Json(jsonToRepJson)
-import Yesod.Auth
+
 import Data.Aeson(encode)
-import Tersus.AccessKeys
 import           Data.Text                as T
 
 import qualified Data.Conduit as C
 import qualified Data.Conduit.List as CL
 import Data.Either (lefts,rights)
 
+-- tersus
+import Tersus.AccessKeys
+import Tersus.DataTypes
+
 --monads
 import Control.Monad(guard)
 import Control.Monad.Trans.Maybe
+
+--yesod
+import Yesod.Json(jsonToRepJson)
+import Yesod.Auth
 
 import Tersus.Global(accessKeyParameterName)
 
 -- | Returns a JSON representation of the logged user. Returns a 412 status code (Precondition failed) with an empty string
 getLoggedUserR :: Handler RepJson
 getLoggedUserR = do
-  maybeUserId <- maybeAuth
+  {-maybeUserId <- maybeAuth
   case maybeUserId of
        Just (Entity _ u) -> jsonToRepJson u
-       Nothing -> error "Result: Empty user. TODO: implement return response"
+       Nothing -> error "Result: Empty user. TODO: implement return response"-}
+  permissionDenied "TODO"
 
 -- | Returns the access key of a logged user. Returns a 412 status code (Precondition failed) with an empty string
 -- TODO: This request *must* be secure (with https)
 -- TODO: Change the parameter from ApplicationIdentifier to ApplicationKey (implies modifying newHexRandomAccessKey)
 getUserAccessKeyR :: ApplicationIdentifier -> Handler RepJson
 getUserAccessKeyR appId = do
-  maybeUserId <- maybeAuth
+  {-maybeUserId <- maybeAuth
   case maybeUserId of
     Just (Entity _ u) -> do
-      accessKey <- liftIO $ newAccessKey (userNickname u) appId
+      accessKey <- liftIO $ newAccessKey (nickname u) appId
       jsonToRepJson $ accessKey
-    Nothing -> error "Result: Empty user"
+    Nothing -> error "Result: Empty user"-}
+  permissionDenied "TODO"
       
 -- | Returns Nothing iff the access key doesn't correspond to the given username. Returns a user if the access key is valid for the given username.
-verifyValidUser :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => Username -> AccessKey -> GHandler s m (Maybe User)
+verifyValidUser :: Username -> AccessKey -> GHandler s m (Maybe User)
 verifyValidUser u ak = do  
-  userMaybe <- runDB $ getBy $ UniqueNickname $ u --query db
+  {-userMaybe <- runDB $ getBy $ UniqueNickname $ u --query db
   case ak `verifyUserKey` u of
     Just uname -> do  
       case userMaybe of
         Just (Entity _ user') -> return $ Just user'
         Nothing -> return Nothing
-    _ -> return Nothing
+    _ -> return Nothing-}
+  permissionDenied "TODO"
 
 -- | Returns Nothing iff the access key doesn't correspond to the given username. Returns the given username if the access key belongs to him.
 verifyUserKey :: AccessKey -> Username -> Maybe Username
@@ -80,56 +88,40 @@ verifyUserKey key uname = decompose key >>= \(u',_) -> if (u'==uname)
                                                      else Nothing
  
 -- | A method wrapped in the GHandler monad, returning a Maybe u iff the logged user `u` has super admin rights
-requireSuperAdmin :: ( YesodAuth m
-             , b ~ YesodPersistBackend m
-             , b ~ PersistEntityBackend val
-             , Key b val ~ AuthId m
-             , PersistStore b (GHandler s m)
-             , PersistEntity val
-             , YesodPersist m
-             , val ~ UserGeneric b
-             ) => GHandler s m (Maybe val)
-requireSuperAdmin = runMaybeT $ do
+requireSuperAdmin :: (YesodAuth m) => GHandler s m User
+requireSuperAdmin = {-runMaybeT $ do
   aid <- MaybeT $ maybeAuthId
   user   <- MaybeT $ runDB $ get aid
-  guard (userIsSuperAdmin user)
-  return user
+  guard (isSuperAdmin user)
+  return user-}
+  permissionDenied "TODO"
   
 -- | A method that returns Just the logged user if it has admin permissions over an application, Nothing otherwise
-requireAdminFor :: ( YesodAuth m
-             , b ~ YesodPersistBackend m
-             , b ~ PersistEntityBackend val
-             , Key b val ~ AuthId m
-             , PersistStore b (GHandler s m)
-             , PersistEntity val
-             , YesodPersist m
-             , val ~ UserGeneric b
-             , PersistUnique b (GHandler s m)
-             , PersistQuery b (GHandler s m)
-             , b ~ SqlPersist
-             ) => ApplicationIdentifier -> GHandler s m (Entity val)
+requireAdminFor :: ApplicationIdentifier -> GHandler s m User
 requireAdminFor appIdentifier = do 
-  userEntity@(Entity userid user) <- requireAuth
+  {-userEntity@(Entity userid user) <- requireAuth
   Entity tappkey tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
   permission <- runDB $ selectFirst [UserApplicationApplication ==. tappkey, UserApplicationUser ==. userid, UserApplicationIsAdmin ==. True] []
   case permission of 
     Just _ -> return $ userEntity
-    _ -> permissionDenied "Permission denied. The logged user is not an application administrator"
+    _ -> permissionDenied "Permission denied. The logged user is not an application administrator"-}
+  permissionDenied "TODO"   
   
     
 -- | This function is written in the spirit of fromPersistValues in Database.Persist, it takes a list of persist values (equivalent to columns coming from a sql query) and extracts the ones who have only one element of text (intented to use in getUsernameSearchR because only the `nickname` field is SELECT'ed
-extractNickname :: [PersistValue] -> Either String Text
-extractNickname [PersistText x] = Right x
-extractNickname _ = Left $ "Input error on extractNickname: number of fields are more than one (ignoring)"
+--extractNickname :: [PersistValue] -> Either String Text
+--extractNickname [PersistText x] = Right x
+--extractNickname _ = Left $ "Input error on extractNickname: number of fields are more than one (ignoring)"
 
 -- | Handler to autocomplete a user nickname from a query
 getUsernameSearchR :: Text -> Handler RepJson
 getUsernameSearchR query = do
   --TODO SECURITY IMPORTANT, prevent SQL INJECTION? PENDING REVIEW
-  let stripped_query = T.filter (/= '\'') query 
+  {-TODO let stripped_query = T.filter (/= '\'') query 
   let sql = "SELECT nickname FROM public.user WHERE nickname LIKE '%" `T.append` stripped_query `T.append` "%' LIMIT 5;" 
   extracts <- runDB $ C.runResourceT $ withStmt sql ([]::[PersistValue]) C.$= CL.map extractNickname C.$$ CL.consume
-  jsonToRepJson . array . rights $ extracts
+  jsonToRepJson . array . rights $ extracts-}
+  permissionDenied "TODO" -- See Tersus.Auth
 
 -- | Helper function that decomposes
 requireValidAccessKey :: GHandler s m (Maybe AuthPair)
