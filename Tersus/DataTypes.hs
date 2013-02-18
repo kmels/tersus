@@ -5,7 +5,7 @@ module Tersus.DataTypes(
   , module Tersus.DataTypes.TypeSynonyms
   , module Tersus.DataTypes.TError
   , module Tersus.DataTypes.Permission
---  , module Tersus.DataTypes.TFile
+  , module Tersus.DataTypes.TFile
   ) where
   
 import Tersus.DataTypes.User
@@ -14,4 +14,4 @@ import Tersus.DataTypes.Messaging
 import Tersus.DataTypes.TypeSynonyms
 import Tersus.DataTypes.TError
 import Tersus.DataTypes.Permission
---import Tersus.DataTypes.TFile
+import Tersus.DataTypes.TFile

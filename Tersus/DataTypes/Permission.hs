@@ -8,16 +8,12 @@ import           Prelude
 import           Tersus.DataTypes.TypeSynonyms
 import           Tersus.Database((.>),(<.)) -- Ts for Tersus
 import           Tersus.Filesystem (pathToText)
-{-
-I'm not sure we'll need this
 
 data Permission = Permission {
   userid :: UserId
-  , read :: Bool
-  , write ::  Bool
-  , share :: Bool
+  , permissionType :: PermissionType
   , appid :: ApplicationIdentifier
-  } -}
+  } 
   
 data PermissionType = READ | WRITE | SHARE deriving Show
 
