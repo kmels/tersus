@@ -23,11 +23,12 @@ import           System.Timeout               (timeout)
 import           Tersus.AccessKeys            (decompose)
 import           Tersus.Cluster.Types
 import Tersus.DataTypes.Messaging
+import Tersus.DataTypes.TypeSynonyms
 import Network.Wai.EventSource (ServerEvent (..), eventSourceAppIO)
 
 -- | Creates an appInstance envoiernment and registers that
 -- envoiernment with the provided appInstance
-initApplication :: AppInstance -> GHandler sub App ()
+initApplication :: AppInstance -> GHandler sub Tersus ()
 initApplication appInstance = do
   master <- getYesod
   let
@@ -41,7 +42,7 @@ initApplication appInstance = do
 -- | Attempt to decrypt the access key of an AuthMessage and convert
   -- It to a TMessage for delivery. If decryption fails return an
   -- invalid app key error
-deliverAuthMessage :: AuthMessage -> GHandler sub App MessageResult
+deliverAuthMessage :: AuthMessage -> GHandler sub Tersus MessageResult
 deliverAuthMessage (AuthMessage accessKey rUser appId body) = deliverTMessage' $ decompose accessKey
   where
     deliverTMessage' Nothing = return EInvalidAppKey
@@ -56,7 +57,7 @@ deliverAuthMessage (AuthMessage accessKey rUser appId body) = deliverTMessage' $
 -- queueMessage once the destinatary creates
 -- a receive request. The status MVar is deleted
 -- after the message delivery
-deliverTMessage :: TMessage -> GHandler sub App MessageResult
+deliverTMessage :: TMessage -> GHandler sub Tersus MessageResult
 deliverTMessage message = do
   master <- getYesod
   channel <- return $ getSendChannel master
@@ -75,7 +76,7 @@ deliverTMessage message = do
 
 -- | Given an appInstance and the hashcode of a particular message,
 -- blocks until the delivery status of the message is known
-waitMessage :: AppInstance -> THashCode -> GHandler sub App MessageResult
+waitMessage :: AppInstance -> THashCode -> GHandler sub Tersus MessageResult
 waitMessage appInstance hashCode = do
   master <- getYesod
   let
@@ -144,7 +145,7 @@ loadMessages mailBox deliveryChan = do
 -- Note that a pattern match failure should not happen. If it happens it means
 -- that the app key generaiton method is not secure
 -- receieveMessage :: Address -> IO [TMessage]
-receiveMessages :: AppInstance -> GHandler sub App (Maybe [TMessageEnvelope])
+receiveMessages :: AppInstance -> GHandler sub Tersus (Maybe [TMessageEnvelope])
 receiveMessages appInstance = do
   master <- getYesod
   let
