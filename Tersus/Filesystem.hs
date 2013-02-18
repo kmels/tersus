@@ -24,8 +24,9 @@ import System.Directory(getAppUserDataDirectory)
 import System.Directory             (createDirectoryIfMissing,getDirectoryContents,doesDirectoryExist,doesFileExist)
 
 --types
-import Data.ByteString.Char8 as BS
+import Data.ByteString
 import Data.Text                    as T
+import Data.Text.Encoding
 -- tersus
 import Tersus.DataTypes.TypeSynonyms
 import Yesod
@@ -49,12 +50,19 @@ writeFileContents path content = makeDir path >>= \_ -> Prelude.writeFile (T.unp
 pathToText :: Path -> Text
 pathToText p = (T.pack "/") `T.append` T.intercalate (T.pack "/") p
 
+-- | Converts a list of path components into a ByteString by interacalating a "/"
+pathToByteString :: Path -> ByteString
+pathToByteString = textToByteString . pathToText 
+
 -- | Converts a list of path components into a String by interacalating a "/"
 pathToString :: Path -> String
 pathToString = T.unpack . pathToText
 
 byteStringToText :: ByteString -> Text
-byteStringToText = T.pack . BS.unpack
+byteStringToText = decodeUtf8
+
+textToByteString :: Text -> ByteString
+textToByteString = encodeUtf8
 
 -- | Returns the user directory in the filesystem
 userDirPath :: Username -> Path
