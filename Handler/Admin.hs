@@ -19,23 +19,23 @@ module Handler.Admin(
 import Import
 import Data.Maybe
 import Yesod.Auth
-import           Control.Arrow            ((&&&))
+import Control.Arrow            ((&&&))
 
-import Model
 import Handler.User(requireSuperAdmin)
+import Model
+import Tersus.DataTypes.User
 
 getAdminR :: Handler RepHtml
 getAdminR = do
-  superAdmin <- requireSuperAdmin
-  case superAdmin of
-    Just admin -> defaultLayout $(widgetFile "admin/dashboard")
-    _ -> defaultLayout [whamlet| "TODO Permission denied"|]
+  admin <- requireSuperAdmin
+  defaultLayout $(widgetFile "admin/dashboard")
 
 -- | replies to /admin/applications with a list of applications and links to manage it (edit,deactivate)
 getTApplicationsAdminR :: Handler RepHtml 
 getTApplicationsAdminR = do
-  superAdmin <- requireSuperAdmin
+  {-superAdmin <- requireSuperAdmin
   tapps <- runDB $ selectList [] [Desc TApplicationIdentifier]
   case superAdmin of
     Just admin -> defaultLayout $(widgetFile "admin/applications")
-    _ -> defaultLayout [whamlet| "TODO Permission denied"|]
+    _ -> defaultLayout [whamlet| "TODO Permission denied"|]-}
+  permissionDenied "TODO"
