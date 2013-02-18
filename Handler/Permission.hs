@@ -16,6 +16,8 @@
 
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE DoAndIfThenElse       #-}
+
 module Handler.Permission where
 
 import           Control.Monad.IO.Class
@@ -69,8 +71,7 @@ deletePermissionJSON permType username filePath = do
 
   --verify that the accesskey has the power to delete (share) filePath
   accessKey <- requireAccessKey
-  (user,tapp) <- (accessKey `requirePermission` SHARE) filePath  
-  
+  (user,tapp) <- (accessKey `requirePermission` SHARE) filePath    
   -- get connection to database
   master <- getYesod
   let conn = redisConnection master

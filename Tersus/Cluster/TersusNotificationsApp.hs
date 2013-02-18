@@ -8,7 +8,7 @@ import           Prelude
 import           System.IO.Unsafe (unsafePerformIO)
 import           Data.SafeCopy
 import           Data.IxSet
-import qualified           Data.IxSet as I
+import qualified Data.IxSet as I
 import           Data.Text hiding (foldl,empty)
 import           Data.Time.Clock (getCurrentTime)
 import           Data.Typeable.Internal (Typeable)
@@ -26,8 +26,9 @@ import           Safe (readMay)
 import           Control.Applicative
 import           Prelude
 import           Tersus.DataTypes.Messaging
-import           Tersus.DataTypes.User
 import           Tersus.DataTypes.TApplication
+import           Tersus.DataTypes.User
+import           Tersus.Database(io)
 -- | The name of the notifications application
 tersusNotificationAppName :: Text
 tersusNotificationAppName = "tersusNotifications"
@@ -169,7 +170,7 @@ $(makeAcidic ''TopicsDb ['addSubscription,'rmSubscription,'getSubscriptions,'rmS
 -- the topic                                                                                             
 tersusNotificationsRecv :: TMessage -> TersusServiceM TopicsDb ()
 tersusNotificationsRecv message = do
-
+  io $ putStrLn $ show message
   case operation of
     Nothing -> sendResponse $ encodeAsText FormatError
     Just op -> runOperation op
@@ -198,11 +199,15 @@ tersusNotificationsRecv message = do
         notificationMsg (TopicSubscription s _) = do
           let
             AppInstance uSubs aSubs = s
-            msg = TMessage uSender uSubs aSender aSubs (encodeAsText notification)
+            resp = case notification of
+              Nothing -> ""
+              Just n -> n
+            msg = TMessage uSender uSubs aSender aSubs resp
           sendMessage' msg
 
 
 -- | Notifications App. This app allows applications to create topics to which they can send messages and theese messages
 -- will be delivered to every application that is subscribed to the topic
 tersusNotificationsApp :: TersusServerApp TopicsDb
-tersusNotificationsApp = TersusServerApp tersusNotificationsApp' tersusServiceUser tersusNotificationsRecv Nothing Nothing $ Just $ openLocalState $ TopicsDb $ I.empty
+tersusNotificationsApp = TersusServerApp tersusNotificationsApp' tersusServiceUser tersusNotificationsRecv Nothing Nothing $ Just $ openLocalStateFrom "/tmp/TNA" $ TopicsDb $ I.empty
+

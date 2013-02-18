@@ -39,12 +39,12 @@ Permission
     read Bool
     write Bool
     share Bool
-    app TApplicationId
+    app TApplicationId DeleteCascade
     deriving Show
 
 UserApplication
     user UserId
-    application TApplicationId
+    application TApplicationId DeleteCascade
     isAdmin Bool 
     deriving Show
 

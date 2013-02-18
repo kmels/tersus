@@ -67,7 +67,7 @@ data TMessage = TMessage {
   ,messageSenderApp :: ApplicationIdentifier
   ,messageReceiverApp :: ApplicationIdentifier
   ,messageBody :: Text
-  ,messageTimestamp :: UTCTime} deriving (Eq, Typeable)
+  ,messageTimestamp :: UTCTime} deriving (Eq, Typeable, Show)
   
 -- Instance to convert a message into it's json representation, this instance is defined
 -- according to the Tersus Developers Api.

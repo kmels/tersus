@@ -26,6 +26,7 @@ import           Data.Maybe                      (catMaybes)
 
 --persistent
 import           Tersus.Yesod.Persistent
+import           Database.Persist.Store (deleteCascade)
 
 --json
 import           Data.Aeson                      (toJSON)
@@ -42,6 +43,12 @@ import           Tersus.Global
 import           Tersus.Responses
 import Tersus.AccessKeys(maybeAccessKey)
 import Tersus.Yesod.Handler(requireGetParameter)
+
+-- Temporary fix of a yesod bug
+import Text.Julius
+instance ToJavascript String where
+         toJavascript = toJavascript . rawJS
+--
 
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {

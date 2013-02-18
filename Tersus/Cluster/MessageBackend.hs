@@ -49,13 +49,18 @@ processBinderName = "TersusProcessBinder"
 -- each service individually
 runTersusMessaging :: Backend -> MessagingPorts -> AcknowledgementPorts -> NotificationsPorts -> TMessageQueue -> TMessageQueue -> NotificationsChannel -> AppInstanceTable -> AddressTable -> TersusClusterList -> Int -> Process [ProcessId]
 runTersusMessaging backend (mSendPort,mRecvPort) (_,aRecvPort) (nSendPort,nRecvPort) sendChannel recvChannel notificationsChan appEnvs addresses clusterList numThreads = do
-  _ <- initDispatchMessageAcknowledgementService aRecvPort appEnvs numThreads
-  _ <- initMessageDeliveryService sendChannel addresses numThreads
-  _ <- initMessageReceiveService mRecvPort appEnvs numThreads
-  _ <- initMessageAcknowledgementService recvChannel numThreads
-  _ <- initNotificationsService mSendPort clusterList notificationsChan numThreads
-  _ <- initNotificationsDispatchService addresses nRecvPort numThreads
-  _ <- initProcessBinderService backend nSendPort clusterList
+  p1 <- initDispatchMessageAcknowledgementService aRecvPort appEnvs numThreads
+  p2 <- initMessageDeliveryService sendChannel addresses numThreads
+  p3 <- initMessageReceiveService mRecvPort appEnvs numThreads
+  p4 <- initMessageAcknowledgementService recvChannel numThreads
+  p5 <- initNotificationsService mSendPort clusterList notificationsChan numThreads
+  p6 <- initNotificationsDispatchService addresses nRecvPort numThreads
+  p7 <- initProcessBinderService backend nSendPort clusterList
+  spawnLocal $ do
+    mapM_ (monitor) $ p1++p2++p3++p4++p5++p6++p7
+    n <- expect :: Process ProcessMonitorNotification
+    liftIO $ putStrLn $ "\n\nProcess Died \n" ++ (show n) ++ "\n\n"
+  
   return []
 
 initProcessBinderService :: Backend -> NotificationsSendPort -> TersusClusterList -> Process [ProcessId]
@@ -213,11 +218,15 @@ dispatchMessageAcknowledgementService aRecvPort appEnvs = forever $ receiveChan 
       dispatchAcknowledgement (hashCode,result,address) = do
         Just (mappings,statusVars,_) <- liftIO $ getMessageBuffer appEnvs address
         -- add error handling
-        (Just (_,index)) <- liftIO $ lookupIndex hashCode mappings
-        statusVar <- liftIO $ readArray statusVars index
-        case (Just statusVar) of
-          Just statusVar' -> liftIO $ atomically $ putTMVar statusVar' result
-          Nothing -> return () -- Todo: log, this shouldn't happen. Means that a message acknowledgement was received from a message never sent. Obviously this is impossible so this case implies that messages are being wrongly acknowledged
+        --(Just (_,index)) 
+        msgIndex <- liftIO $ lookupIndex hashCode mappings
+        case msgIndex of
+          (Just (_,index)) -> do            
+            statusVar <- liftIO $ readArray statusVars index
+            case (Just statusVar) of
+              Just statusVar' -> liftIO $ atomically $ putTMVar statusVar' result
+              Nothing -> return () -- Todo: log, this shouldn't happen. Means that a message acknowledgement was received from a message never sent. Obviously this is impossible so this case implies that messages are being wrongly acknowledged
+          Nothing -> return () -- A message acknowledged multiple times, this should not happen but it currently happens since there can be many applications listening to the same channel.
 
 -- Start numThreads concurrent Message Acknowledgement Services
 initMessageAcknowledgementService :: TMessageQueue -> Int -> Process [ProcessId]
@@ -235,7 +244,8 @@ messageAcknowledgementService recvChan = forever $ do
 
 -- Start numThreads concurrent Message Delivery Services
 initMessageDeliveryService :: TMessageQueue -> AddressTable -> Int -> Process [ProcessId]
-initMessageDeliveryService sendQueue addresses numThreads = mapM (\_ -> spawnLocal $ messageDeliveryService sendQueue addresses) [1 .. numThreads]
+initMessageDeliveryService sendQueue addresses numThreads = do 
+  mapM (\_ -> spawnLocal $ messageDeliveryService sendQueue addresses) [1 .. numThreads]  
 
 -- Message Delivery Service: Whenever a AppInstance wants to send a message,
 -- it writes the message to the SendMessage queue (sendQueue) packed with the

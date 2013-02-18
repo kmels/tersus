@@ -40,5 +40,13 @@ entityExists e = jsonToRepJson $ TRequestResponse SuccessDontUpdate (JsonResult 
 entityDeleted :: (ToJSON val) => val -> Handler RepJson
 entityDeleted e = jsonToRepJson $ TRequestResponse Success (JsonResult $ toJSON e)
 
+
 --errorResponse :: TError -> Handler RepJson
 --errorResponse e = jsonToRepJson $ TRequestResponse RequestError (JsonResult $ toJSON e)
+
+-- files
+fileDoesNotExistError :: TersusResult
+fileDoesNotExistError = TersusErrorResult InexistentFile "File does not exist"
+
+fileDoesNotExistErrorResponse = return $ (typeJson, toContent . toJSON $ fileDoesNotExistError)
+

@@ -108,10 +108,12 @@ mkDbConf tersusEnv = liftIO $ do
   poolConf <- Database.Persist.Store.createPoolConfig dbConn
   return (dbConn,poolConf)-}
   
+
 {-runQuery :: (SafeCopy store) => forall a. SqlPersist IO a -> TersusServiceM store a
+
 runQuery query = TersusServiceM $ runQuery' query
 
-runQuery' :: (SafeCopy store) => SqlPersist IO a -> TersusService store -> Process (TersusService store,a)
+{-runQuery' :: (SafeCopy store) => SqlPersist IO a -> TersusService store -> Process (TersusService store,a)-}
 runQuery' query (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf) state) = do 
   res <- runQuery'' dbConn poolConf query
   return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf) state,res) -}
@@ -223,18 +225,18 @@ acknowledgeMsg msgEnv = TersusServiceM $ acknowledgeMsg' msgEnv
 {- 
 type MaybeQuery = MaybeT (SqlPersist IO)
 
-maybeGetBy :: forall (m :: * -> *) val. (PersistEntity val,
+{-maybeGetBy :: forall (m :: * -> *) val. (PersistEntity val,
                                          PersistUnique
                                          (PersistEntityBackend val) m) =>
               Unique val (PersistEntityBackend val)
               -> MaybeT
-              (PersistEntityBackend val m) (Database.Persist.Store.Entity val)
+              (PersistEntityBackend val m) (Database.Persist.Store.Entity val)-}
 maybeGetBy criterion = MaybeT $ getBy criterion
 
 maybeGet :: forall a (backend :: (* -> *) -> * -> *) (m :: * -> *). (PersistEntity a, PersistStore backend m) => Key backend a -> MaybeT (backend m) a
 maybeGet id' = MaybeT $ get id'
 
-maybeSelectList :: forall val (m :: * -> *).
+{-maybeSelectList :: forall val (m :: * -> *).
                    (PersistEntity val,
                     PersistQuery
                     (PersistEntityBackend val) m) =>
@@ -242,7 +244,7 @@ maybeSelectList :: forall val (m :: * -> *).
                    -> [SelectOpt val]
                    -> MaybeT
                    (Database.Persist.Store.PersistEntityBackend val m)
-                   [Database.Persist.Store.Entity val]
+                   [Database.Persist.Store.Entity val]-}
 maybeSelectList l1 l2 = MaybeT $ selectList l1 l2 >>= \res -> case res of
                                                                 [] -> return Nothing
                                                                 a -> return $ Just a

@@ -35,4 +35,4 @@ data ReadMode = FileMetadata | GetContent | Pagination deriving (Show, Eq, Enum)
 
 data FileType = File | Directory deriving Show
 
-
+{- TODO NOTE: THIS FILE SHOULD BE DELETED.... -}

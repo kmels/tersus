@@ -193,5 +193,5 @@ putFileR username' filePath = do
       MaybeT $ entityKeyM app -}
       
 -- TODO: Move to Tersus.Helpers.Persistent or Tersus.Tranformers or something
-entityKeyM :: Entity entity -> GHandler s m (Maybe (Key (PersistEntityBackend entity) entity))
+{-entityKeyM :: Entity entity -> GHandler s m (Maybe (Key (PersistEntityBackend entity) entity))-}
 entityKeyM e = return $ Just $ entityKey e
