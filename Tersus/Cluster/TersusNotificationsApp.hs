@@ -4,26 +4,30 @@
 -- subscribed to that topic
 module Tersus.Cluster.TersusNotificationsApp where
 
-import Prelude
-import System.IO.Unsafe (unsafePerformIO)
-import Data.SafeCopy
-import Data.IxSet
-import Model hiding (Success,Query)
-import Data.Text hiding (foldl,empty)
-import Data.Time.Clock (getCurrentTime)
-import Data.Typeable.Internal (Typeable)
+import           Prelude
+import           System.IO.Unsafe (unsafePerformIO)
+import           Data.SafeCopy
+import           Data.IxSet
+import qualified           Data.IxSet as I
+import           Data.Text hiding (foldl,empty)
+import           Data.Time.Clock (getCurrentTime)
+import           Data.Typeable.Internal (Typeable)
 import qualified Control.Monad.State as S
 import qualified Control.Monad.Reader as R
-import Data.Aeson (ToJSON,FromJSON,toJSON,parseJSON,object,(.:),(.:?),fromJSON)
-import Data.Acid
+import           Data.Aeson (ToJSON,FromJSON,toJSON,parseJSON,object,(.:),(.:?),fromJSON)
+import           Data.Acid
 import qualified Data.Aeson.Types as A
-import Data.Acid.Advanced (update',query')
-import Control.Monad (mzero)
-import Import hiding (delete,foldl,insert,object,Success,replace,sendResponse,Query)
-import Tersus.Cluster.TersusService
-import Tersus.Global
-import Safe (readMay)
+import           Data.Acid.Advanced (update',query')
+import           Control.Monad (mzero)
+import           Tersus.Cluster.TersusService
+import           Tersus.Global
+import           Safe (readMay)
 
+import           Control.Applicative
+import           Prelude
+import           Tersus.DataTypes.Messaging
+import           Tersus.DataTypes.User
+import           Tersus.DataTypes.TApplication
 -- | The name of the notifications application
 tersusNotificationAppName :: Text
 tersusNotificationAppName = "tersusNotifications"
@@ -33,10 +37,10 @@ tersusNotificationsUser :: Text
 tersusNotificationsUser = "tersus"
 
 tersusNotificationsApp' :: TApplication
-tersusNotificationsApp' = TApplication tersusNotificationAppName tersusNotificationAppName "This app provides notifications via messages of a variety of events" "http://tersusland.com/tersus" "neto@netowork.me" (unsafePerformIO getCurrentTime) "notificationsAppKey"
+tersusNotificationsApp' = TApp tersusNotificationAppName tersusNotificationAppName "This app provides notifications via messages of a variety of events" "http://tersusland.com/tersus" "neto@netowork.me" (unsafePerformIO getCurrentTime) "notificationsAppKey"
 
 tersusServiceUser :: User
-tersusServiceUser = User "tersus@tersusland.com" tersusNotificationsUser (Just "") False
+tersusServiceUser = User 0 "tersus@tersusland.com" tersusNotificationsUser (Just "") False
 
 data TopicSubscription = TopicSubscription {subscriber :: AppInstance,topic :: Text} deriving (Typeable,Show,Eq,Ord)
 
@@ -74,23 +78,23 @@ data NResultCode = UnrecognizedOperation | Success | InvalidFormat deriving (Sho
 data NResult = InvalidOperation Text | SuccessfulOperation Action | FormatError deriving (Show,Read)
 
 instance FromJSON Action where
-  parseJSON (String appAction) = case readMay.unpack $ appAction of
+  parseJSON (A.String appAction) = case readMay.unpack $ appAction of
     Nothing -> mzero
     Just a -> return a
     
   parseJSON _ = mzero
 
 instance FromJSON (Either Action Text) where
-  parseJSON (String appAction) = return $ case fromJSON $ String appAction of
+  parseJSON (A.String appAction) = return $ case fromJSON $ A.String appAction of
     A.Error _ -> Right $ appAction
     A.Success a -> Left a
   parseJSON _ = mzero
 
 instance ToJSON Action where
-  toJSON = String . pack . show
+  toJSON = A.String . pack . show
 
 instance ToJSON NResultCode where
-  toJSON = String . pack . show
+  toJSON = A.String . pack . show
 
 -- | The JSON field where the result of a service of the
 -- topics application is placed
@@ -118,7 +122,7 @@ instance ToJSON Operation where
         Just t -> mandatory ++ [("notification",toJSON t)]
 
 instance FromJSON Operation where
-  parseJSON (Object operation) = Operation <$>
+  parseJSON (A.Object operation) = Operation <$>
                                  operation .: "action" <*>
                                  operation .: "topic" <*>
                                  operation .:? "notification"
@@ -201,4 +205,4 @@ tersusNotificationsRecv message = do
 -- | Notifications App. This app allows applications to create topics to which they can send messages and theese messages
 -- will be delivered to every application that is subscribed to the topic
 tersusNotificationsApp :: TersusServerApp TopicsDb
-tersusNotificationsApp = TersusServerApp tersusNotificationsApp' tersusServiceUser tersusNotificationsRecv Nothing Nothing $ Just $ openLocalState $ TopicsDb $ empty
+tersusNotificationsApp = TersusServerApp tersusNotificationsApp' tersusServiceUser tersusNotificationsRecv Nothing Nothing $ Just $ openLocalState $ TopicsDb $ I.empty

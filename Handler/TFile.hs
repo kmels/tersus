@@ -47,8 +47,10 @@ import Control.Monad.Trans.Maybe
 import Control.Monad                (when)
 
 -- Tersus
+import Handler.Permission
 import Tersus.AccessKeys(decomposeM)
-import Handler.Permission(permissionToShare)
+import Tersus.DataTypes
+import Tersus.Responses
 
 -- A way to convert between urls and a file path.
 -- See: Dynamic multi in http://www.yesodweb.com/book/routing-and-handlers
@@ -91,7 +93,8 @@ instance ToContent JsonFileList where
 
 getFileR :: Text -> Path -> Handler (ContentType,Content)
 getFileR username' path = do
-  accessKey <- requireAccessKey
+  permissionDenied "TODO"
+{-  accessKey <- requireAccessKey
   maybeValidUser <- accessKey `verifyUserKeyM` username'
   case maybeValidUser of
     Just username'' -> do
@@ -111,7 +114,7 @@ getFileR username' path = do
         addUserPath (Resource n _ t) = return $ Resource n (pathToText path) t
         directoryContents fsPath = do
            files <- getDirectoryContentsTyped fsPath
-           mapM addUserPath files
+           mapM addUserPath files -}
 
 fileDoesNotExistError :: TersusResult
 fileDoesNotExistError = TersusErrorResult InexistentFile "File does not exist"
@@ -123,8 +126,9 @@ fileDoesNotExistError = TersusErrorResult InexistentFile "File does not exist"
 -- Expected GET Parameters: "access_key" and content", the content of the file to write.
 putFileR :: Username -> Path -> Handler RepJson
 putFileR username' filePath = do
+  permissionDenied "TODO" 
   --verify user
-  accessKey <- requireAccessKey
+  {-accessKey <- requireAccessKey
   maybeUsername <- accessKey `verifyUserKeyM` username' --TODO: if accessKey is not provided, we should return an error (do it in a generic way)  
 
   --get content parameter
@@ -186,7 +190,7 @@ putFileR username' filePath = do
       accessKey' <- MaybeT $ lookupGetParam accessKeyParameterName
       userAppAuthPair <- MaybeT $ decomposeM accessKey'
       app <- MaybeT $ runDB $ getBy $ UniqueIdentifier $ snd userAppAuthPair      
-      MaybeT $ entityKeyM app
+      MaybeT $ entityKeyM app -}
       
 -- TODO: Move to Tersus.Helpers.Persistent or Tersus.Tranformers or something
 entityKeyM :: Entity entity -> GHandler s m (Maybe (Key (PersistEntityBackend entity) entity))

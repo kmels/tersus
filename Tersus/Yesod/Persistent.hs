@@ -30,5 +30,5 @@ existsOne f s = do
   return (isJust f)-}
      
 -- | Given a UserApplication, return the user. See example in Handler.TApplication.fetchAdminsOf
-userAppToUser :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => Entity UserApplication -> GHandler s m (Maybe User)
-userAppToUser (Entity _ (UserApplication userkey tappkey isadmin)) = runDB $ get $ userkey
+{-userAppToUser :: (YesodPersist m, YesodPersistBackend m ~ SqlPersist) => Entity UserApplication -> GHandler s m (Maybe User)
+userAppToUser (Entity _ (UserApplication userkey tappkey isadmin)) = runDB $ get $ userkey-}
