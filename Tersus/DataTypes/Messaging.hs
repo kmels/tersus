@@ -69,6 +69,18 @@ data TMessage = TMessage {
   ,messageBody :: Text
   ,messageTimestamp :: UTCTime} deriving (Eq, Typeable)
   
+-- Instance to convert a message into it's json representation, this instance is defined
+-- according to the Tersus Developers Api.
+instance ToJSON TMessage where
+         toJSON (TMessage sender receiver senderApp receiverApp msgBody _) = J.object [
+           ("userSender",toJSON sender),
+           ("userReceiver",toJSON receiver),
+           ("appSender",toJSON senderApp),
+           ("appReceiver",toJSON receiverApp),
+           ("content",toJSON msgBody)
+           ]
+
+
 instance B.Binary TMessage where
   put (TMessage sender receiver appSender' appReceiver msg sendTime) = B.put (sender
                                                                                 ,receiver

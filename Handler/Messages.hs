@@ -19,11 +19,10 @@ import           Data.Text.Lazy               (fromChunks)
 import           Data.Text.Lazy.Encoding      (encodeUtf8)
 import           Data.Time.Clock              (getCurrentTime)
 import           Import
-import           Model                        ()
-import           Model.TMessage               ()
 import           System.Timeout               (timeout)
 import           Tersus.AccessKeys            (decompose)
 import           Tersus.Cluster.Types
+import Tersus.DataTypes.Messaging
 import Network.Wai.EventSource (ServerEvent (..), eventSourceAppIO)
 
 -- | Creates an appInstance envoiernment and registers that

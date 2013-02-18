@@ -7,7 +7,7 @@ import Control.Monad.Maybe
 import Control.Monad.Trans          (liftIO)
 import Data.Text                    (Text)
 import Data.Time.Clock              (getCurrentTime)
-import Model.User()
+import Tersus.DataTypes.User
 import System.IO.Unsafe             (unsafePerformIO)
 import Tersus.Cluster.TersusService (TersusServerApp(..),TersusServiceM,sendMessage,maybeGetBy,maybeSelectList,maybeGet,runQuery)
 import Tersus.Global
@@ -23,7 +23,7 @@ tersusServiceUsername :: Text
 tersusServiceUsername = "tersus"
 
 tersusServiceUser :: User
-tersusServiceUser = User "tersus@tersusland.com" tersusServiceUsername (Just "") False                      
+tersusServiceUser = User 0 "tersus@tersusland.com" tersusServiceUsername (Just "") False                      
 -- | Function that processes a message sent to the tersus service application. It will query
 -- the database for all users and return the list of the users
 tersusServiceRecv :: TMessage -> TersusServiceM AppInstance ()
