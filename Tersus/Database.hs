@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Tersus.Database where
 
+import           Control.Monad.IO.Class
 import           Data.ByteString
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as Char8
@@ -36,3 +37,5 @@ integerToByteString = Char8.pack . show
 getRedisResponse :: Either Reply (Maybe e) -> Maybe e
 getRedisResponse (Left _) = Nothing
 getRedisResponse (Right me) = me
+
+io = liftIO

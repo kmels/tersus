@@ -18,9 +18,15 @@ import Data.Aeson(toJSON)
 import Data.Aeson(ToJSON)
 --yesod 
 import Import
-
+import Prelude
+import Yesod.Content
+import Yesod.Handler
+import Yesod.Json
 --tersus
 import Tersus.DataTypes.Responses
+--types
+import Data.Text
+import Tersus.DataTypes.TError
 
 invalidArguments :: Text -> Handler RepJson
 invalidArguments t = jsonToRepJson $ TRequestResponse RequestError (Message t)
@@ -33,3 +39,6 @@ entityExists e = jsonToRepJson $ TRequestResponse SuccessDontUpdate (JsonResult 
 
 entityDeleted :: (ToJSON val) => val -> Handler RepJson
 entityDeleted e = jsonToRepJson $ TRequestResponse Success (JsonResult $ toJSON e)
+
+--errorResponse :: TError -> Handler RepJson
+--errorResponse e = jsonToRepJson $ TRequestResponse RequestError (JsonResult $ toJSON e)

@@ -1,9 +1,9 @@
 module Tersus.DataTypes.Responses where
 
-import Data.Aeson as J
+import           Data.Aeson as J
+import           Data.Text
 import qualified Data.Text as T
-import Import
-
+import           Prelude
 data TersusResultCode = Success | SuccessDontUpdate | RequestError | InexistentFile | NotEnoughPrivileges | DirectoryNotEmpty | OutOfRange deriving (Show, Eq)
 
 data TRequestResponseBody = Message Text | JsonResult Value

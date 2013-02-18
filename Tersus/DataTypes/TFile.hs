@@ -6,9 +6,14 @@ import Data.Text
 import Database.Redis
 import Prelude
 import Tersus.DataTypes.Permission
+import Tersus.DataTypes.TError
 import Tersus.DataTypes.TypeSynonyms
 import Tersus.Database
 import Tersus.Filesystem
+--import Tersus.Responses(errorResponse)
+--yesod
+import Yesod.Handler
+
 data FileType = AFile | ADirectory deriving Show
 
 data TFile = File {  
@@ -37,3 +42,12 @@ getFileId conn fp = do -- IO monad
   return $ do --Maybe monad
     idByteString <- getRedisResponse redisReply :: Maybe ByteString
     return $ byteStringToInteger idByteString
+
+-- | Given a path, finds an id. If the path doesn't correspond to any file, an error response is thrown.
+
+findFileId :: Connection -> Path -> GHandler s m FileId
+findFileId conn filePath = do
+  maybeFileId <- io $ getFileId conn filePath
+  --TODOmaybe (return . errorResponse $ TFilePathNotFound filePath) return maybeFileId
+  maybe notFound return maybeFileId
+  

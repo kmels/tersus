@@ -1,3 +1,4 @@
+{-# LANGUAGE DoAndIfThenElse #-}
 ----------------------------------------------------------------------------
 -- |
 -- Module      :  Handler.Permission
@@ -24,7 +25,7 @@ import           Database.Redis
 import           Import
 import           Tersus.AccessKeys
 import           Tersus.DataTypes
-import           Tersus.Database((.>),(<.)) -- Ts for Tersus
+import           Tersus.Database((.>),(<.),io) -- Ts for Tersus
 import           Tersus.Filesystem
 import           Yesod.Content
 import           Yesod.Handler
@@ -33,25 +34,25 @@ import           Yesod.Json
 -- | Returns 404 if the username doesn't exist.
 -- Returns permissionDenied if filePath is not valid
 putReadFilePermissionForUserR :: Username -> Path -> Handler RepJson
-putReadFilePermissionForUserR = putPermission READ
+putReadFilePermissionForUserR = putPermissionJSON READ
   
 deleteReadFilePermissionForUserR :: Username -> Path -> Handler RepJson
-deleteReadFilePermissionForUserR = deletePermission READ
+deleteReadFilePermissionForUserR = deletePermissionJSON READ
 
 putWriteFilePermissionForUserR :: Username -> Path -> Handler RepJson
-putWriteFilePermissionForUserR = putPermission WRITE
+putWriteFilePermissionForUserR = putPermissionJSON WRITE
 
 deleteWriteFilePermissionForUserR :: Username -> Path -> Handler RepJson
-deleteWriteFilePermissionForUserR = deletePermission WRITE
+deleteWriteFilePermissionForUserR = deletePermissionJSON WRITE
 
 putShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
-putShareFilePermissionForUserR = putPermission SHARE
+putShareFilePermissionForUserR = putPermissionJSON SHARE
 
 deleteShareFilePermissionForUserR :: Username -> Path -> Handler RepJson
-deleteShareFilePermissionForUserR = deletePermission SHARE
+deleteShareFilePermissionForUserR = deletePermissionJSON SHARE
 
-putPermission :: PermissionType -> Username -> Path -> Handler RepJson
-putPermission permissionType username filePath = do
+putPermissionJSON :: PermissionType -> Username -> Path -> Handler RepJson
+putPermissionJSON permissionType username filePath = do
   --verify that the accesskey has the power to share filePath
   accessKey <- requireAccessKey
   {-(_,_,appEntity) <- (accessKey `requirePermission` SHARE) filePath
@@ -64,7 +65,7 @@ putPermission permissionType username filePath = do
   jsonToRepJson $ show $ "Added  permission" 
 
 deletePermissionJSON :: PermissionType -> Username -> Path -> Handler RepJson
-deletePermissionJSON pt username filePath = do
+deletePermissionJSON permType username filePath = do
 
   --verify that the accesskey has the power to delete (share) filePath
   accessKey <- requireAccessKey
@@ -75,19 +76,27 @@ deletePermissionJSON pt username filePath = do
   let conn = redisConnection master
   
   -- delete existing permission to file for username and app
-  fileID <- getFileId filePath
-  liftIO $ deletePermission pt username filePath
+  fileID <- findFileId conn filePath  
+  liftIO $ deletePermission permType username fileID
     
   jsonToRepJson $ show $ "Added  permission"
   
 -- | This function checks that a given access key has permission `permissionType` on the given file path. It returns a triple, to avoid refetching entities.
-requirePermission :: AccessKey -> PermissionType -> Path -> GHandler s m (User,TApplication)
-requirePermission ak pt fp = do
+requirePermission :: AccessKey -> PermissionType -> Path -> GHandler s Tersus (User,TApplication)
+requirePermission ak permType filePath = do
   ap@(user,app) <- requireValidAuthPair ak  
-  permission <- getPermission pt (uid user) (identifier app) -- Either Reply BS
   
-  either (permissionDenied "Not enough permissions on file for that accesskey") (\_ -> return ap) permission
-    
+  --conn to db
+  master <- getYesod
+  let conn = redisConnection master
+  
+  -- get the permission
+  fileID <- findFileId conn filePath 
+  hasPermission <- io $ getPermission conn permType fileID (identifier app) (uid user) -- Bool
+  
+  if hasPermission 
+  then return ap
+  else permissionDenied "Not enough permissions on file for that accesskey"    
   where
     pathToFile = pathToText -- :: Text, with the userid pre            
         
