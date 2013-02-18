@@ -2,7 +2,7 @@ module Foundation
     ( Tersus (..)
     , Route (..)
 --    , AppMessage (..)
---    , resourcesApp
+    , resourcesTersus
     , Handler
     , Widget
     , Form

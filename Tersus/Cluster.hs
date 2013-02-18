@@ -47,7 +47,8 @@ import           Yesod.Default.Main
                                                                      (defaultMain)
 import Data.Text as T
 
--- |Hash function for a user application combo instance
+import Tersus.DataTypes
+-- |Hash function for a.Messaging user application combo instance
 hashUserApp :: AppInstance -> GHC.Int.Int32
 hashUserApp appInst = H.hashString $ T.unpack $ appInstanceAsText appInst
 

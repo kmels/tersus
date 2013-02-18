@@ -130,8 +130,10 @@ recvListenerFun ts recvPort funs = forever $ do
   mapM_ (\f -> evalTersusServiceM ts (f recvVal)) funs
 
 -- | Initialize a process that runs the given server side application
-{-makeTersusService :: (SafeCopy store) => TersusServerApp store -> TMessageQueue -> TersusClusterList -> TersusEnvoiernment -> Process ()
+makeTersusService :: (SafeCopy store) => TersusServerApp store -> TMessageQueue -> TersusClusterList -> TersusEnvoiernment -> Process ()
 makeTersusService tersusServerApp sDeliveryChannel sClusterList tersusEnv = do
+  liftIO $ putStrLn $ "TODO"
+{-
   (aSendPort,aRecvPort) <- newChan
   (mSendPort,mRecvPort) <- newChan
   --  liftIO $ atomically $ writeTChan nChannel (Initialized' appInstance)
