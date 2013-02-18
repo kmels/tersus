@@ -130,7 +130,7 @@ data Address = Address {user :: User, app :: TApplication}
 
                                          
 -- | A message sent by an application using it's appkey. This is what the post request accepts
-data AuthMessage = AuthMessage AccessKey Username ApplicationIdentifier ByteString deriving (Eq, Typeable,Show)
+data AuthMessage = AuthMessage AccessKey Username ApplicationIdentifier Text deriving (Eq, Typeable,Show)
 
 -- | Datatype that represents opening and closing of an app instance
 data AppInstanceActions = Init AppInstance | Terminate AppInstance

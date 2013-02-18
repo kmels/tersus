@@ -35,8 +35,8 @@ import           Control.Monad.Trans.Maybe
 
 --tersus
 import           Handler.Admin                   (getTApplicationsAdminR)
-import           Handler.User                    (requireAdminFor,
-                                                  requireSuperAdmin)
+import           Handler.User                    (requireAdminFor,requireSuperAdmin)
+import Tersus.DataTypes
 import           Tersus.Filesystem               (pathToString, tAppDirPath)
 import           Tersus.Global
 import           Tersus.Responses
@@ -57,22 +57,23 @@ type ErrorMessage = Text
 
 -- A form that results in AppLike and is wraped in a widget. It receives a list of error messages to show in the widget and appLike in case default values are being shown (in case of editing and not registering).
 
-tAppForm :: [ErrorMessage] -> Maybe TApplication -> Html -> MForm App App (FormResult AppLike,Widget)
+tAppForm :: [ErrorMessage] -> Maybe TApplication -> Html -> MForm Tersus Tersus (FormResult AppLike,Widget)
 tAppForm errormessages defaultValues extra = do
-  Entity _ user <- lift requireAuth
-  (nameRes, nameView) <- mreq textField FieldSettings { fsId = Just "TAppNameField", fsLabel = "Application name", fsName = Just "TAppName", fsAttrs = [("placeholder","Turbo app")] } (tApplicationName <$> defaultValues)
-  (identifierRes, identifierView) <- mreq identifierField FieldSettings { fsId = Just "TAppIdentifierField", fsLabel = "Application identifier", fsName = Just "TAppIdentifier", fsAttrs = [("placeholder","turbo-app")] } (tApplicationIdentifier <$> defaultValues)
-  (descriptionRes, descriptionView) <- mreq textareaField FieldSettings { fsId = Just "TAppDescriptionField", fsLabel = "Description", fsName = Just "TAppDescription", fsAttrs = [("placeholder","An application that turboes your _")] } (Textarea . tApplicationDescription <$> defaultValues)
-  (repositoryUrlRes, repositoryUrlView) <- mreq textField FieldSettings { fsId = Just "TApplicationRepositoryUrlField", fsLabel = "Application repository url", fsName = Just "TApplicationRepositoryUrl", fsAttrs = [("placeholder","http://github.com/turbo-nickname/turbo-app")] } (tApplicationRepositoryUrl <$> defaultValues)
-  (contactEmailRes, contactEmailView) <- mreq emailField FieldSettings { fsId = Just "TApplicationContactEmailField", fsLabel = "Contact email", fsName = Just "TAppConcatEmail", fsAttrs = [("placeholder","turbo-email@example.com")] } ((tApplicationContactEmail <$> defaultValues) `orElse` (Just $ userEmail user))
+  --Entity _ user <- lift requireAuth 
+  let user = User 0 "todo" "todo" Nothing False
+  (nameRes, nameView) <- mreq textField FieldSettings { fsId = Just "TAppNameField", fsLabel = "Application name", fsName = Just "TAppName", fsAttrs = [("placeholder","Turbo app")] } (name <$> defaultValues)
+  (identifierRes, identifierView) <- mreq identifierField FieldSettings { fsId = Just "TAppIdentifierField", fsLabel = "Application identifier", fsName = Just "TAppIdentifier", fsAttrs = [("placeholder","turbo-app")] } (identifier <$> defaultValues)
+  (descriptionRes, descriptionView) <- mreq textareaField FieldSettings { fsId = Just "TAppDescriptionField", fsLabel = "Description", fsName = Just "TAppDescription", fsAttrs = [("placeholder","An application that turboes your _")] } (Textarea . description <$> defaultValues)
+  (repositoryUrlRes, repositoryUrlView) <- mreq textField FieldSettings { fsId = Just "TApplicationRepositoryUrlField", fsLabel = "Application repository url", fsName = Just "TApplicationRepositoryUrl", fsAttrs = [("placeholder","http://github.com/turbo-nickname/turbo-app")] } (repositoryUrl <$> defaultValues)
+  (contactEmailRes, contactEmailView) <- mreq emailField FieldSettings { fsId = Just "TApplicationContactEmailField", fsLabel = "Contact email", fsName = Just "TAppConcatEmail", fsAttrs = [("placeholder","turbo-email@example.com")] } ((contactEmail <$> defaultValues) `orElse` (Just $ email user))
   let appLikeResult = AppLike <$> nameRes <*> identifierRes <*> descriptionRes <*> repositoryUrlRes <*> contactEmailRes
   let widget = $(widgetFile "TApplication/registerFormWidget")
   return (appLikeResult, widget)
   where
     --field that verifies that an application doesn't exist already.
     identifierField = checkM validateIdentifier textField
-    validateIdentifier appidfier =
-       case (tApplicationIdentifier <$> defaultValues) of
+    validateIdentifier appidfier = return $ Left ("TODO" :: Text)
+       {-case (tApplicationIdentifier <$> defaultValues) of
          Just defaultAppIdentifier -> do
            tapp <- runDB $ getBy $ UniqueIdentifier $ appidfier
            return $ if (isJust tapp && defaultAppIdentifier /= appidfier)
@@ -82,47 +83,50 @@ tAppForm errormessages defaultValues extra = do
            tapp <- runDB $ getBy $ UniqueIdentifier $ appidfier
            return $ if (isJust tapp)
                   then Left ("Error: application identifier exists" :: Text)
-                  else Right appidfier
+                  else Right appidfier-}
+                  
 
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
-  Entity _ user <- requireAuth
+  {-Entity _ user <- requireAuth
   (formWidget, enctype) <- generateFormPost $ tAppForm [] Nothing
-  defaultLayout $(widgetFile "TApplication/register")
+  defaultLayout $(widgetFile "TApplication/register")-}
+  permissionDenied "TODO"
 
 deleteTApplicationR :: ApplicationIdentifier -> Handler RepJson
-deleteTApplicationR appIdentifier = do
+deleteTApplicationR identifier = do
   --check for permissions
-  superAdmin <- requireSuperAdmin
+  {-superAdmin <- requireSuperAdmin
   case superAdmin of
     Just _ -> do
-      Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+      Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ identifier
 
       --delete administrators (or users) first (foreign keys)
       runDB $ deleteWhere [UserApplicationApplication ==. tappkey]
       --delete app
       runDB $ delete tappkey
 
-      return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ (Message $ appIdentifier `T.append` T.pack " deleted")
-    _ -> permissionDenied "Permission denied " --return $ toContent .toJSON $ TRequestError NotEnoughPrivileges "Permission denied. You are not administrator of this application"
+      return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ (Message $ identifier `T.append` T.pack " deleted")
+    _ -> permissionDenied "Permission denied " --return $ toContent .toJSON $ TRequestError NotEnoughPrivileges "Permission denied. You are not administrator of this application"-}
+  permissionDenied "TODO"
 
 -- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml
 postRegisterTAppR = do
-  Entity userid user <- requireAuth
+  {-Entity userid user <- requireAuth
 
   ((result, _), _) <- runFormPost $ tAppForm [] Nothing
   case result of
     FormSuccess appLike -> do
       -- get data from the form
       let
-        (appName,(appDescription,(appRepositoryUrl,(appContactEmail,appIdentifier)))) = (appLikeName &&& appLikeDescription &&& appLikeRepositoryURL &&& appLikeContactEmail &&& appLikeIdentifier) appLike
+        (appName,(appDescription,(appRepositoryUrl,(appContactEmail,identifier)))) = (appLikeName &&& appLikeDescription &&& appLikeRepositoryURL &&& appLikeContactEmail &&& appLikeIdentifier) appLike
 
       creationDate <- liftIO getCurrentTime --ask date
       appKey <- liftIO $ newRandomKey 32  --create a new appkey
 
       --insert in database
-      tapp <- runDB $ insert $ TApplication appName appIdentifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey
+      tapp <- runDB $ insert $ TApplication appName identifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey
 
       --insert owner
       _ <- runDB $ insert $ UserApplication userid tapp True
@@ -134,45 +138,48 @@ postRegisterTAppR = do
       (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages Nothing
       defaultLayout $(widgetFile "TApplication/register")
     -- form missing
-    _ -> getRegisterTAppR
+    _ -> getRegisterTAppR-}
+    permissionDenied "TODO"
 
 getTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml
-getTApplicationEditR appIdentifier = do
-  Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+getTApplicationEditR identifier = do
+  {-Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ identifier
   (formWidget, enctype) <- generateFormPost $ tAppForm [] $ Just tapp
-  let appname = appIdentifier
-  adminList <- fetchAdminsOf appIdentifier
+  let appname = identifier
+  adminList <- fetchAdminsOf identifier
   let manageTAppAdminsWidget = $(widgetFile "admin/TApplication/manageTAppAdminsWidget")
 
-  defaultLayout $(widgetFile "admin/TApplication/edit")
+  defaultLayout $(widgetFile "admin/TApplication/edit")-}
+  permissionDenied "TODO"
 
 -- | processes a form produced by TApplicationeditR GET
 postTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml
-postTApplicationEditR appIdentifier = do
-  Entity tappkey tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+postTApplicationEditR identifier = do
+  {-Entity tappkey tapp <- runDB $ getBy404 $ UniqueIdentifier $ identifier
   ((result, _), _) <- runFormPost $ tAppForm [] $ Just tapp
   case result of
     FormSuccess appLike -> do
       -- get data from the form
       let
-        (appName,(appDescription,(appRepositoryUrl,(appContactEmail,appIdentifier')))) = (appLikeName &&& unTextarea . appLikeDescription &&& appLikeRepositoryURL &&& appLikeContactEmail &&& appLikeIdentifier) appLike
+        (appName,(appDescription,(appRepositoryUrl,(appContactEmail,identifier')))) = (appLikeName &&& unTextarea . appLikeDescription &&& appLikeRepositoryURL &&& appLikeContactEmail &&& appLikeIdentifier) appLike
 
       --update in database
-      _ <- runDB $ update tappkey [TApplicationName =. appName,TApplicationDescription =. appDescription,TApplicationRepositoryUrl =. appRepositoryUrl, TApplicationContactEmail =. appContactEmail, TApplicationIdentifier =. appIdentifier']
+      _ <- runDB $ update tappkey [TApplicationName =. appName,TApplicationDescription =. appDescription,TApplicationRepositoryUrl =. appRepositoryUrl, TApplicationContactEmail =. appContactEmail, TApplicationIdentifier =. identifier']
       getTApplicationsAdminR
 
     --form isn't success
     FormFailure errorMessages -> do
       (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages $ Just tapp
-      let appname = appIdentifier
+      let appname = identifier
       let manageTAppAdminsWidget = $(widgetFile "admin/TApplication/manageTAppAdminsWidget")
-      adminList <- fetchAdminsOf appIdentifier
+      adminList <- fetchAdminsOf identifier
       defaultLayout $(widgetFile "admin/TApplication/edit")
     -- form missing
-    _ -> getTApplicationEditR appIdentifier
+    _ -> getTApplicationEditR identifier-}
+    permissionDenied "TODO"
 
 userNotLogged :: ApplicationIdentifier -> Handler RepHtml
-userNotLogged appIdentifier = defaultLayout $ do [whamlet|<h3>TODO: user not logged, application index of #{appIdentifier}|]
+userNotLogged identifier = defaultLayout $ do [whamlet|<h3>TODO: user not logged, application index of #{identifier}|]
 
 -- | The startup parameters for an application
 argvParam :: Text
@@ -184,8 +191,8 @@ argvParam = "argv"
 -- the application exists, an access key is generated and the user
 -- gets redirected to the index.html of the application.
 getTAppHomeR :: ApplicationIdentifier -> Handler RepHtml
-getTAppHomeR appIdentifier = do
-  Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+getTAppHomeR identifier = do
+  {-Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ identifier
   maybeUserId <- maybeAuth
   maybeKey <- maybeAccessKey
   maybeArgv <- lookupGetParam argvParam
@@ -196,18 +203,19 @@ getTAppHomeR appIdentifier = do
   case (maybeUserId,maybeKey) of
     (Just (Entity _ u),Nothing) -> (liftIO $ pullChanges tapp) >>= \_ -> redirectToApplication u argv
     (_,Just accessKey) -> redirectToIndex accessKey argv
-    _ -> userNotLogged appIdentifier
+    _ -> userNotLogged identifier
   where
     redirectToApplication u argv = do
       let nickname = userNickname u
-      accessKey <- liftIO $ newAccessKey nickname appIdentifier
-      initApplication $ AppInstance nickname appIdentifier
-      home <- toTextUrl $ TAppHomeR appIdentifier
+      accessKey <- liftIO $ newAccessKey nickname identifier
+      initApplication $ AppInstance nickname identifier
+      home <- toTextUrl $ TAppHomeR identifier
       redirect $ T.unpack $ T.concat [home,"?",accessKeyParameterName,"=",accessKey,argv]
 
     redirectToIndex accessKey argv = do
-      resources <- toTextUrl $ TAppResourceR appIdentifier ["index.html" :: T.Text]
-      redirect $ T.unpack $ T.concat [resources,"?",accessKeyParameterName,"=",accessKey,argv]
+      resources <- toTextUrl $ TAppResourceR identifier ["index.html" :: T.Text]
+      redirect $ T.unpack $ T.concat [resources,"?",accessKeyParameterName,"=",accessKey,argv] -}
+  permissionDenied "TODO"
 
 -- | The slash used to separate folders in the filesystem.
 fsResourceSep :: T.Text
@@ -222,17 +230,18 @@ fsResourcePrefix = T.concat [fsResourceSep,"tmp",fsResourceSep]
 getTAppResourceR :: ApplicationIdentifier -> [T.Text] -> Handler (ContentType,Content)
 getTAppResourceR _ [] = do
   return $ ("text/plain",toContent ("TODO: error, invalid resource " :: String))
-getTAppResourceR appIdentifier resourcePath = do
+getTAppResourceR identifier resourcePath = do
   return $ (pathContentType resourcePath, contentFile Nothing)
   where
-    contentFile = ContentFile $ pathToString $ tAppDirPath appIdentifier ++ resourcePath
+    contentFile = ContentFile $ pathToString $ tAppDirPath identifier ++ resourcePath
 
 -- | Request that deploys an application (it pulls from its repository)
 postDeployTAppR :: ApplicationIdentifier -> Handler RepHtml
-postDeployTAppR appIdentifier  = do
-  Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
-  liftIO $ pullChanges tapp
+postDeployTAppR identifier  = do
+  {-Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ identifier
+  liftIO $ pullChanges tapp-}
   defaultLayout $ [whamlet||]
+  
 
 
 ----------------------------------------
@@ -241,9 +250,9 @@ postDeployTAppR appIdentifier  = do
 
 -- | Adds an admin to an application
 putTApplicationAdminR :: ApplicationIdentifier -> Handler RepJson
-putTApplicationAdminR appIdentifier = do
-  _ <- requireAdminFor $ appIdentifier
-  Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+putTApplicationAdminR identifier = do
+{-  _ <- requireAdminFor $ identifier
+  Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ identifier
 
   --get new user (does it exist?)
   maybeNewAdmin <- runMaybeT $ do
@@ -259,13 +268,14 @@ putTApplicationAdminR appIdentifier = do
           _ -> do
             _ <- runDB $ insert $ UserApplication userkey tappkey True
             entityCreated user
-      Nothing -> invalidArguments "User doesnt exist"
-
+      Nothing -> invalidArguments "User doesnt exist"-}
+  permissionDenied "TODO"
+  
 -- | Deletes an admin from an application
 deleteTApplicationAdminR :: ApplicationIdentifier -> Handler RepJson
-deleteTApplicationAdminR appIdentifier = do
-  _ <- requireAdminFor appIdentifier
-  Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
+deleteTApplicationAdminR identifier = do
+  {-_ <- requireAdminFor identifier
+  Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ identifier
 
   --get the admin
   maybeAdmin <- runMaybeT $ do
@@ -280,14 +290,15 @@ deleteTApplicationAdminR appIdentifier = do
           runDB $ delete uapprkey
           entityDeleted user
         _ -> invalidArguments $ "User is not an administrator of this application"
-    _ -> invalidArguments $ "User was not provided or does not exist"
+    _ -> invalidArguments $ "User was not provided or does not exist"-}
+  permissionDenied "TODO"
 
 -- | Returns a list of admins given an application
-fetchAdminsOf :: (YesodPersist m,
-                 YesodPersistBackend m ~ SqlPersist) => ApplicationIdentifier -> GHandler s m [User]
-fetchAdminsOf appIdentifier = do
-  Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier appIdentifier
+fetchAdminsOf :: ApplicationIdentifier -> GHandler s m [User]
+fetchAdminsOf identifier = do
+  {-Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier identifier
   uapps <- runDB $ selectList [UserApplicationApplication ==. tappkey, UserApplicationIsAdmin ==. True] []
   adminMaybes <- mapM userAppToUser uapps
-  return $ catMaybes adminMaybes
+  return $ catMaybes adminMaybes -}
+  return []
 

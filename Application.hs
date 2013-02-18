@@ -6,15 +6,15 @@ module Application
     , makeApplicationWrapper
     ) where
 
-import           Data.Int()
-import           Import
-import           Network.HTTP.Conduit (newManager, def)
+import Data.Int()
+import Import
+import Network.HTTP.Conduit (newManager, def)
 import Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
-import           Settings
-import           Yesod.Auth
-import           Yesod.Default.Config
-import           Yesod.Default.Handlers
-import           Yesod.Default.Main
+import Settings
+import Yesod.Auth
+import Yesod.Default.Config
+import Yesod.Default.Handlers
+import Yesod.Default.Main
 
 -- CloudHaskell stuff
 import Tersus.Cluster.Types
@@ -28,11 +28,10 @@ import Handler.Permission
 import Handler.TApplication
 import Handler.TFile
 import Handler.User
-
 -- This line actually creates our YesodSite instance. It is the second half
 -- of the call to mkYesodData which occurs in Foundation.hs. Please see
 -- the comments there for more details.
-mkYesodDispatch "App" resourcesApp
+mkYesodDispatch "Tersus" resourcesApp
 
 -- Wrapper that reverses the parameters of makeApplication function from Application.hs
 -- This wrapper is generally used to init Tersus from CloudHaskell

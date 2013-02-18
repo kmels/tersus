@@ -9,15 +9,16 @@ import Data.Text                    (Text)
 import Data.Time.Clock              (getCurrentTime)
 import Tersus.DataTypes.User
 import System.IO.Unsafe             (unsafePerformIO)
-import Tersus.Cluster.TersusService (TersusServerApp(..),TersusServiceM,sendMessage,maybeGetBy,maybeSelectList,maybeGet,runQuery)
+--import Tersus.Cluster.TersusService (TersusServerApp(..),TersusServiceM,sendMessage,maybeGetBy,maybeSelectList,maybeGet,runQuery)
+import Tersus.Cluster.TersusService (TersusServerApp(..),TersusServiceM,sendMessage)
+import Tersus.DataTypes
 import Tersus.Global
-
 tersusServiceAppName :: Text
 tersusServiceAppName = "tersus"
 
 -- | Tersus service application. This application can be messaged to obtain lists of users
 tersusServiceApp' :: TApplication
-tersusServiceApp' = TApplication tersusServiceAppName tersusServiceAppName "Application that provides the service messaging system for system functions" "http://tersusland.com/tersus" "neto@netowork.me" (unsafePerformIO getCurrentTime) "tersusAppKey"
+tersusServiceApp' = TApp tersusServiceAppName tersusServiceAppName "Application that provides the service messaging system for system functions" "http://tersusland.com/tersus" "neto@netowork.me" (unsafePerformIO getCurrentTime) "tersusAppKey"
 
 tersusServiceUsername :: Text
 tersusServiceUsername = "tersus"
@@ -28,12 +29,12 @@ tersusServiceUser = User 0 "tersus@tersusland.com" tersusServiceUsername (Just "
 -- the database for all users and return the list of the users
 tersusServiceRecv :: TMessage -> TersusServiceM AppInstance ()
 tersusServiceRecv (TMessage uSender uReceiver aSender aReceiver _ _) = do
-    currTime <- liftIO $ getCurrentTime
+    {-currTime <- liftIO $ getCurrentTime
     users <- runQuery $ getAppUsersQuery aSender --selectList [] []) :: TersusServiceM [Entity User]
-    sendMessage $ TMessage uReceiver uSender aReceiver aSender (encodeAsText users) currTime
+    sendMessage $ TMessage uReceiver uSender aReceiver aSender (encodeAsText users) currTime-}
     return ()
 
-getAppUsersQuery :: forall (m :: * -> *) (backend :: (* -> *) -> * -> *).
+{-getAppUsersQuery :: forall (m :: * -> *) (backend :: (* -> *) -> * -> *).
                     (PersistUnique backend m, PersistQuery backend m) =>
                     Text -> backend m [UserGeneric backend]
 getAppUsersQuery app' = (runMaybeT $ getAppUsersQuery' app') >>= \res -> case res of
@@ -51,7 +52,7 @@ getAppUsersQuery' applicationIdentifier = do
   --maybeSelectList [UserId <-. [ filterKey u | u <- appUsers]] []
 
   where
-    --TODO: remove, this is not used (Warning) filterKey (Entity k _) = k
+    --TODO: remove, this is not used (Warning) filterKey (Entity k _) = k-}
 
 tersusServiceApp :: TersusServerApp AppInstance
 tersusServiceApp = TersusServerApp tersusServiceApp' tersusServiceUser tersusServiceRecv Nothing Nothing Nothing
