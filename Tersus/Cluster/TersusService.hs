@@ -17,11 +17,9 @@ import Control.Distributed.Process
 import Control.Monad.IO.Class
 -- import Control.Monad ()
 import Control.Monad (forever)
-import Model (AppInstance,MessageResult(Delivered),getAppInstance,Address(Address),TApplication,User,TMessage,getSendAppInstance)
 import Tersus.Cluster.MessageBackend (sendNotifications)
 import Data.Typeable.Internal (Typeable)
 import Data.Binary (Binary)
-import Settings (PersistConfig)
 import Tersus.Global
 import Yesod.Default.Config (withYamlEnvironment)
 import Control.Monad.Maybe
@@ -29,6 +27,9 @@ import Data.Acid (AcidState)
 import Data.SafeCopy (SafeCopy)
 import Control.Exception (Exception,throw)
 import Data.Time.Clock (getCurrentTime,UTCTime)
+
+-- tersus
+import Tersus.DataTypes
 
 -- | Exceptions that can result from server side applications
 -- | NoStateException: raised if an application that dosen't use acid state tries to access it's acid state
@@ -101,22 +102,22 @@ instance MonadIO (TersusServiceM store) where
     liftIO ioVal = TersusServiceM $ \ts -> (liftIO ioVal >>= \x -> return (ts,x))
 
 
-mkDbConf :: TersusEnvoiernment -> Process (PersistConfig,Database.Persist.Store.PersistConfigPool PersistConfig)
+{-mkDbConf :: TersusEnvoiernment -> Process (PersistConfig,Database.Persist.Store.PersistConfigPool PersistConfig)
 mkDbConf tersusEnv = liftIO $ do
   dbConn <- withYamlEnvironment databaseYaml tersusEnv Database.Persist.Store.loadConfig >>= Database.Persist.Store.applyEnv :: IO PersistConfig
   poolConf <- Database.Persist.Store.createPoolConfig dbConn
-  return (dbConn,poolConf)
+  return (dbConn,poolConf)-}
   
-runQuery :: (SafeCopy store) => forall a. SqlPersist IO a -> TersusServiceM store a
+{-runQuery :: (SafeCopy store) => forall a. SqlPersist IO a -> TersusServiceM store a
 runQuery query = TersusServiceM $ runQuery' query
 
 runQuery' :: (SafeCopy store) => SqlPersist IO a -> TersusService store -> Process (TersusService store,a)
 runQuery' query (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf) state) = do 
   res <- runQuery'' dbConn poolConf query
-  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf) state,res)
+  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList (dbConn,poolConf) state,res) -}
 
-runQuery'' :: PersistConfig -> Database.Persist.Store.PersistConfigPool PersistConfig -> SqlPersist IO a -> Process a
-runQuery'' dbConn poolConf query = liftIO $ Database.Persist.Store.runPool dbConn query poolConf
+{-runQuery'' :: PersistConfig -> Database.Persist.Store.PersistConfigPool PersistConfig -> SqlPersist IO a -> Process a
+runQuery'' dbConn poolConf query = liftIO $ Database.Persist.Store.runPool dbConn query poolConf -}
 
 -- Run a TersusServiceM with the given TersusService state ts. Usually the initial
 -- state which are all the messaging pipeings as defined in the datatype
@@ -129,7 +130,7 @@ recvListenerFun ts recvPort funs = forever $ do
   mapM_ (\f -> evalTersusServiceM ts (f recvVal)) funs
 
 -- | Initialize a process that runs the given server side application
-makeTersusService :: (SafeCopy store) => TersusServerApp store -> TMessageQueue -> TersusClusterList -> TersusEnvoiernment -> Process ()
+{-makeTersusService :: (SafeCopy store) => TersusServerApp store -> TMessageQueue -> TersusClusterList -> TersusEnvoiernment -> Process ()
 makeTersusService tersusServerApp sDeliveryChannel sClusterList tersusEnv = do
   (aSendPort,aRecvPort) <- newChan
   (mSendPort,mRecvPort) <- newChan
@@ -152,7 +153,7 @@ makeTersusService tersusServerApp sDeliveryChannel sClusterList tersusEnv = do
     sAppInstance = getAppInstance $ Address uRep aRep
     stateInitializer = case (initialState tersusServerApp) of
       Nothing -> return Nothing
-      Just s -> liftIO s >>= return.Just
+      Just s -> liftIO s >>= return.Just -}
 
 -- Default acknowledgement function ignores the message
 -- acknowledgement
@@ -173,9 +174,9 @@ defaultAckwFun _ = return ()
 -- getMessages = TersusServiceM getMessages'
 
 getMessage' :: (SafeCopy store) => TersusService store -> Process (TersusService store,TMessageEnvelope)
-getMessage' (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList databaseConfig state) = do
+getMessage' (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList state) = do
   msg <- receiveChan mRecvPort
-  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList databaseConfig state,msg)
+  return (TersusService sDeliveryChannel (mSendPort,mRecvPort) aPorts appInstance' sClusterList state,msg)
 
 -- Get the next message delivered to this particular server side application.
 -- Ie. message located in the delivery channle created for this app
@@ -183,9 +184,9 @@ getMessage ::(SafeCopy store) => TersusServiceM store (TMessageEnvelope)
 getMessage = TersusServiceM getMessage'
 
 sendMessageInt :: (SafeCopy store) => TMessage -> TersusService store -> Process (TersusService store,())
-sendMessageInt msg (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort) appInstance' sClusterList databaseConfig state) = do
+sendMessageInt msg (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort) appInstance' sClusterList state) = do
   liftIO $ atomically $ writeTChan sDeliveryChannel (msg,aSendPort)
-  return (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort)  appInstance' sClusterList databaseConfig state,())
+  return (TersusService sDeliveryChannel mPorts (aSendPort,aRecvPort)  appInstance' sClusterList state,())
   
 -- Send a message from a server side application it uses the message queue
 -- form the server where it's actually running
@@ -217,6 +218,7 @@ getDb = TersusServiceM getDb'
 acknowledgeMsg :: (SafeCopy store) => TMessageEnvelope -> TersusServiceM store ()
 acknowledgeMsg msgEnv = TersusServiceM $ acknowledgeMsg' msgEnv
 
+{- 
 type MaybeQuery = MaybeT (SqlPersist IO)
 
 maybeGetBy :: forall (m :: * -> *) val. (PersistEntity val,
@@ -227,8 +229,7 @@ maybeGetBy :: forall (m :: * -> *) val. (PersistEntity val,
               (PersistEntityBackend val m) (Database.Persist.Store.Entity val)
 maybeGetBy criterion = MaybeT $ getBy criterion
 
-maybeGet :: forall a (backend :: (* -> *) -> * -> *) (m :: * -> *). (PersistEntity a, PersistStore backend m) =>
-                           Key backend a -> MaybeT (backend m) a
+maybeGet :: forall a (backend :: (* -> *) -> * -> *) (m :: * -> *). (PersistEntity a, PersistStore backend m) => Key backend a -> MaybeT (backend m) a
 maybeGet id' = MaybeT $ get id'
 
 maybeSelectList :: forall val (m :: * -> *).
@@ -243,3 +244,4 @@ maybeSelectList :: forall val (m :: * -> *).
 maybeSelectList l1 l2 = MaybeT $ selectList l1 l2 >>= \res -> case res of
                                                                 [] -> return Nothing
                                                                 a -> return $ Just a
+-}
