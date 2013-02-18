@@ -27,7 +27,6 @@ library
                      Settings
                      Settings.StaticFiles
                      Settings.Development
-                     TFile.FilesystemUtils
                      Handler.Admin
                      Handler.Home
                      Handler.Messages
@@ -37,12 +36,27 @@ library
                      Handler.TFile
                      Handler.User
                      Tersus.AccessKeys
+                     Tersus.Auth
                      Tersus.Cluster
                      Tersus.Cluster.Types
                      Tersus.Cluster.MessageBackend
                      Tersus.Cluster.TersusService
                      Tersus.Cluster.TersusServiceApp
                      Tersus.Cluster.TersusNotificationsApp
+                     Tersus.DataTypes
+                     Tersus.DataTypes.Address
+                     Tersus.DataTypes.Messaging
+                     Tersus.DataTypes.Messaging.Util
+                     Tersus.DataTypes.Permission
+                     Tersus.DataTypes.Responses
+                     Tersus.DataTypes.TApplication
+                     Tersus.DataTypes.TError
+                     Tersus.DataTypes.TFile
+                     Tersus.DataTypes.TypeSynonyms
+                     Tersus.DataTypes.User
+                     Tersus.Database
+                     Tersus.TApplications
+                     Tersus.Users
                      Tersus.Filesystem
                      Tersus.Global
                      Tersus.TFiles
