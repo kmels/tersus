@@ -25,8 +25,10 @@ import Yesod.Json
 --tersus
 import Tersus.DataTypes.Responses
 --types
-import Data.Text
+import Data.Text 
+import qualified Data.Text as T
 import Tersus.DataTypes.TError
+import Control.Exception.Base
 
 invalidArguments :: Text -> Handler RepJson
 invalidArguments t = jsonToRepJson $ TRequestResponse RequestError (Message t)
@@ -50,3 +52,5 @@ fileDoesNotExistError = TersusErrorResult InexistentFile "File does not exist"
 
 fileDoesNotExistErrorResponse = return $ (typeJson, toContent . toJSON $ fileDoesNotExistError)
 
+returnTError :: TError -> Handler a
+returnTError e = permissionDenied $ T.pack . show $ e

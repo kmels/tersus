@@ -48,7 +48,8 @@ import Control.Monad                (when)
 
 -- Tersus
 import Handler.Permission
-import Tersus.AccessKeys(decomposeM)
+import Tersus.AccessKeys
+import Tersus.Yesod.Handler
 import Tersus.DataTypes
 import Tersus.Responses
 
@@ -93,7 +94,10 @@ instance ToContent JsonFileList where
 
 getFileR :: Text -> Path -> Handler (ContentType,Content)
 getFileR username' path = do
+  -- the request must contain an access key
   accessKey <- requireAccessKey
+               
+  -- the access key must be well encoded, and valid
   maybeValidUser <- accessKey `verifyUserKeyM` username'
   case maybeValidUser of
     Just username'' -> do
@@ -122,15 +126,17 @@ getFileR username' path = do
 -- Expected GET Parameters: "access_key" and content", the content of the file to write.
 putFileR :: Username -> Path -> Handler RepJson
 putFileR username' filePath = do
-  permissionDenied "TODO" 
-  --verify user
-  {-accessKey <- requireAccessKey
-  maybeUsername <- accessKey `verifyUserKeyM` username' --TODO: if accessKey is not provided, we should return an error (do it in a generic way)  
-
-  --get content parameter
-  content <- lookupPostParam "content"
+  -- the request must contain an access key
+  accessKey <- requireAccessKey
   
-  case maybeUsername of
+  -- it must be well encoded, and be valid
+  (user,tapplication) <- requireValidAuthPair accessKey -- 
+  
+  --get content parameter
+  content <- "content" `requireParameterOr` (MissingParameter "content" $ "The contents of the file you are writing in " `T.append` (pathToText filePath))
+  
+  jsonToRepJson $ (show "TODO")
+  {-case maybeUsername of
     Just username -> case content of
       Just content' -> do
         let
