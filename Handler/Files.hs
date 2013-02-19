@@ -20,7 +20,7 @@
 
 
 
-module Handler.TFile where
+module Handler.Files where
 
 
 import Control.Exception.Extensible hiding (Handler, handle)
@@ -93,8 +93,7 @@ instance ToContent JsonFileList where
 
 getFileR :: Text -> Path -> Handler (ContentType,Content)
 getFileR username' path = do
-  permissionDenied "TODO"
-{-  accessKey <- requireAccessKey
+  accessKey <- requireAccessKey
   maybeValidUser <- accessKey `verifyUserKeyM` username'
   case maybeValidUser of
     Just username'' -> do
@@ -108,16 +107,13 @@ getFileR username' path = do
       then liftIO $ directoryContents fsPathStr >>= \fs -> return $ (jsonContentType, toContent $ fs)
       else if fileExists
       then return $ (filenameContentType fsPathStr, ContentFile fsPathStr Nothing)
-      else return $ (typeJson, toContent . toJSON $ fileDoesNotExistError)
+      else fileDoesNotExistErrorResponse
     _ -> return $ (typeJson, toContent ("todo: error, invalid access key for user" :: String))
     where
         addUserPath (Resource n _ t) = return $ Resource n (pathToText path) t
         directoryContents fsPath = do
            files <- getDirectoryContentsTyped fsPath
-           mapM addUserPath files -}
-
-fileDoesNotExistError :: TersusResult
-fileDoesNotExistError = TersusErrorResult InexistentFile "File does not exist"
+           mapM addUserPath files
 
 -- | Handler that writes a new file, if successful
 -- It is successful if and only if:

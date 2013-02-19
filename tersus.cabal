@@ -28,12 +28,12 @@ library
                      Settings.StaticFiles
                      Settings.Development
                      Handler.Admin
+                     Handler.Files
                      Handler.Home
                      Handler.Messages
                      Handler.Permission 
                      Handler.TApplication
                      Handler.TApplication.Git
-                     Handler.TFile
                      Handler.User
                      Tersus.AccessKeys
                      Tersus.Auth
@@ -154,7 +154,7 @@ library
                  , either                        >= 3.1
                  , transformers                  >= 0.2.0.0
 --added by neto
-                 , distributed-process           >= 0.4.1 && < 0.4.2
+                 , distributed-process           >= 0.4.1 && <= 0.4.2
                  , distributed-process-simplelocalnet >= 0.2.0.8
                  , binary                        >= 0.5.1.0
                  , mtl                           >= 2.0.0.0

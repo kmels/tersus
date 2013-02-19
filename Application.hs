@@ -31,7 +31,7 @@ import Handler.Home
 import Handler.Messages
 import Handler.Permission
 import Handler.TApplication
-import Handler.TFile
+import Handler.Files
 import Handler.User
 -- This line actually creates our YesodSite instance. It is the second half
 -- of the call to mkYesodData which occurs in Foundation.hs. Please see

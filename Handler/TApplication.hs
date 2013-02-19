@@ -15,7 +15,7 @@ import qualified Data.Text                       as T
 import           Data.Time.Clock                 (getCurrentTime)
 import           Handler.Messages                (initApplication)
 import           Handler.TApplication.Git        (pullChanges)
-import           Handler.TFile                   (filenameContentType,pathContentType)
+import           Handler.Files                   (filenameContentType,pathContentType)
 import           Import
 import           Prelude                         (last)
 import           Tersus.AccessKeys               (newAccessKey, newRandomKey)
