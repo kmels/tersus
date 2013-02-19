@@ -68,6 +68,8 @@ getTApplicationById conn appidText = runRedis conn $ do
     TxAborted -> Left . RedisTError $ "TxAborted"
     TxError msg -> Left . RedisTError . T.pack $ msg 
 
+-- | This should be used outside this module
+
 tAppFromRedis :: ByteString -> MaybeBS -> MaybeBS -> MaybeBS -> MaybeBS -> MaybeBS -> MaybeBS -> Maybe TApplication
 tAppFromRedis appid (Just n) (Just d) (Just r) (Just c) (Just cd) (Just ak) = Just $ TApp { 
       identifier = decodeUtf8 appid,

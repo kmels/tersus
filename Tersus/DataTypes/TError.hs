@@ -19,6 +19,7 @@ data TError =
   -- From requests
   | MissingParameter Text Text -- parameter name, parameter description
   | TAppIdNotFound ApplicationIdentifier
+  | TFileIdNotFound FileId  
   | TFilePathNotFound Path deriving (Show,Typeable)
   
 instance Exception TError
