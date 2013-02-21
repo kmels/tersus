@@ -15,7 +15,7 @@ data TError =
   
   -- Database errors
   | RedisTError Text              
-  
+
   -- From requests
   | MissingParameter Text Text -- parameter name, parameter description
   | TAppIdNotFound ApplicationIdentifier

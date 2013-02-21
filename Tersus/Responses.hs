@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Tersus.Yesod.Responses
 -- Copyright   :  (c) Carlos López-Camey, Ernesto Rodriguez
--- License     :  
+-- License     :
 --
 -- Maintainer  :  c.lopez@kmels.net,neto@netowork.me
 -- Stability   :  stable
@@ -14,21 +14,21 @@
 module Tersus.Responses where
 
 --json
-import Data.Aeson(toJSON)
-import Data.Aeson(ToJSON)
---yesod 
-import Import
-import Prelude
-import Yesod.Content
-import Yesod.Handler
-import Yesod.Json
+import           Data.Aeson                 (toJSON)
+import           Data.Aeson                 (ToJSON)
+--yesod
+import           Import
+import           Prelude
+import           Yesod.Content
+import           Yesod.Handler
+import           Yesod.Json
 --tersus
-import Tersus.DataTypes.Responses
+import           Tersus.DataTypes.Responses
 --types
-import Data.Text 
-import qualified Data.Text as T
-import Tersus.DataTypes.TError
-import Control.Exception.Base
+import           Control.Exception.Base
+import           Data.Text
+import qualified Data.Text                  as T
+import           Tersus.DataTypes.TError
 
 invalidArguments :: Text -> Handler RepJson
 invalidArguments t = jsonToRepJson $ TRequestResponse RequestError (Message t)
@@ -54,3 +54,7 @@ fileDoesNotExistErrorResponse = return $ (typeJson, toContent . toJSON $ fileDoe
 
 returnTError :: TError -> Handler a
 returnTError e = permissionDenied $ T.pack . show $ e
+
+-- | Return a 403 permission denied page.
+tError :: TError -> GHandler sub master RepJson
+tError terr = jsonToRepJson $ show terr
