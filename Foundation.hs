@@ -157,7 +157,7 @@ instance YesodAuth Tersus where
           io $ putStrLn " Found no id in the database"
           uid <- io $ insertNewUser (credsIdent creds) (credsIdent creds) Nothing False conn 
           io $ putStrLn $ " Inserted new user in the database: " ++ show uid
-          return . Just $ uid
+          return uid
                 
     -- You can add other plugins like BrowserID, email or OAuth here
     authPlugins _ = [authBrowserId, authGoogleEmail]
