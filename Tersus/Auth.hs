@@ -2,8 +2,8 @@ module Tersus.Auth where
 
 import Database.Redis
 import Prelude
-import Tersus.DataTypes
-import Tersus.Users
+import Tersus.DataTypes.User
+import Tersus.DataTypes.TypeSynonyms
 import Yesod
 import           Yesod.Auth
 

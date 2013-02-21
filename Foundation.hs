@@ -31,7 +31,7 @@ import           Control.Monad.Maybe
 --Tersus
 import           Tersus.Cluster.Types
 import           Tersus.DataTypes
-import           Tersus.Users
+import           Tersus.DataTypes.User
 import           qualified Tersus.Auth as TersusAuth
 -- Hedis
 import           Database.Redis
@@ -149,11 +149,14 @@ instance YesodAuth Tersus where
       let conn = redisConnection master
       -- check if the user is already in our database
       maybeUserId <- liftIO $ getUserIdByUsername (credsIdent creds) conn
+      io $ putStrLn " Checking if the user is already in our database"
       --x <- getBy $ UniqueNickname $ credsIdent creds
       case maybeUserId of
         Just uid -> return $ maybeUserId
         Nothing -> do
-          uid <- liftIO $ insertNewUser (credsIdent creds) (credsIdent creds) Nothing False conn 
+          io $ putStrLn " Found no id in the database"
+          uid <- io $ insertNewUser (credsIdent creds) (credsIdent creds) Nothing False conn 
+          io $ putStrLn $ " Inserted new user in the database: " ++ show uid
           return . Just $ uid
                 
     -- You can add other plugins like BrowserID, email or OAuth here
@@ -193,3 +196,4 @@ maybeUserTApps = do
 maybeGet id' = MaybeT $ Yesod.get id'
 
 
+io = liftIO

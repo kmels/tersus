@@ -56,7 +56,6 @@ library
                      Tersus.DataTypes.User
                      Tersus.Database
                      Tersus.TApplications
-                     Tersus.Users
                      Tersus.Filesystem
                      Tersus.Global
                      Tersus.TFiles
