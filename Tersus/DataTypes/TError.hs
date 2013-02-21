@@ -18,6 +18,8 @@ data TError =
 
   -- From requests
   | MissingParameter Text Text -- parameter name, parameter description
+  | TUserIdNotFound UserId
+  | TUserNicknameNotFound Username
   | TAppIdNotFound ApplicationIdentifier
   | TFileIdNotFound FileId  
   | TFilePathNotFound Path deriving (Show,Typeable)

@@ -11,6 +11,7 @@ import qualified Data.Text as T
 import           Data.Text.Encoding
 import           Database.Redis
 import           Prelude
+import System.IO.Unsafe
 sep :: Char
 sep = '$'
 
@@ -39,3 +40,4 @@ getRedisResponse (Left _) = Nothing
 getRedisResponse (Right me) = me
 
 io = liftIO
+uio = unsafePerformIO

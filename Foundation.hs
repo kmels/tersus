@@ -100,7 +100,8 @@ instance Yesod Tersus where
 
     defaultLayout widget = do
         master <- getYesod        
-        maybeAuth <- TersusAuth.maybeLoggedUser (redisConnection master)
+        loggedUser <- TersusAuth.maybeLoggedUser (redisConnection master)
+        io . putStrLn $ "Logged user: " ++ show loggedUser
         mmsg <- getMessage
 
         -- Returns a list of tersus applications owned by the logged user
@@ -147,14 +148,14 @@ instance YesodAuth Tersus where
     getAuthId creds = do
       master <- getYesod
       let conn = redisConnection master
-      -- check if the user is already in our database
-      maybeUserId <- liftIO $ getUserIdByUsername (credsIdent creds) conn
-      io $ putStrLn " Checking if the user is already in our database"
-      --x <- getBy $ UniqueNickname $ credsIdent creds
+      -- check if the user is already in our database      
+      maybeUserId <- io $ getUserId conn (credsIdent creds)      
+      io . putStrLn $ " Checking if the user is already in our database ... " ++ show maybeUserId
+      
       case maybeUserId of
-        Just uid -> return $ maybeUserId
-        Nothing -> do
-          io $ putStrLn " Found no id in the database"
+        Right uid -> return . Just $ uid
+        Left e -> do
+          io . putStrLn . show $ e
           uid <- io $ insertNewUser (credsIdent creds) (credsIdent creds) Nothing False conn 
           io $ putStrLn $ " Inserted new user in the database: " ++ show uid
           return uid
