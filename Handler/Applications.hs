@@ -24,10 +24,6 @@ import           Text.Regex.TDFA
 --haskell platform
 import           Data.Maybe                      (catMaybes)
 
---persistent
-import           Tersus.Yesod.Persistent
-import           Database.Persist.Store (deleteCascade)
-
 --json
 import           Data.Aeson                      (toJSON)
 
@@ -100,23 +96,9 @@ tAppForm errormessages defaultValues extra = do
     validateIdentifier conn appidfier = do
       aid <- io $ conn `getAppId` appidfier -- :: Either Terror AppId
       return $ case aid of
-        Right _ -> appExists appidfier --exists
         Left _ -> Right appidfier -- if it's a Left, identifier is free to use, otherwise appExists
+        Right _ -> appExists appidfier --exists        
     
-{-        
-    case () of
-         Just defaultAppIdentifier -> do           
-           tapp <- runDB $ getBy $ UniqueIdentifier $ appidfier
-           return $ if (isJust tapp && defaultAppIdentifier /= appidfier)
-                  then Left ("Error: application identifier exists" :: Text)
-                  else Right appidfier
-         Nothing -> do
-           tapp <- runDB $ getBy $ UniqueIdentifier $ appidfier
-           return $ if (isJust tapp)
-                  then Left ("Error: application identifier exists" :: Text)
-                  else Right appidfier
-                  
--}
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
   t <- getYesod
