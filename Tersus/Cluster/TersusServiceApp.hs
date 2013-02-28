@@ -13,12 +13,13 @@ import System.IO.Unsafe             (unsafePerformIO)
 import Tersus.Cluster.TersusService (TersusServerApp(..),TersusServiceM,sendMessage)
 import Tersus.DataTypes
 import Tersus.Global
+import qualified Tersus.Global as Tersus.Global
 tersusServiceAppName :: Text
 tersusServiceAppName = "tersus"
 
 -- | Tersus service application. This application can be messaged to obtain lists of users
 tersusServiceApp' :: TApplication
-tersusServiceApp' = TApp tersusServiceAppName tersusServiceAppName "Application that provides the service messaging system for system functions" "http://tersusland.com/tersus" "neto@netowork.me" (unsafePerformIO getCurrentTime) "tersusAppKey"
+tersusServiceApp' = TApp 1 tersusServiceAppName tersusServiceAppName "Application that provides the service messaging system for system functions" "http://tersusland.com/tersus" "neto@netowork.me" (unsafePerformIO getCurrentTime) "tersusAppKey" [Tersus.Global.tersusUserId]
 
 tersusServiceUsername :: Text
 tersusServiceUsername = "tersus"

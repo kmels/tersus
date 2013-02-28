@@ -18,6 +18,7 @@ type Path = [Text]
 
 -- applications
 type ApplicationKey = Text --private app key
+type AppId = Integer
 type ApplicationIdentifier = Text  --this has the property that has no spaces in it, it goes in the url.
 
 -- users

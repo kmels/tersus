@@ -30,7 +30,7 @@ import Handler.Admin
 import Handler.Home
 import Handler.Messages
 import Handler.Permission
-import Handler.TApplication
+import Handler.Applications
 import Handler.Files
 import Handler.User
 -- This line actually creates our YesodSite instance. It is the second half

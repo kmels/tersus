@@ -10,7 +10,7 @@ import           Data.Text.Lazy.Encoding (decodeUtf8, encodeUtf8)
 import           Data.Text.Lazy.Internal (foldlChunks)
 import           Data.Text.Lazy.Internal as LT (Text)
 import           Import
-
+import           Tersus.DataTypes.TypeSynonyms
 -- Datatypes and functions that are general for many of the Tersus components
 
 -- The launch configurations. Theese should be named the same as the launch
@@ -44,3 +44,6 @@ x `orElse` y = case x of
 -- | The get parameter under which the access key is provided
 accessKeyParameterName :: T.Text
 accessKeyParameterName = "access_key"
+
+tersusUserId :: UserId
+tersusUserId = 0
