@@ -144,6 +144,8 @@ library
                  , network                       == 2.3.2.0
                  , regex-base                    == 0.93.2
                  , HUnit                         == 1.2.5.1
+                 , base64-conduit                == 0.5.1
+                 , monad-logger                  == 0.2.3.2		 
 --added by kmels                 
                  , random                        >= 1.0.1
                  , process-conduit               >= 0.4.1
@@ -167,6 +169,7 @@ library
                  , acid-state                    >= 0.8.1
                  , ixset                         >= 1.0.5
                  , resourcet                     >= 0.4.4
+                 , hashtables                    >= 1.0.1.8
 
 executable         tersus
     if flag(library-only)
