@@ -1,15 +1,13 @@
 module Tersus.Cluster where
 
--- Cluster
--- Author: ERnesto Rodriguez
+-- | Cluster
+-- Author: Ernesto Rodriguez
 -- Contains all the CloudHaskell and Yesod initialization
 -- functions.
 
 import           Application
 import           Control.Concurrent                                 (threadDelay)
-import           Control.Concurrent.STM                             (atomically,
-                                                                     newTChan)
-import           Control.Concurrent.STM.TVar                        (newTVar,newTVarIO)
+import           Control.Concurrent.STM.TVar                        (newTVarIO)
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Backend.SimpleLocalnet
 import           Control.Distributed.Process.Node                   (initRemoteTable,
@@ -17,8 +15,6 @@ import           Control.Distributed.Process.Node                   (initRemoteT
 -- import           Control.Monad.Trans                                (liftIO)
 import           Data.HashTable.IO                                     as H
 import           Data.SafeCopy                                       (SafeCopy)
-import           GHC.Int
-import           Model
 import           Network.Wai.Handler.Warp                          
                                                                      (defaultSettings,
                                                                      runSettings,
@@ -40,16 +36,9 @@ import           Tersus.Cluster.MessageBackend
 --                                                                     (tersusServiceApp)
 -- import           Tersus.Cluster.TersusNotificationsApp               (tersusNotificationsApp)
 import           Tersus.Cluster.Types
-import           Tersus.Global
 import           Yesod.Default.Config                               (fromArgs)
 import           Yesod.Default.Main                                
                                                                      (defaultMain)
-import Data.Text as T
-import Tersus.DataTypes
-
--- |Hash function for a.Messaging user application combo instance
--- hashUserApp :: AppInstance -> GHC.Int.Int32
--- hashUserApp appInst = hashString $ T.unpack $ appInstanceAsText appInst
 
 initDataStructures :: Process (SendAddressTable,RecvAddressTable,TersusClusterList)
 initDataStructures = do

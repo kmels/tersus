@@ -4,16 +4,13 @@ module Tersus.Cluster.Types where
 
 import           Control.Distributed.Process
 import           Control.Concurrent.STM (TVar)
-import           Data.Array.IO
 import qualified Data.Binary                  as B
 import           Data.Hash.MD5
 import           Data.HashTable.IO            as HT
-import qualified Data.List                    as L
 import           Data.Text                    as T
 import           Data.Typeable.Internal       (Typeable)
 import           Prelude
 import Tersus.DataTypes
-import           Yesod
 
 type THashCode = String
 

@@ -10,8 +10,6 @@ import           Blaze.ByteString.Builder     (fromLazyByteString)
 import           Control.Distributed.Process  (newChan,sendChan,receiveChan,receiveChanTimeout)
 import qualified Control.Distributed.Process.Node as N
 import           Data.Aeson                   as D
-import           Data.Array.MArray
-import           Data.HashTable               as H
 import           Data.Maybe                   (fromMaybe)
 import           Data.Text                    as T
 import           Data.Text.Lazy               (fromChunks)
@@ -34,7 +32,7 @@ initApplication appInstance = do
   (msgSend,msgRecv) <- runProcess newChan
   (ackSend,ackRecv) <- runProcess newChan
   let
-    sendChannels = MessageSendChannels{messageSendPort=msgSend,acknowledgementSendPort=ackSend}
+    sendChannels = MessageSendChannels{messageSendPort=msgSend,acknowledgementSendPort=ackSend,hashCode="someHashCode"}
     recvChannels = MessageRecvChannels{messageRecvPort=msgRecv,acknowledgementRecvPort=ackRecv}
     -- Todo add a real hash code
     initNotification = Initialized appInstance (msgSend,ackSend,"hashPelado")
@@ -78,14 +76,13 @@ receiveTimeout = 1000
 -- receieveMessage :: Address -> IO [TMessage]
 receiveMessages :: AppInstance -> GHandler sub Tersus (Maybe [TMessageEnvelope])
 receiveMessages appInstance = do
-  tersus <- getYesod
   recvChannels <- getRecvChannels appInstance
   case recvChannels of
-    Just recvChannels' -> receiveMessages (messageRecvPort recvChannels')
+    Just recvChannels' -> receiveMessages'' (messageRecvPort recvChannels')
     Nothing -> return Nothing
     
   where
-    receiveMessages chan = let
+    receiveMessages'' chan = let
       receiveMessages' (Just msg) = do
         next <- runProcess $ receiveChanTimeout receiveTimeout chan
         rest <- receiveMessages' next

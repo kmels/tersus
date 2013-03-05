@@ -13,14 +13,8 @@ import           Control.Concurrent.MVar                            (MVar,
                                                                      newEmptyMVar,
                                                                      putMVar,
                                                                      takeMVar)
-import           Control.Concurrent.STM                             (STM,
-                                                                     atomically)
-import           Control.Concurrent.STM.TChan                      
-                                                                     (isEmptyTChan,
-                                                                     readTChan,
-                                                                     writeTChan)
-import           Control.Concurrent.STM.TMVar                       (TMVar,
-                                                                     isEmptyTMVar,
+import           Control.Concurrent.STM                             (atomically)
+import           Control.Concurrent.STM.TMVar                       (isEmptyTMVar,
                                                                      putTMVar,
                                                                      takeTMVar)
 import           Control.Concurrent.STM.TVar                        (modifyTVar,
@@ -28,22 +22,16 @@ import           Control.Concurrent.STM.TVar                        (modifyTVar,
 import           Control.Distributed.Process                        as P
 import           Control.Distributed.Process.Backend.SimpleLocalnet
 import           Control.Monad                                      (forever)
-import           Control.Monad                                      (foldM)
-import           Data.Array.IO                                      (readArray)
 import qualified Data.HashTable.IO                                  as H
-import           Tersus.DataTypes.Messaging                                             
-                                                                     (MessageResult (Delivered, ENoAppInstance),
-                                                                     getAppInstance,
-                                                                     getSendAppInstance)
 import           Prelude
 import           Tersus.Cluster.Types
 
--- This is the name that the process used to establish communication with other
+-- | This is the name that the process used to establish communication with other
 -- Tersus instances will be called.
 processBinderName :: String
 processBinderName = "TersusProcessBinder"
 
--- Function that handles messaging among the multiple Tersus instances
+-- | Function that handles messaging among the multiple Tersus instances
 -- There are various services that work together to provide messaging
 -- this function initializes all of them. For specific details view
 -- each service individually
@@ -52,7 +40,7 @@ runTersusMessaging backend addresses clusterList numThreads = do
   (nSendPort,nRecvPort) <- newChan
   p6 <- initNotificationsDispatchService addresses nRecvPort numThreads
   p7 <- initProcessBinderService backend nSendPort clusterList
-  spawnLocal $ do
+  _<- spawnLocal $ do
     mapM_ (monitor) $ p6++p7
     n <- expect :: Process ProcessMonitorNotification
     liftIO $ putStrLn $ "\n\nProcess Died \n" ++ (show n) ++ "\n\n"
@@ -67,7 +55,7 @@ initProcessBinderService backend nSendPort clusterList = do
   return [p]
 
 
--- Process that registers new tersus instances once they are started and
+-- | Process that registers new tersus instances once they are started and
 -- ready to start messaging. The registration process is as follows:
 -- 1. A tersus instance is created and starts the processBinderService (PBS).
 -- 2. The PBS gets a list of all nodes and sends it's processId and it's corresponding notifications port
@@ -112,11 +100,7 @@ processBinderService backend nSendPort clusterList lock = do
 
       receiveSendChannels = receiveWait [match handleNodeRegistration, match handleNotificationsPortRegistration]
 
-
-
-
-
--- Forks the given Process (proc) numThread times and returns a list with the process id of the forked processes
+-- | Forks the given Process (proc) numThread times and returns a list with the process id of the forked processes
 forkProcFun :: Int -> Process () -> Process [ProcessId]
 forkProcFun numThreads proc = mapM (\_-> spawnLocal proc) [1 .. numThreads]
 
@@ -131,7 +115,7 @@ notificationsDispatchService addressTable notificationsRecvPort = forever $ rece
 
       processNotification :: TersusNotification -> IO ()
       -- Application instance regitered notificaiton, add the address to the addresstable
-      processNotification (Initialized appInstance (msgSendPort,ackPort,hash)) = liftIO $ H.insert addressTable appInstance $ MessageSendChannels {messageSendPort=msgSendPort,acknowledgementSendPort=ackPort}
+      processNotification (Initialized appInstance (msgSendPort,ackPort,hash)) = liftIO $ H.insert addressTable appInstance $ MessageSendChannels {messageSendPort=msgSendPort,acknowledgementSendPort=ackPort,hashCode="someHashCode"}
       -- Application instance closed remove form address table if hashes match
       processNotification (Closed (appInstance,hash)) = H.lookup addressTable appInstance >>= handleEntry hash appInstance
       -- Handle unknown notifications, should not happen and logging should be used here since this suggests a

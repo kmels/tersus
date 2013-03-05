@@ -9,6 +9,8 @@ import Tersus.DataTypes
 import qualified Data.HashTable.IO as HT
 import Tersus.Cluster.Types
 
+-- | Run a process action under the IO Monad and get the 
+-- result of that action
 runProcessIO :: N.LocalNode -> P.Process a -> IO a
 runProcessIO node process = do
   res <- newIORef Nothing
@@ -20,22 +22,13 @@ runProcessIO node process = do
     Nothing -> runProcessIO node process
     Just v -> return v
 
+-- | Run a process action in the GHandler Monad and
+-- get the result
 runProcess :: P.Process a -> GHandler s Tersus a
 runProcess process = do
   tersus <- getYesod
-  res <- liftIO $ newIORef Nothing
-  liftIO $ runProcess' res $ cloudHaskellNode tersus
-  
-  where
-    runProcess' res localNode = do
-      N.runProcess localNode $ do 
-        val <- process
-        liftIO $ writeIORef res $ Just val
-      result <- readIORef res
-      case result of
-        Nothing -> runProcess' res localNode
-        Just v -> return v
-        
+  liftIO $ runProcessIO (cloudHaskellNode tersus) process
+            
 broadcastNotifications :: [TersusNotification] -> GHandler s Tersus ()
 broadcastNotifications notifications = do
   tersus <- getYesod
