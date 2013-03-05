@@ -29,6 +29,7 @@ import           Tersus.DataTypes.Messaging
 import           Tersus.DataTypes.TApplication
 import           Tersus.DataTypes.User
 import           Tersus.Database(io)
+import qualified Tersus.Global as Tersus.Global
 -- | The name of the notifications application
 tersusNotificationAppName :: Text
 tersusNotificationAppName = "tersusNotifications"
@@ -38,7 +39,7 @@ tersusNotificationsUser :: Text
 tersusNotificationsUser = "tersus"
 
 tersusNotificationsApp' :: TApplication
-tersusNotificationsApp' = TApp tersusNotificationAppName tersusNotificationAppName "This app provides notifications via messages of a variety of events" "http://tersusland.com/tersus" "neto@netowork.me" (unsafePerformIO getCurrentTime) "notificationsAppKey"
+tersusNotificationsApp' = TApp 2 tersusNotificationAppName tersusNotificationAppName "This app provides notifications via messages of a variety of events" "http://tersusland.com/tersus" "neto@netowork.me" (unsafePerformIO getCurrentTime) "notificationsAppKey" [Tersus.Global.tersusUserId]
 
 tersusServiceUser :: User
 tersusServiceUser = User 0 "tersus@tersusland.com" tersusNotificationsUser (Just "") False

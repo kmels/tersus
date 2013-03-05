@@ -23,3 +23,14 @@ maybeLoggedUser conn = do
   io . putStrLn $ "Getting user ... " ++ show maybeUser
   return maybeUser
 io = liftIO
+
+requireLogin :: (YesodAuth m, UserId ~ AuthId m) => Connection -> GHandler s m User
+requireLogin conn = maybeLoggedUser conn >>= maybe redirectLogin return
+
+redirectLogin :: Yesod master => GHandler sub master a
+redirectLogin = do
+    y <- getYesod
+    setUltDestCurrent
+    case authRoute y of
+        Just z -> redirect z
+        Nothing -> permissionDenied "Please configure authRoute"

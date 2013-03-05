@@ -5,7 +5,7 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 
-module Handler.TApplication where
+module Handler.Applications where
 
 import           Control.Arrow                   ((&&&))
 import           Control.Monad                   (when)
@@ -24,10 +24,6 @@ import           Text.Regex.TDFA
 --haskell platform
 import           Data.Maybe                      (catMaybes)
 
---persistent
-import           Tersus.Yesod.Persistent
-import           Database.Persist.Store (deleteCascade)
-
 --json
 import           Data.Aeson                      (toJSON)
 
@@ -35,21 +31,23 @@ import           Data.Aeson                      (toJSON)
 import           Control.Monad.Trans.Maybe
 
 --tersus
+import           Database.Redis
 import           Handler.Admin                   (getTApplicationsAdminR)
 import           Handler.User                    (requireAdminFor,requireSuperAdmin)
-import Tersus.DataTypes
+import           Tersus.AccessKeys(maybeAccessKey)
+import           Tersus.Auth
+import           Tersus.DataTypes
 import           Tersus.Filesystem               (pathToString, tAppDirPath)
 import           Tersus.Global
 import           Tersus.Responses
-import Tersus.AccessKeys(maybeAccessKey)
-import Tersus.Yesod.Handler(requireGetParameter)
-
+import           Tersus.Yesod.Handler(requireGetParameter)
 -- Temporary fix of a yesod bug
-import Text.Julius
+import           Text.Julius
 instance ToJavascript String where
          toJavascript = toJavascript . rawJS
---
 
+--
+data Hole = Hole
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
   appLikeName            :: Text
@@ -66,10 +64,13 @@ type ErrorMessage = Text
 
 tAppForm :: [ErrorMessage] -> Maybe TApplication -> Html -> MForm Tersus Tersus (FormResult AppLike,Widget)
 tAppForm errormessages defaultValues extra = do
-  --Entity _ user <- lift requireAuth 
+  m <- lift getYesod
+  let conn = redisConnection m  
+  user <- lift . requireLogin $ conn
   let user = User 0 "todo" "todo" Nothing False
+  
   (nameRes, nameView) <- mreq textField FieldSettings { fsId = Just "TAppNameField", fsLabel = "Application name", fsName = Just "TAppName", fsAttrs = [("placeholder","Turbo app")] } (name <$> defaultValues)
-  (identifierRes, identifierView) <- mreq identifierField FieldSettings { fsId = Just "TAppIdentifierField", fsLabel = "Application identifier", fsName = Just "TAppIdentifier", fsAttrs = [("placeholder","turbo-app")] } (identifier <$> defaultValues)
+  (identifierRes, identifierView) <- mreq (identifierField conn) FieldSettings { fsId = Just "TAppIdentifierField", fsLabel = "Application identifier", fsName = Just "TAppIdentifier", fsAttrs = [("placeholder","turbo-app")] } (identifier <$> defaultValues)
   (descriptionRes, descriptionView) <- mreq textareaField FieldSettings { fsId = Just "TAppDescriptionField", fsLabel = "Description", fsName = Just "TAppDescription", fsAttrs = [("placeholder","An application that turboes your _")] } (Textarea . description <$> defaultValues)
   (repositoryUrlRes, repositoryUrlView) <- mreq textField FieldSettings { fsId = Just "TApplicationRepositoryUrlField", fsLabel = "Application repository url", fsName = Just "TApplicationRepositoryUrl", fsAttrs = [("placeholder","http://github.com/turbo-nickname/turbo-app")] } (repositoryUrl <$> defaultValues)
   (contactEmailRes, contactEmailView) <- mreq emailField FieldSettings { fsId = Just "TApplicationContactEmailField", fsLabel = "Contact email", fsName = Just "TAppConcatEmail", fsAttrs = [("placeholder","turbo-email@example.com")] } ((contactEmail <$> defaultValues) `orElse` (Just $ email user))
@@ -77,28 +78,33 @@ tAppForm errormessages defaultValues extra = do
   let widget = $(widgetFile "TApplication/registerFormWidget")
   return (appLikeResult, widget)
   where
-    --field that verifies that an application doesn't exist already.
-    identifierField = checkM validateIdentifier textField
-    validateIdentifier appidfier = return $ Left ("TODO" :: Text)
-       {-case (tApplicationIdentifier <$> defaultValues) of
-         Just defaultAppIdentifier -> do
-           tapp <- runDB $ getBy $ UniqueIdentifier $ appidfier
-           return $ if (isJust tapp && defaultAppIdentifier /= appidfier)
-                  then Left ("Error: application identifier exists" :: Text)
-                  else Right appidfier
-         Nothing -> do
-           tapp <- runDB $ getBy $ UniqueIdentifier $ appidfier
-           return $ if (isJust tapp)
-                  then Left ("Error: application identifier exists" :: Text)
-                  else Right appidfier-}
-                  
-
+    -- field that verifies that an application doesn't exist already.
+    identifierField conn = checkM (validateIdentifier conn) textField
+                      
+    -- if an application exists, we must check whether some owner is editing it
+    -- or there is in fact a user that wants to create an app that is already owned
+    appExists :: ApplicationIdentifier -> Either Text ApplicationIdentifier
+    appExists idfier = maybe (Right idfier) checkEditMode maybeIdentifier where
+       maybeIdentifier = identifier <$> defaultValues
+       
+       -- checks whether the id that already exists, is the same as that on the form
+       checkEditMode :: ApplicationIdentifier -> Either Text ApplicationIdentifier
+       checkEditMode appIdentifierOnForm | appIdentifierOnForm == idfier = Right idfier
+                                           | otherwise = Left ("Error: application identifier exists" :: Text)
+       
+    validateIdentifier :: Connection -> ApplicationIdentifier -> GHandler s m (Either Text ApplicationIdentifier)
+    validateIdentifier conn appidfier = do
+      aid <- io $ conn `getAppId` appidfier -- :: Either Terror AppId
+      return $ case aid of
+        Left _ -> Right appidfier -- if it's a Left, identifier is free to use, otherwise appExists
+        Right _ -> appExists appidfier --exists        
+    
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
-  {-Entity _ user <- requireAuth
+  t <- getYesod
+  user <- requireLogin (redisConnection t)
   (formWidget, enctype) <- generateFormPost $ tAppForm [] Nothing
-  defaultLayout $(widgetFile "TApplication/register")-}
-  permissionDenied "TODO"
+  defaultLayout $(widgetFile "TApplication/register")
 
 deleteTApplicationR :: ApplicationIdentifier -> Handler RepJson
 deleteTApplicationR identifier = do
@@ -119,9 +125,9 @@ deleteTApplicationR identifier = do
 
 -- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml
-postRegisterTAppR = do
-  {-Entity userid user <- requireAuth
-
+postRegisterTAppR = do  
+  user <- getYesod >>= requireLogin . redisConnection 
+  
   ((result, _), _) <- runFormPost $ tAppForm [] Nothing
   case result of
     FormSuccess appLike -> do
@@ -132,11 +138,11 @@ postRegisterTAppR = do
       creationDate <- liftIO getCurrentTime --ask date
       appKey <- liftIO $ newRandomKey 32  --create a new appkey
 
+      io $ putStrLn " Inserting "
       --insert in database
-      tapp <- runDB $ insert $ TApplication appName identifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey
-
-      --insert owner
-      _ <- runDB $ insert $ UserApplication userid tapp True
+      t <- getYesod
+      let conn = redisConnection t
+      _ <- io $ insertNewTApp conn appName identifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey [uid user]
 
       defaultLayout $(widgetFile "TApplication/created")
 
@@ -145,8 +151,7 @@ postRegisterTAppR = do
       (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages Nothing
       defaultLayout $(widgetFile "TApplication/register")
     -- form missing
-    _ -> getRegisterTAppR-}
-    permissionDenied "TODO"
+    _ -> getRegisterTAppR
 
 getTApplicationEditR :: ApplicationIdentifier -> Handler RepHtml
 getTApplicationEditR identifier = do
