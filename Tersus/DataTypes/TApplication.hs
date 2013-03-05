@@ -55,6 +55,13 @@ getApplications :: Connection -> IO [TApplication]
 getApplications conn = runRedis conn $ do 
   return []
   
+getTApplicationByName :: Connection -> ApplicationIdentifier -> IO (Either TError TApplication)
+getTApplicationByName conn identifier = do
+  eAppId <- getAppId conn identifier
+  case eAppId of
+    Left e -> return $ Left e
+    Right appId -> getTApplicationById conn $ T.pack.show $ appId
+
 -- | Gets an application id given an application identifier.
 getAppId :: Connection -> ApplicationIdentifier -> IO (Either TError AppId)
 getAppId conn identifier = runRedis conn $ do
@@ -73,8 +80,9 @@ getTApplicationById conn appidText = runRedis conn $ do
     repo' <- get $ "tapp" .> appid <. "repositoryUrl"
     email' <- get $ "tapp" .> appid <. "contactEmail"
     creationDate' <- get $ "tapp" .> appid <. "creationDate"
-    appkey' <- get $ "tapp" .> appid <. "appkey"
+    appkey' <- get $ "tapp" .> appid <. "appKey"
     return $ tAppFromRedis appid <$> name' <*> desc' <*> repo' <*> email' <*> creationDate' <*> appkey'
+  
   return $ case tapp of
     TxSuccess a -> case a of
       Just tapp -> Right tapp
