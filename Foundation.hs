@@ -37,6 +37,8 @@ import           qualified Tersus.Auth as TersusAuth
 import           Database.Redis
 -- Text
 import           Data.Text.Encoding
+-- Cloud Haskell
+import qualified Control.Distributed.Process.Node as N
 
 -- | The site argument for your application. This can be a good place to
 -- keep settings and values requiring initialization before your application
@@ -46,19 +48,11 @@ data Tersus = Tersus
     { settings :: AppConfig DefaultEnv Extra
     , getStatic :: Static -- ^ Settings for static file serving.
     , redisConnection :: Connection
+    , cloudHaskellNode :: N.LocalNode
     , httpManager :: Manager
-    -- Channel for writing messages that should be sent
-    , getSendChannel :: TMessageQueue
-    -- Channel for writing the messages that were delivered, 
-    -- note that is used to indicate that a mesage was removed from the mailbox and dlivered
-    , getDeliveryChannel :: TMessageQueue 
-    -- Channel to write events occuring in tersus, such as user opening
-    -- a app or closing it
-    , getNotificationsChannel :: NotificationsChannel 
-    -- Hash table with all the application envoiernments
-    , getAppEnvs :: AppInstanceTable
-    -- CloudHaskell process where Tersus is running
-    , getSendPort :: AcknowledgementSendPort
+    , appsSendChannels :: SendAddressTable
+    , appsRecvChannels :: RecvAddressTable
+    , tersusNodes :: TersusClusterList
     }
 
 -- Set up i18n messages. See the message folder.
@@ -198,3 +192,4 @@ maybeGet id' = MaybeT $ Yesod.get id'
 
 
 io = liftIO
+

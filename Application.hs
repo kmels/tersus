@@ -23,6 +23,7 @@ import qualified Database.Redis as Redis
 
 -- CloudHaskell stuff
 import Tersus.Cluster.Types
+import Control.Distributed.Process.Node (LocalNode)
 
 -- Import all relevant handler modules here.
 -- Don't forget to add new modules to your cabal file!
@@ -40,14 +41,14 @@ mkYesodDispatch "Tersus" resourcesTersus
 
 -- Wrapper that reverses the parameters of makeApplication function from Application.hs
 -- This wrapper is generally used to init Tersus from CloudHaskell
-makeApplicationWrapper :: (TMessageQueue,TMessageQueue,NotificationsChannel,AppInstanceTable,AcknowledgementSendPort) -> AppConfig DefaultEnv Extra -> IO Application
+makeApplicationWrapper :: (LocalNode,SendAddressTable,RecvAddressTable,TersusClusterList) -> AppConfig DefaultEnv Extra -> IO Application
 makeApplicationWrapper env conf = makeApplication conf env
 
 -- This function allocates resources (such as a database connection pool),
 -- performs initialization and creates a WAI application. This is also the
 -- place to put your migrate statements to have automatic database
 -- migrations handled by Yesod.
-makeApplication :: AppConfig DefaultEnv Extra -> (TMessageQueue,TMessageQueue,NotificationsChannel,AppInstanceTable,AcknowledgementSendPort) -> IO Application
+makeApplication :: AppConfig DefaultEnv Extra -> (LocalNode,SendAddressTable,RecvAddressTable,TersusClusterList) -> IO Application
 makeApplication conf env = do
     foundation <- makeFoundation conf env
     app' <- toWaiAppPlain $ foundation
@@ -56,8 +57,8 @@ makeApplication conf env = do
     logWare   = if development then logStdoutDev
                                else logStdout
 
-makeFoundation :: AppConfig DefaultEnv Extra -> (TMessageQueue,TMessageQueue,NotificationsChannel,AppInstanceTable,AcknowledgementSendPort) -> IO Tersus
-makeFoundation conf (sendChannel,recvChannel,actionsChannel,appEnvs,aSendPort) = do
+makeFoundation :: AppConfig DefaultEnv Extra -> (LocalNode,SendAddressTable,RecvAddressTable,TersusClusterList) -> IO Tersus
+makeFoundation conf (node,sendAddressTable,recvAddressTable,clusterList) = do
     manager <- newManager def
     s <- staticSite
     liftIO $ putStrLn ("Env: "++(show $ appEnv conf))
@@ -66,11 +67,11 @@ makeFoundation conf (sendChannel,recvChannel,actionsChannel,appEnvs,aSendPort) =
     --          Database.Persist.Store.loadConfig >>=
     --          Database.Persist.Store.applyEnv
     --p <- Database.Persist.Store.createPoolConfig (dbconf :: Settings.PersistConfig)
-    --Database.Persist.Store.runPool dbconf (runMigration migrateAll) p    
-    return $ Tersus conf s conn manager sendChannel recvChannel actionsChannel appEnvs aSendPort
+    --Database.Persist.Store.runPool dbconf (runMigration migrateAll)     
+    return $ Tersus conf s conn node manager sendAddressTable recvAddressTable clusterList
 
 -- for yesod devel
-getApplicationDev :: (TMessageQueue,TMessageQueue,NotificationsChannel,AppInstanceTable,AcknowledgementSendPort) -> IO (Int, Application)
+getApplicationDev :: (LocalNode,SendAddressTable,RecvAddressTable,TersusClusterList) -> IO (Int, Application)
 getApplicationDev env= do    
     defaultDevelApp loader $ makeApplicationWrapper env
   where

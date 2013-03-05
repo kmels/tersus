@@ -9,14 +9,13 @@ import           Application
 import           Control.Concurrent                                 (threadDelay)
 import           Control.Concurrent.STM                             (atomically,
                                                                      newTChan)
-import           Control.Concurrent.STM.TVar                        (newTVar)
+import           Control.Concurrent.STM.TVar                        (newTVar,newTVarIO)
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Backend.SimpleLocalnet
-import           Control.Distributed.Process.Node                  
-                                                                     (initRemoteTable,
-                                                                     runProcess)
+import           Control.Distributed.Process.Node                   (initRemoteTable,
+                                                                     runProcess,LocalNode)
 -- import           Control.Monad.Trans                                (liftIO)
-import           Data.HashTable                                     as H
+import           Data.HashTable.IO                                     as H
 import           Data.SafeCopy                                       (SafeCopy)
 import           GHC.Int
 import           Model
@@ -35,56 +34,40 @@ import           System.Posix.Process
 import           System.Posix.Signals                               (sigTERM,
                                                                      signalProcess)
 import           Tersus.Cluster.MessageBackend
-import           Tersus.Cluster.TersusService                      
-                                                                     (makeTersusService,TersusServerApp)
-import           Tersus.Cluster.TersusServiceApp                   
-                                                                     (tersusServiceApp)
-import           Tersus.Cluster.TersusNotificationsApp               (tersusNotificationsApp)
+-- import           Tersus.Cluster.TersusService                      
+--                                                                      (makeTersusService,TersusServerApp)
+-- import           Tersus.Cluster.TersusServiceApp                   
+--                                                                     (tersusServiceApp)
+-- import           Tersus.Cluster.TersusNotificationsApp               (tersusNotificationsApp)
 import           Tersus.Cluster.Types
 import           Tersus.Global
 import           Yesod.Default.Config                               (fromArgs)
 import           Yesod.Default.Main                                
                                                                      (defaultMain)
 import Data.Text as T
-
 import Tersus.DataTypes
--- |Hash function for a.Messaging user application combo instance
-hashUserApp :: AppInstance -> GHC.Int.Int32
-hashUserApp appInst = H.hashString $ T.unpack $ appInstanceAsText appInst
 
--- |Produce all the data structures needed to communicate data between Tersusland and Clould Haskell
--- addresses: Matches (user,app) to the processId where it's running
--- mailBoxes: Matches (user,app) to the MVar where the messages are delivered
--- msgStatusTable: Matches the md5 hash of a message to the MVar containing it's status. This MVar is written once the message delivery status is known.
--- sChannel: Channel where messgaes queues for delivery are written
--- rChannel: Channel where messages acknowledge as received are placed. Note that this channel is NOT USED TO DELIVER MESSAGES is just the pipeline were Tersus/Yesod informs CloudHaskell that a delivery status for that channel can be sent
--- aChannel: Channel were (user/app) actions are written by tersus so CloudHaskell can communicate them to other processes. Actions are app is opened, app is closed
--- messagePorts: A send and receive channel (called ports in cloud haskell) dedicated for sending and receiving messages. The send port is distributed to all other tersus instances so they can send messages to this instance
--- acknowledgementPorts: A send and receive channel dedicated to receive message delivery status. They are usually packed in the message envelope so once a message is received, tersus can immediately send the result to the corresponding process
-initDataStructures :: Process (TMessageQueue,TMessageQueue,NotificationsChannel,AppInstanceTable,AddressTable,MessagingPorts,AcknowledgementPorts,NotificationsPorts,TersusClusterList)
-initDataStructures = (liftIO $ H.new (==) hashUserApp) >>= \addresses ->
-                     (liftIO $ H.new (==) hashUserApp) >>= \appEnvs ->
---                     (liftIO $ H.new (==) hashUserApp) >>= \msgStatusTable ->
-                     (liftIO $ atomically newTChan) >>= \sChannel ->
-                     (liftIO $ atomically newTChan) >>= \rChannel ->
-                     (liftIO $ atomically newTChan) >>= \nChannel ->
-                     newChan >>= \messagePorts ->
-                     newChan >>= \acknowledgementPorts ->
-                     newChan >>= \(nSendPort,nRecvPort) ->
-                     (liftIO $ atomically $ newTVar []) >>= \clusterList ->
-                     return (sChannel,rChannel,nChannel,appEnvs,addresses,messagePorts,acknowledgementPorts,(nSendPort,nRecvPort),clusterList)
+-- |Hash function for a.Messaging user application combo instance
+-- hashUserApp :: AppInstance -> GHC.Int.Int32
+-- hashUserApp appInst = hashString $ T.unpack $ appInstanceAsText appInst
+
+initDataStructures :: Process (SendAddressTable,RecvAddressTable,TersusClusterList)
+initDataStructures = do
+  sendTable <- liftIO $ H.new
+  recvTable <- liftIO $ H.new
+  clusterList <- liftIO $ newTVarIO []
+  return (sendTable,recvTable,clusterList)
 
 -- |Process that runs Tersus and Yesod in development mode
 -- This is what yesod devel executes
 -- For the moment it initializes a dummy address and mailbox, but this will be
 -- discarded once the registration services exist
-createTersusDevelInstance :: Backend -> Process ()
-createTersusDevelInstance back = do
-  (sChannel,rChannel,aChannel,appEnvs,addresses,(mSendPort,mRecvPort),(aSendPort,aRecvPort),(nSendPort,nRecvPort),clusterList) <- initDataStructures
-
-  _ <- runTersusMessaging back (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvPort) sChannel rChannel aChannel appEnvs addresses clusterList 1
-  _ <- initTersusServices sChannel clusterList Development
-  liftIO $ do (port, app') <- getApplicationDev (sChannel,rChannel,aChannel,appEnvs,aSendPort)
+createTersusDevelInstance :: LocalNode -> Backend -> Process ()
+createTersusDevelInstance node back = do
+  (sendTable,recvTable,clusterList) <- initDataStructures
+  _ <- runTersusMessaging back sendTable clusterList 1
+--  _ <- initTersusServices sChannel clusterList Development
+  liftIO $ do (port, app') <- getApplicationDev (node,sendTable,recvTable,clusterList)
               runSettings defaultSettings
                               { settingsPort = port
                               } app'
@@ -102,37 +85,37 @@ terminateDevel :: IO ()
 terminateDevel = exitSuccess
 
 -- | Container for all tersus server applications
-data ServerAppT where
-  ServerAppT :: SafeCopy store => TersusServerApp store -> ServerAppT
+-- data ServerAppT where
+--   ServerAppT :: SafeCopy store => TersusServerApp store -> ServerAppT
 
-tersusServices :: [ServerAppT]
-tersusServices = [ServerAppT tersusNotificationsApp,ServerAppT tersusServiceApp]
+-- tersusServices :: [ServerAppT]
+-- tersusServices = [ServerAppT tersusNotificationsApp,ServerAppT tersusServiceApp]
 
-initTersusServices :: TMessageQueue -> TersusClusterList -> TersusEnvoiernment -> Process [ProcessId]
-initTersusServices sChannel clusterList env = mapM (\(ServerAppT app) -> spawnLocal $ makeTersusService app sChannel clusterList env) tersusServices
+-- initTersusServices :: TMessageQueue -> TersusClusterList -> TersusEnvoiernment -> Process [ProcessId]
+-- initTersusServices sChannel clusterList env = mapM (\(ServerAppT app) -> spawnLocal $ makeTersusService app sChannel clusterList env) tersusServices
 
 -- |Process that runs Tersus and Yesod in producction mode
 -- This will be executed when Tersus is deployed
-createTersusInstance :: Backend -> Process ()
-createTersusInstance back = do
-  (sChannel,rChannel,nChannel,appEnvs,addresses,(mSendPort,mRecvPort),(aSendPort,aRecvPort),(nSendPort,nRecvPort),clusterList) <- initDataStructures
-  _ <- runTersusMessaging back (mSendPort,mRecvPort) (aSendPort,aRecvPort) (nSendPort,nRecvPort) sChannel rChannel nChannel appEnvs addresses clusterList 1
-  _ <- initTersusServices sChannel clusterList Development
-  liftIO $ defaultMain (fromArgs parseExtra) $ makeApplicationWrapper (sChannel,rChannel,nChannel,appEnvs,aSendPort)
+createTersusInstance :: LocalNode ->  Backend -> Process ()
+createTersusInstance node back = do
+  (sendTable,recvTable,clusterList) <- initDataStructures
+  _ <- runTersusMessaging back sendTable clusterList 1
+--  _ <- initTersusServices sChannel clusterList Development
+  liftIO $ defaultMain (fromArgs parseExtra) $ makeApplicationWrapper (node,sendTable,recvTable,clusterList)
   return ()
 
 -- |Functions to initialize all the tersus nodes and distribute the ProcessId of such nodes
 -- Development and producction version of the function
-initTersusCluster :: Backend -> Process ()
-initTersusCluster back = do
-  createTersusInstance back
+initTersusCluster :: LocalNode -> Backend -> Process ()
+initTersusCluster node back = do
+  createTersusInstance node back
   receiveWait []
 
 -- | Initialize a Tersus instance running on top of Cloud Haskell
 -- the initialization is done by calling the createTersusDevelInstance
-initTersusClusterDevel :: Backend -> Process ()
-initTersusClusterDevel back = do
-  _ <- spawnLocal $ createTersusDevelInstance back
+initTersusClusterDevel :: LocalNode -> Backend -> Process ()
+initTersusClusterDevel node back = do
+  _ <- spawnLocal $ createTersusDevelInstance node back
   liftIO $ loop
   return ()
 
@@ -143,7 +126,7 @@ tersusProducction = do
   putStrLn "Init Production"
   back <- initializeBackend "127.0.0.1" "8000" initRemoteTable
   node <- newLocalNode back
-  runProcess node $ initTersusCluster back
+  runProcess node $ initTersusCluster node back
   return ()
 
 -- |Initialize Tersus in development mode running on top of CloudHaskell
@@ -152,5 +135,5 @@ tersusDevel :: IO ()
 tersusDevel = do
   back <- initializeBackend "127.0.0.1" "8000" initRemoteTable
   node <- newLocalNode back
-  runProcess node $ initTersusClusterDevel back
+  runProcess node $ initTersusClusterDevel node back
   return ()
