@@ -12,26 +12,20 @@
             <th>Repository</th>
             <th>Actions</th>
     <tbody>
-        $forall Entity tappkey tapp <- tapps
+        $forall tapp <- tapps
             <tr>
-                $case tappkey
-                    $of Key persistValue
-                        $case persistValue 
-                            $of PersistInt64 k
-                               <td>#{show k}</td>
-                            $of _ 
-                                <td></td>
-                <td>#{tApplicationIdentifier tapp}
-                <td>#{tApplicationName tapp}
-                <td>#{show $ tApplicationCreationDate tapp} 
-                <td><a href="#{tApplicationRepositoryUrl tapp}">#{tApplicationRepositoryUrl tapp}</a>
+                <td>#{aid tapp}
+                <td>#{identifier tapp}
+                <td>#{name tapp}
+                <td>#{show $ creationDate tapp} 
+                <td><a href="#{repositoryUrl tapp}">#{repositoryUrl tapp}</a>
                 <td>
                     <div class="btn-group">
                         <a class="btn btn-primary" href="#"><i class="icon-pencil icon-white"></i> Manage</a>
                         <a class="btn btn-primary dropdown-toggle" data-toggle="dropdown" href="#"><span class="caret"></span></a>
                         <ul class="dropdown-menu">
-                            <li><a href="@{TApplicationEditR $ tApplicationIdentifier tapp}"><i class="icon-pencil"></i> Edit</a></li>
-                            <li><a href=javascript:deleteApplication("#{tApplicationIdentifier tapp}")><i class="icon-trash"></i> Delete</a></li>
+                            <li><a href="@{TApplicationEditR $ identifier tapp}"><i class="icon-pencil"></i> Edit</a></li>
+                            <li><a href=javascript:deleteApplication("#{identifier tapp}")><i class="icon-trash"></i> Delete</a></li>
                             <li><a href="#"><i class="icon-ban-circle"></i> Deactivate</a></li>
 
 

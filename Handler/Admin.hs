@@ -24,6 +24,7 @@ import Control.Arrow            ((&&&))
 import Handler.User(requireSuperAdmin)
 import Model
 import Tersus.DataTypes.User
+import Tersus.HandlerMachinery
 
 getAdminR :: Handler RepHtml
 getAdminR = do
@@ -33,9 +34,7 @@ getAdminR = do
 -- | replies to /admin/applications with a list of applications and links to manage it (edit,deactivate)
 getTApplicationsAdminR :: Handler RepHtml 
 getTApplicationsAdminR = do
-  {-superAdmin <- requireSuperAdmin
-  tapps <- runDB $ selectList [] [Desc TApplicationIdentifier]
-  case superAdmin of
-    Just admin -> defaultLayout $(widgetFile "admin/applications")
-    _ -> defaultLayout [whamlet| "TODO Permission denied"|]-}
-  permissionDenied "TODO"
+  superAdmin <- requireSuperAdmin
+  conn <- getConn
+  tapps <- io $ getApplications conn
+  defaultLayout $(widgetFile "admin/applications")

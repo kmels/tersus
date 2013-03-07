@@ -1,3 +1,5 @@
+{-# LANGUAGE DoAndIfThenElse #-}
+
 {- |
 Module      :  Handler.User
 Copyright   :  (C) 2012 Carlos López-Camey, Ernesto Rodríguez
@@ -24,28 +26,27 @@ module Handler.User(
   verifyValidUser --match authkey with username
   ) where
   
-import Import
+import           Import
 
-import Data.Aeson(encode)
+import           Data.Aeson(encode)
 import           Data.Text                as T
 
 import qualified Data.Conduit as C
 import qualified Data.Conduit.List as CL
-import Data.Either (lefts,rights)
+import           Data.Either (lefts,rights)
 
 -- tersus
-import Tersus.AccessKeys
-import Tersus.DataTypes
+import           Tersus.HandlerMachinery
 
 --monads
-import Control.Monad(guard)
-import Control.Monad.Trans.Maybe
+import           Control.Monad(guard)
+import           Control.Monad.Trans.Maybe
 
 --yesod
-import Yesod.Json(jsonToRepJson)
-import Yesod.Auth
+import           Yesod.Json(jsonToRepJson)
+import           Yesod.Auth
 
-import Tersus.Global(accessKeyParameterName)
+import           Tersus.Global(accessKeyParameterName)
 
 -- | Returns a JSON representation of the logged user. Returns a 412 status code (Precondition failed) with an empty string
 getLoggedUserR :: Handler RepJson
@@ -88,25 +89,26 @@ verifyUserKey key uname = decompose key >>= \(u',_) -> if (u'==uname)
                                                      else Nothing
  
 -- | A method wrapped in the GHandler monad, returning a Maybe u iff the logged user `u` has super admin rights
-requireSuperAdmin :: (YesodAuth m) => GHandler s m User
-requireSuperAdmin = {-runMaybeT $ do
-  aid <- MaybeT $ maybeAuthId
-  user   <- MaybeT $ runDB $ get aid
-  guard (isSuperAdmin user)
-  return user-}
-  permissionDenied "TODO"
-  
+requireSuperAdmin :: GHandler s Tersus User
+requireSuperAdmin = do
+  conn <- getConn
+  user <- requireLogin conn
+  case (isSuperAdmin user) of
+    True -> return user
+    _ -> permissionDenied "Requires super admin powers"
+    
 -- | A method that returns Just the logged user if it has admin permissions over an application, Nothing otherwise
-requireAdminFor :: ApplicationIdentifier -> GHandler s m User
+requireAdminFor :: ApplicationIdentifier -> GHandler s Tersus User
 requireAdminFor appIdentifier = do 
-  {-userEntity@(Entity userid user) <- requireAuth
-  Entity tappkey tapp <- runDB $ getBy404 $ UniqueIdentifier $ appIdentifier
-  permission <- runDB $ selectFirst [UserApplicationApplication ==. tappkey, UserApplicationUser ==. userid, UserApplicationIsAdmin ==. True] []
-  case permission of 
-    Just _ -> return $ userEntity
-    _ -> permissionDenied "Permission denied. The logged user is not an application administrator"-}
-  permissionDenied "TODO"   
-  
+  m <- getYesod 
+  let conn = redisConnection m
+  user <- requireLogin conn
+  tapp <- io $ getTApplicationByName conn appIdentifier  
+  either returnTError (checkAdmin user) tapp
+  where
+    checkAdmin user tapp = if (uid user `elem` owners tapp)
+                            then return user
+                            else permissionDenied "Permission denied. The logged user is not an application administrator"
     
 -- | This function is written in the spirit of fromPersistValues in Database.Persist, it takes a list of persist values (equivalent to columns coming from a sql query) and extracts the ones who have only one element of text (intented to use in getUsernameSearchR because only the `nickname` field is SELECT'ed
 --extractNickname :: [PersistValue] -> Either String Text

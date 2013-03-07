@@ -57,6 +57,7 @@ library
                      Tersus.DataTypes.User
                      Tersus.Database
                      Tersus.Debug
+                     Tersus.HandlerMachinery
                      Tersus.TApplications
                      Tersus.Filesystem
                      Tersus.Global

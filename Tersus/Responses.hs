@@ -52,7 +52,7 @@ fileDoesNotExistError = TersusErrorResult InexistentFile "File does not exist"
 
 fileDoesNotExistErrorResponse = return $ (typeJson, toContent . toJSON $ fileDoesNotExistError)
 
-returnTError :: TError -> Handler a
+returnTError :: TError -> GHandler s m a
 returnTError e = permissionDenied $ T.pack . show $ e
 
 -- | Return a 403 permission denied page.
