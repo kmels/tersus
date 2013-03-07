@@ -1,33 +1,28 @@
 module Tersus.Cluster.MessageFrontend where
 
 import Import
-import qualified Control.Distributed.Process.Node as N
+import Control.Distributed.Process.Binder
 import qualified Control.Distributed.Process as P 
 import Data.IORef
 import Control.Concurrent.STM (atomically,readTVar)
 import Tersus.DataTypes
 import qualified Data.HashTable.IO as HT
 import Tersus.Cluster.Types
-
--- | Run a process action under the IO Monad and get the 
--- result of that action
-runProcessIO :: N.LocalNode -> P.Process a -> IO a
-runProcessIO node process = do
-  res <- newIORef Nothing
-  N.runProcess node $ do
-    val <- process  
-    liftIO $ writeIORef res $ Just val
-  result <- readIORef res  
-  case result of
-    Nothing -> runProcessIO node process
-    Just v -> return v
+import Data.Typeable (Typeable)
 
 -- | Run a process action in the GHandler Monad and
 -- get the result
-runProcess :: P.Process a -> GHandler s Tersus a
+runProcess :: Typeable a => P.Process a -> GHandler s Tersus a
 runProcess process = do
   tersus <- getYesod
-  liftIO $ runProcessIO (cloudHaskellNode tersus) process
+  liftIO $ runProcessIO (processRunner tersus) process
+  
+
+runProcessIO :: Typeable a => ProcessBinder -> P.Process a -> IO a
+runProcessIO pRunner proc = runAction' Nothing
+  where
+    runAction' Nothing = runAction pRunner proc >>= runAction'
+    runAction' (Just r) = return r
             
 broadcastNotifications :: [TersusNotification] -> GHandler s Tersus ()
 broadcastNotifications notifications = do

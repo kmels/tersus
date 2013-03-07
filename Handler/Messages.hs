@@ -7,7 +7,8 @@ module Handler.Messages where
 --Description: Functions to handle the messaging system of Tersus.
 
 import           Blaze.ByteString.Builder     (fromLazyByteString)
-import           Control.Distributed.Process  (newChan,sendChan,receiveChan,receiveChanTimeout)
+import           Control.Distributed.Process.Binder (newChan,ProcessBinder)
+import           Control.Distributed.Process  (sendChan,receiveChan,receiveChanTimeout)
 import qualified Control.Distributed.Process.Node as N
 import           Data.Aeson                   as D
 import           Data.Maybe                   (fromMaybe)
@@ -29,8 +30,10 @@ import Network.Wai.EventSource (ServerEvent (..), eventSourceAppIO)
 initApplication :: AppInstance -> GHandler sub Tersus ()
 initApplication appInstance = do
   master <- getYesod
-  (msgSend,msgRecv) <- runProcess newChan
-  (ackSend,ackRecv) <- runProcess newChan
+  let
+    pb = processRunner master
+  (msgSend,msgRecv) <- liftIO $ newChan pb
+  (ackSend,ackRecv) <- liftIO $ newChan pb
   let
     sendChannels = MessageSendChannels{messageSendPort=msgSend,acknowledgementSendPort=ackSend,hashCode="someHashCode"}
     recvChannels = MessageRecvChannels{messageRecvPort=msgRecv,acknowledgementRecvPort=ackRecv}
@@ -59,7 +62,7 @@ deliverAuthMessage (AuthMessage accessKey rUser appId body) = deliverTMessage' $
 -- the message in the cloud haskell channels
 deliverTMessage :: TMessage -> GHandler sub Tersus TMessageResponse
 deliverTMessage message = do
-  sendChannels <- getSendChannels (getAppInstance message)  
+  sendChannels <- getSendChannels (getAppInstance message)
   case sendChannels of
     Just sendChannels' -> do
       runProcess $ sendChan (messageSendPort sendChannels') (message,acknowledgementSendPort sendChannels')
@@ -89,7 +92,7 @@ receiveMessages appInstance = do
         return (msg:rest)
       receiveMessages' Nothing = return []
       in
-       runProcess (receiveChanTimeout receiveTimeout chan) >>= receiveMessages' >>= return . Just
+       runProcess (receiveChan chan) >>= receiveMessages'.Just >>= return . Just
   
   
 authMessagesPostParam :: Text
@@ -115,10 +118,20 @@ receiveMessageAuth = do
   key <- lookupGetParam appKeyGet
   return $ key >>= decompose
 
-messageEventSource :: N.LocalNode -> MessageRecvPort -> IO ServerEvent
+messageEventSource :: ProcessBinder -> MessageRecvPort -> IO ServerEvent
 messageEventSource tersusNode msgRecvPort = do
-  (msg,_) <- runProcessIO tersusNode $ receiveChan msgRecvPort
-  return $ ServerEvent Nothing Nothing $ return $ fromLazyByteString $ encode msg
+  msgs <- runProcessIO tersusNode $ do
+    fst <- receiveChan msgRecvPort
+    rest <- receiveChanCond
+    return $ fst:rest
+  return $ ServerEvent Nothing Nothing $ return $ fromLazyByteString $ encode $ Import.map (\(m,_)->m) msgs
+  
+  where
+    receiveChanCond = do
+      mNext <- receiveChanTimeout receiveTimeout msgRecvPort
+      case mNext of
+        Nothing -> return []
+        Just next -> receiveChanCond >>= return . (next:)
 
 -- | Used to create a channel that lets an application receive messages
 -- using EventSources
@@ -129,7 +142,7 @@ createEventPipe appInstance = do
   case recvChannels of
     Just recvChannels' -> do
       req <- waiRequest
-      res <- lift $ eventSourceAppIO (messageEventSource (cloudHaskellNode master) (messageRecvPort recvChannels')) req
+      res <- lift $ eventSourceAppIO (messageEventSource (processRunner master) (messageRecvPort recvChannels')) req
       sendWaiResponse res
     Nothing -> return ()
       

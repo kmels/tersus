@@ -38,7 +38,7 @@ import           Database.Redis
 -- Text
 import           Data.Text.Encoding
 -- Cloud Haskell
-import qualified Control.Distributed.Process.Node as N
+import Control.Distributed.Process.Binder (ProcessBinder)
 
 -- | The site argument for your application. This can be a good place to
 -- keep settings and values requiring initialization before your application
@@ -48,7 +48,7 @@ data Tersus = Tersus
     { settings :: AppConfig DefaultEnv Extra
     , getStatic :: Static -- ^ Settings for static file serving.
     , redisConnection :: Connection
-    , cloudHaskellNode :: N.LocalNode
+    , processRunner :: ProcessBinder
     , httpManager :: Manager
     , appsSendChannels :: SendAddressTable
     , appsRecvChannels :: RecvAddressTable

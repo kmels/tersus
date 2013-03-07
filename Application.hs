@@ -23,7 +23,7 @@ import qualified Database.Redis as Redis
 
 -- CloudHaskell stuff
 import Tersus.Cluster.Types
-import Control.Distributed.Process.Node (LocalNode)
+import Control.Distributed.Process.Binder
 
 -- Import all relevant handler modules here.
 -- Don't forget to add new modules to your cabal file!
@@ -41,14 +41,14 @@ mkYesodDispatch "Tersus" resourcesTersus
 
 -- Wrapper that reverses the parameters of makeApplication function from Application.hs
 -- This wrapper is generally used to init Tersus from CloudHaskell
-makeApplicationWrapper :: (LocalNode,SendAddressTable,RecvAddressTable,TersusClusterList) -> AppConfig DefaultEnv Extra -> IO Application
+makeApplicationWrapper :: (ProcessBinder,SendAddressTable,RecvAddressTable,TersusClusterList) -> AppConfig DefaultEnv Extra -> IO Application
 makeApplicationWrapper env conf = makeApplication conf env
 
 -- This function allocates resources (such as a database connection pool),
 -- performs initialization and creates a WAI application. This is also the
 -- place to put your migrate statements to have automatic database
 -- migrations handled by Yesod.
-makeApplication :: AppConfig DefaultEnv Extra -> (LocalNode,SendAddressTable,RecvAddressTable,TersusClusterList) -> IO Application
+makeApplication :: AppConfig DefaultEnv Extra -> (ProcessBinder,SendAddressTable,RecvAddressTable,TersusClusterList) -> IO Application
 makeApplication conf env = do
     foundation <- makeFoundation conf env
     app' <- toWaiAppPlain $ foundation
@@ -57,7 +57,7 @@ makeApplication conf env = do
     logWare   = if development then logStdoutDev
                                else logStdout
 
-makeFoundation :: AppConfig DefaultEnv Extra -> (LocalNode,SendAddressTable,RecvAddressTable,TersusClusterList) -> IO Tersus
+makeFoundation :: AppConfig DefaultEnv Extra -> (ProcessBinder,SendAddressTable,RecvAddressTable,TersusClusterList) -> IO Tersus
 makeFoundation conf (node,sendAddressTable,recvAddressTable,clusterList) = do
     manager <- newManager def
     s <- staticSite
@@ -71,7 +71,7 @@ makeFoundation conf (node,sendAddressTable,recvAddressTable,clusterList) = do
     return $ Tersus conf s conn node manager sendAddressTable recvAddressTable clusterList
 
 -- for yesod devel
-getApplicationDev :: (LocalNode,SendAddressTable,RecvAddressTable,TersusClusterList) -> IO (Int, Application)
+getApplicationDev :: (ProcessBinder,SendAddressTable,RecvAddressTable,TersusClusterList) -> IO (Int, Application)
 getApplicationDev env= do    
     defaultDevelApp loader $ makeApplicationWrapper env
   where

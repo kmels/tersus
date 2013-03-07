@@ -168,6 +168,7 @@ library
                  , ixset                         >= 1.0.5
                  , resourcet                     >= 0.4.4
                  , hashtables                    >= 1.0.1.8
+                 , process-binder                >= 0.1.0.0
 
 executable         tersus
     if flag(library-only)
