@@ -132,7 +132,7 @@ requireValidAuthPair ak = do
   let conn = redisConnection master
   
   eitherUser <- liftIO $ getUserByNickname conn $ fst authPair
-  eitherTApp <- liftIO $ getTApplicationById conn $ snd authPair
+  eitherTApp <- liftIO $ getTApplicationByName conn $ snd authPair
     
   -- TODO : \todo -> invaliAccessKey should be replaced by a function
   -- of type TError -> GHandler s m RepJson 

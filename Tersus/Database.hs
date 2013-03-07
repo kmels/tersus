@@ -24,6 +24,9 @@ sep = '$'
 (<.) :: ByteString -> String -> ByteString
 (<.) b s = b `B.append` (encodeUtf8 . T.pack $ sep:s)
 
+(<.>) :: String -> String -> ByteString
+(<.>) s s' = Char8.pack $ s ++ sep:s'
+
 foldEitherToMaybe :: Either a b -> Maybe b
 foldEitherToMaybe (Left _) = Nothing
 foldEitherToMaybe (Right b') = Just b'
