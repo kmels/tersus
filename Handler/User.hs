@@ -51,11 +51,11 @@ import           Tersus.Global(accessKeyParameterName)
 -- | Returns a JSON representation of the logged user. Returns a 412 status code (Precondition failed) with an empty string
 getLoggedUserR :: Handler RepJson
 getLoggedUserR = do
-  {-maybeUserId <- maybeAuth
-  case maybeUserId of
-       Just (Entity _ u) -> jsonToRepJson u
-       Nothing -> error "Result: Empty user. TODO: implement return response"-}
-  permissionDenied "TODO"
+  tersus <- getYesod
+  eitherUser <- maybeLoggedUser $ redisConnection tersus
+  case eitherUser of
+    Nothing -> permissionDenied $ "User not logged in"
+    Just user -> jsonToRepJson user
 
 -- | Returns the access key of a logged user. Returns a 412 status code (Precondition failed) with an empty string
 -- TODO: This request *must* be secure (with https)

@@ -8,7 +8,8 @@ module Tersus.Cluster where
 import           Application
 import           Control.Concurrent                                 (threadDelay)
 import           Control.Concurrent.STM.TVar                        (newTVarIO)
-import           Control.Distributed.Process
+import           Control.Distributed.Process.Binder
+import           Control.Distributed.Process                 hiding (newChan)
 import           Control.Distributed.Process.Backend.SimpleLocalnet
 import           Control.Distributed.Process.Node                   (initRemoteTable,
                                                                      runProcess,LocalNode)
@@ -51,7 +52,7 @@ initDataStructures = do
 -- This is what yesod devel executes
 -- For the moment it initializes a dummy address and mailbox, but this will be
 -- discarded once the registration services exist
-createTersusDevelInstance :: LocalNode -> Backend -> Process ()
+createTersusDevelInstance :: ProcessBinder -> Backend -> Process ()
 createTersusDevelInstance node back = do
   (sendTable,recvTable,clusterList) <- initDataStructures
   _ <- runTersusMessaging back sendTable clusterList 1
@@ -85,7 +86,7 @@ terminateDevel = exitSuccess
 
 -- |Process that runs Tersus and Yesod in producction mode
 -- This will be executed when Tersus is deployed
-createTersusInstance :: LocalNode ->  Backend -> Process ()
+createTersusInstance :: ProcessBinder ->  Backend -> Process ()
 createTersusInstance node back = do
   (sendTable,recvTable,clusterList) <- initDataStructures
   _ <- runTersusMessaging back sendTable clusterList 1
@@ -95,14 +96,14 @@ createTersusInstance node back = do
 
 -- |Functions to initialize all the tersus nodes and distribute the ProcessId of such nodes
 -- Development and producction version of the function
-initTersusCluster :: LocalNode -> Backend -> Process ()
+initTersusCluster :: ProcessBinder -> Backend -> Process ()
 initTersusCluster node back = do
   createTersusInstance node back
   receiveWait []
 
 -- | Initialize a Tersus instance running on top of Cloud Haskell
 -- the initialization is done by calling the createTersusDevelInstance
-initTersusClusterDevel :: LocalNode -> Backend -> Process ()
+initTersusClusterDevel :: ProcessBinder -> Backend -> Process ()
 initTersusClusterDevel node back = do
   _ <- spawnLocal $ createTersusDevelInstance node back
   liftIO $ loop
@@ -115,7 +116,8 @@ tersusProducction = do
   putStrLn "Init Production"
   back <- initializeBackend "127.0.0.1" "8000" initRemoteTable
   node <- newLocalNode back
-  runProcess node $ initTersusCluster node back
+  pq <- newProcessQueue node
+  runProcess node $ initTersusCluster pq back
   return ()
 
 -- |Initialize Tersus in development mode running on top of CloudHaskell
@@ -124,5 +126,6 @@ tersusDevel :: IO ()
 tersusDevel = do
   back <- initializeBackend "127.0.0.1" "8000" initRemoteTable
   node <- newLocalNode back
-  runProcess node $ initTersusClusterDevel node back
+  pq <- newProcessQueue node
+  runProcess node $ initTersusClusterDevel pq back
   return ()
