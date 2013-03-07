@@ -10,4 +10,4 @@
     <div class="span4">
         <h3>#{name tapp}
         <p>#{description tapp}
-        <p><a class="btn" href="@{TAppHomeR $ identifier tapp}">Go to application</a></p>
+        <p><a class="btn" href="@{TAppHomeR $ identifier tapp}">Go to application!</a></p>

@@ -4,8 +4,9 @@ module Handler.Home where
 
 import Import
 import Tersus.DataTypes.TApplication
-import Tersus.TApplications
 import Yesod.Auth
+import Tersus.Debug
+
 -- Respondes to URL: /
 getHomeR :: Handler RepHtml
 getHomeR = do
@@ -13,7 +14,8 @@ getHomeR = do
     --
     master <- getYesod
     let conn = redisConnection master
-    tapps <- liftIO $ getApplications conn --runDB $ selectList [] [Desc TApplicationIdentifier]
+    tapps <- liftIO $ getApplications conn
+    liftIO $ debugM $ "getHomeR#tapps " ++ show tapps
     defaultLayout $ do
       aDomId <- lift newIdent
       setTitle "Tersusland!"

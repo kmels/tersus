@@ -55,6 +55,7 @@ library
                      Tersus.DataTypes.TypeSynonyms
                      Tersus.DataTypes.User
                      Tersus.Database
+                     Tersus.Debug
                      Tersus.TApplications
                      Tersus.Filesystem
                      Tersus.Global
