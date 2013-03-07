@@ -19,6 +19,8 @@ import           Prelude
 import           Tersus.DataTypes.TApplication
 import           Tersus.DataTypes.TypeSynonyms
 import           Tersus.DataTypes.User
+import           Data.Hashable (Hashable,hash)
+import           Data.Text.Encoding (encodeUtf8)
 
 -- | Represents a app being run by a user
 data AppInstance = AppInstance {
@@ -26,6 +28,10 @@ data AppInstance = AppInstance {
   , application :: Text
   } deriving (Eq,Typeable,Show)
   
+
+instance ToJSON AppInstance where
+  toJSON a = J.object [("username",toJSON $ username a)
+                       ,("application",toJSON $ application a)]
 
 instance Ord AppInstance where
   compare a a' = compare (appInstanceAsText a) (appInstanceAsText a')
@@ -48,6 +54,9 @@ class Addressable a where
 class InvAddressable a where
     getSendAppInstance :: a -> AppInstance
     
+    
+instance Hashable AppInstance where
+  hash a = hash $ encodeUtf8 $ appInstanceAsText a
 
 appInstanceAsText :: AppInstance -> Text
 appInstanceAsText (AppInstance u a) = T.concat [u,a]
@@ -59,6 +68,16 @@ instance B.Binary AppInstance where
 instance Addressable AppInstance where
          getAppInstance a = a
          
+
+-- | The responses that Tersus will send for the messaging api
+data TMessageResponse = MsgDelivered String | MsgQueued String | InvalidAppKey AccessKey | NoAppInstance AppInstance | InvalidFormat Text deriving (Show)
+
+instance ToJSON TMessageResponse where
+  toJSON (MsgDelivered code) = J.object [("result","Delivered"),("hashCode",toJSON code)]
+  toJSON (MsgQueued code) = J.object [("result","Queued"),("hashCode",toJSON code)]
+  toJSON (InvalidAppKey accessKey) = J.object [("result","InvalidAppKey"),("appKey",toJSON accessKey)]
+  toJSON (NoAppInstance appInstance) = J.object [("result","NoAppInstance"),("appInstance",toJSON appInstance)]
+  toJSON (InvalidFormat errorMsg) = J.object [("result","InvalidFormat"),("reason",toJSON errorMsg)]
 
 -- | A message with the structure it has when delivered to an application
 data TMessage = TMessage {

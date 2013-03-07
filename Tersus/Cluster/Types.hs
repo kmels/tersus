@@ -2,20 +2,16 @@
 {-# LANGUAGE RankNTypes         #-}
 module Tersus.Cluster.Types where
 
-import           Control.Concurrent.STM       (atomically)
-import           Control.Concurrent.STM.TChan
-import           Control.Concurrent.STM.TMVar
-import           Control.Concurrent.STM.TVar  (TVar, newTVar, readTVar)
 import           Control.Distributed.Process
-import           Data.Array.IO
+import           Control.Concurrent.STM (TVar)
 import qualified Data.Binary                  as B
 import           Data.Hash.MD5
-import           Data.HashTable               as H
-import qualified Data.List                    as L
+import           Data.HashTable.IO            as HT
 import           Data.Text                    as T
 import           Data.Typeable.Internal       (Typeable)
 import           Prelude
 import Tersus.DataTypes
+
 type THashCode = String
 
 -- Hash code was introduced to handle uncoordinated registration
@@ -47,82 +43,29 @@ type MessageSendPort = SendPort TMessageEnvelope
 type MessageRecvPort = ReceivePort TMessageEnvelope
 type MessagingPorts = (MessageSendPort,MessageRecvPort)
 
+data MessageSendChannels = MessageSendChannels{
+  messageSendPort :: MessageSendPort,
+  acknowledgementSendPort :: AcknowledgementSendPort,
+  hashCode :: THashCode
+  }
+                           
+data MessageRecvChannels = MessageRecvChannels{
+  messageRecvPort :: MessageRecvPort,  
+  acknowledgementRecvPort :: AcknowledgementRecvPort 
+}
+
 -- This type represents the address of a TersusCluster for
 -- message delivery. Also has a hash code which will be used
 -- to determine how to register and unregister addresses
 type TersusProcessM = (SendPort TMessageEnvelope,THashCode)
 
--- HashTable indexed by appInstances that contains all
--- known AppInstances with their address
-type AddressTable = H.HashTable (AppInstance) TersusProcessM
+-- | HashTable indexed by appInstances that contains all
+--  known AppInstances with their address
+type SendAddressTable = HT.BasicHashTable (AppInstance) MessageSendChannels
 
--- Contains all the Mailboxes for the AppInstances running in this
--- TersusCluster.
-type MailBox = (TChan TMessageEnvelope)
-
--- Contains a table where the status of each message send from
--- AppInstances of this server are written once they are
--- acknowledge by the target TersusCluster
-type TMessageSendBuff = (TVar [(THashCode,Int)], IOArray Int (TMVar MessageResult), TChan (Int,TMVar MessageResult))
--- type TMessageStatusTable = HashTable AppInstance TMessageSendBuff
-
--- | Runtime envoiernment for an appInstance. This contains all the
--- appInstance needs to do messaging
-type AppInstanceEnv = (MailBox,TMessageSendBuff)
-
--- | Hash table that contains the envoiernment of all appInstances
--- under execution in this particular Tersus node.
-type AppInstanceTable = H.HashTable AppInstance AppInstanceEnv
-
--- | Get the appInstance refered by the addressable element and use that
--- to retrieve the MessageBuffer and MailBox for that appInstance
-lookupAddressable :: Addressable a => a -> AppInstanceTable -> IO (Maybe (MailBox,TMessageSendBuff))
-lookupAddressable addr table = do
-  let currAppInstance = getAppInstance addr
-  H.lookup table currAppInstance
-
--- | Get the Mailbox from the AppInstance referred by the
--- given addressable
-getMailBox :: Addressable a => AppInstanceTable -> a -> IO (Maybe MailBox)
-getMailBox table addr = do
-  res <- lookupAddressable addr table
-  return $ res >>= \(m,_) -> return m
-
--- | Get the MessageBuffer from the AppInstance reffered by
--- the given addressable.
-getMessageBuffer :: Addressable a =>  AppInstanceTable -> a -> IO (Maybe TMessageSendBuff)
-getMessageBuffer table addr = do
-  res <- lookupAddressable addr table
-  return $ res >>= \(_,buff) -> return buff
-
-bufferSize :: Int
-bufferSize = 2
-
--- | Creates a new appInstance envoiernment. This envoiernment can later
--- be registered to belong to a particular appInstance. With this envoiernment
--- an appInstance will have everything it needs to do messaging.
-newAppInstanceEnv :: IO AppInstanceEnv
-newAppInstanceEnv = do
-  (statusVars,availableBuff,mappings,mailBox) <- atomically $ do
-    -- Create the TMVars where the result of messages will be placed
-    statusVars' <- mapM (\i -> (newEmptyTMVar >>= \v -> return (i,v))) [0 .. (bufferSize - 1)]
-    -- Create the channel where all buffer variables for messaging will be placed
-    availableBuff' <- newTChan
-    -- Put all the buffer variables in the channel
-    mapM_ (writeTChan availableBuff') statusVars'
-    mappings <- newTVar []
-    -- Create mailbox for delivered messages
-    mailBox <- newTChan
-    return (statusVars',availableBuff',mappings,mailBox)
-
-  --Create array where all result variables are placed, this array
-  -- can be accessed to determine the result of a message
-  varsArray <- liftIO $ (newArray_ (0,bufferSize) :: IO (IOArray Int (TMVar MessageResult)))
-  mapM_ (\(i,var) -> writeArray varsArray i var) statusVars
-  return (mailBox, (mappings,varsArray,availableBuff))
-
-type TMessageQueue = TChan TMessageEnvelope
-type AcknowledgementQueue = TChan (TMessageEnvelope,AppInstance)
+-- | Hash table that contains all the channels to receive messages
+-- for the appInstances running in the current server
+type RecvAddressTable = HT.BasicHashTable (AppInstance) MessageRecvChannels
 
 -- Represents the datatypse for which a hashcode can be computed
 class Hashable a where
@@ -135,17 +78,11 @@ instance Hashable TMessage where
         where
           TMessage un1 un2 id1 id2 body msgTime = msg
 
-lookupIndex :: THashCode -> TVar [(THashCode,Int)] -> IO (Maybe (THashCode,Int))
-lookupIndex hashCode mappings = do
-  mapping <- atomically $ readTVar mappings :: IO [(THashCode,Int)]
-  return $ L.find (\(h,_) -> h == hashCode) mapping
-
-
 type NotificationsSendPort = SendPort [TersusNotification]
 type NotificationsRecvPort = ReceivePort [TersusNotification]
 type NotificationsPorts = (NotificationsSendPort,NotificationsRecvPort)
 
--- Notifications about the ongoing activity in Tersus Application instances
+-- | Notifications about the ongoing activity in Tersus Application instances
 -- this usually means an application is started and an application is stopped
 -- since is possible that an application is started on a server, then stopped
 -- then started on another server before all theese notifications are dispatched
@@ -154,7 +91,7 @@ type NotificationsPorts = (NotificationsSendPort,NotificationsRecvPort)
 -- Note that this type is used by Cloud Haskell for communication since it
 -- has information which is abstracted away to Yesod, the
 -- Yesod side user the TersusSimpleNotification
-data TersusNotification = Initialized AppInstance (MessageSendPort,THashCode)
+data TersusNotification = Initialized AppInstance (MessageSendPort,AcknowledgementSendPort,THashCode)
                         | Closed (AppInstance,THashCode)
                         | NotificationUnknown deriving (Typeable)
 
@@ -166,11 +103,6 @@ data TersusNotification = Initialized AppInstance (MessageSendPort,THashCode)
 -- is used by CloudHaskell
 data TersusSimpleNotification = Initialized' AppInstance
                               | Closed' AppInstance deriving Show
-
-
--- Channel that will be used to communicate what is happening with
--- the AppInstances
-type NotificationsChannel = TChan TersusSimpleNotification
 
 -- Mutable variable that holds a list of all Tersus instances
 -- to whom the registration of a new app instance should
@@ -188,13 +120,13 @@ tersusClusterRole = "T1"
 -- the notifications can be sent throughout Cloud Haskell
 -- Please use positive numbers
 instance B.Binary TersusNotification where
-    put (Initialized appInstance (msgSendPort,hash)) = B.put (1 :: Int) >> B.put (appInstance,(msgSendPort,hash))
+    put (Initialized appInstance (msgSendPort,ackPort,hash)) = B.put (1 :: Int) >> B.put (appInstance,(msgSendPort,ackPort,hash))
     put (Closed (appInstance,hash)) = B.put (2 :: Int) >> B.put (appInstance,hash)
     put NotificationUnknown = B.put (-1 :: Int) -- No reason to be sent, but will be matched anyway
 
     get = do
       notificationNum <- (B.get :: B.Get Int)
       case notificationNum of
-        1 -> B.get >>= \(appInstance,(msgSendPort,hash)) -> return $ Initialized appInstance (msgSendPort,hash)
+        1 -> B.get >>= \(appInstance,(msgSendPort,ackPort,hash)) -> return $ Initialized appInstance (msgSendPort,ackPort,hash)
         2 -> B.get >>= \(appInstance,hash) -> return $ Closed (appInstance,hash)
         _ -> return NotificationUnknown

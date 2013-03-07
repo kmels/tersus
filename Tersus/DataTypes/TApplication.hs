@@ -27,6 +27,7 @@ import           Tersus.DataTypes.TypeSynonyms
 import           Tersus.Database
 import           Tersus.Debug
 import           Tersus.Filesystem
+
 data TApplication = TApp { 
   -- identifier
   aid :: AppId
@@ -75,7 +76,15 @@ getApplications conn = do
       debugM $ "getTApplications " ++ show tapp
       case tapp of        
         Right tapp -> getTApplications aids >>= \tapps -> return $ tapp:tapps
-        _ -> getTApplications aids
+        _ -> getTApplications aids    
+
+getTApplicationByName :: Connection -> ApplicationIdentifier -> IO (Either TError TApplication)
+getTApplicationByName conn appName = do
+  appid <- getAppId conn appName
+  either (return . fail) (getApplication conn) appid
+  where
+    fail :: TError -> Either TError TApplication
+    fail terror = Left terror
     
 -- | Gets an application id given an application identifier.
 getAppId :: Connection -> ApplicationIdentifier -> IO (Either TError AppId)
@@ -107,15 +116,6 @@ getApplication conn tAppID = runRedis conn $ do
       Nothing -> Left . TAppIdNotFound . decodeUtf8 $ ?app_id
     TxAborted -> Left . RedisTError $ "TxAborted"
     TxError msg -> Left . RedisTError . T.pack $ msg 
-
-getTApplicationByIdentifier :: Connection -> ApplicationIdentifier -> IO (Either TError TApplication)
-getTApplicationByIdentifier conn appName = do
-  io $ debugM $ "getTApplicationByIdentifier " ++ show appName
-  appid <- getAppId conn appName
-  either (return . fail) (getApplication conn) appid
-  where
-    fail :: TError -> Either TError TApplication
-    fail terror = Left terror
 
 -- | This should be used outside this module
 

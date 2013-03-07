@@ -10,7 +10,7 @@ module Handler.Applications where
 import           Control.Arrow                   ((&&&))
 import           Control.Monad                   (when)
 import           Data.ByteString                 (ByteString)
-import           Data.Maybe                      (isJust)
+import           Data.Maybe                      (isJust,fromMaybe)
 import qualified Data.Text                       as T
 import           Data.Time.Clock                 (getCurrentTime)
 import           Handler.Messages                (initApplication)
@@ -204,30 +204,33 @@ argvParam = "argv"
 -- gets redirected to the index.html of the application.
 getTAppHomeR :: ApplicationIdentifier -> Handler RepHtml
 getTAppHomeR identifier = do
-  {-Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ identifier
-  maybeUserId <- maybeAuth
+  tersus <- getYesod
+  let
+    con = redisConnection tersus
+  app <- liftIO $ getTApplicationByName con identifier
   maybeKey <- maybeAccessKey
   maybeArgv <- lookupGetParam argvParam
   let
-    argv = case maybeArgv of 
-      Just argv' -> T.concat ["&",argvParam,"=",argv']
-      _ -> ""
-  case (maybeUserId,maybeKey) of
-    (Just (Entity _ u),Nothing) -> (liftIO $ pullChanges tapp) >>= \_ -> redirectToApplication u argv
-    (_,Just accessKey) -> redirectToIndex accessKey argv
-    _ -> userNotLogged identifier
+    argv = fromMaybe "" $ maybeArgv >>= \a -> return $ T.concat ["&",argvParam,"=",a]
+  mUser <- maybeLoggedUser con
+  case (app,maybeKey,mUser) of
+    (Left _,_,_) -> notFound
+    (Right _,_,Nothing) -> userNotLogged identifier
+    (Right _,Just k,_) -> redirectToIndex k argv
+    (Right a,_,Just user) -> (liftIO $ pullChanges a) >>= \_ -> redirectToApplication user argv
+    _ -> notFound
+      
   where
     redirectToApplication u argv = do
-      let nickname = userNickname u
-      accessKey <- liftIO $ newAccessKey nickname identifier
-      initApplication $ AppInstance nickname identifier
+      let nickname' = nickname u
+      accessKey <- liftIO $ newAccessKey nickname' identifier
+      initApplication $ AppInstance nickname' identifier
       home <- toTextUrl $ TAppHomeR identifier
       redirect $ T.unpack $ T.concat [home,"?",accessKeyParameterName,"=",accessKey,argv]
 
     redirectToIndex accessKey argv = do
       resources <- toTextUrl $ TAppResourceR identifier ["index.html" :: T.Text]
-      redirect $ T.unpack $ T.concat [resources,"?",accessKeyParameterName,"=",accessKey,argv] -}
-  permissionDenied "TODO"
+      redirect $ T.unpack $ T.concat [resources,"?",accessKeyParameterName,"=",accessKey,argv]
 
 -- | The slash used to separate folders in the filesystem.
 fsResourceSep :: T.Text
