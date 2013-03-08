@@ -12,10 +12,22 @@
 -----------------------------------------------------------------------------
 
 
-module Tersus.Filesystem where
+module Tersus.Filesystem(
+  --constants
+  tersus_dir, apps_dir, users_dir,
+  --path
+  pathToString, pathToText, pathToByteString,
+  --path creators
+  -- full paths
+  fullStrPath,  
+  --fs actions
+  getPathContents, writePathContents,
+  pathIsDir, existsPath,
+  -- content type
+  pathContentType, filenameContentType,
+  module System.Directory
+) where
 
---haskell platform
---import Import
 import Prelude
 
 --os
@@ -27,24 +39,30 @@ import System.Directory             (createDirectoryIfMissing,getDirectoryConten
 import Data.ByteString
 import Data.Text                    as T
 import Data.Text.Encoding
+
 -- tersus
 import Tersus.DataTypes.TypeSynonyms
+
+-- content types
+import Text.Regex.TDFA
 import Yesod
+
+-- yesod
+--import Yesod.Content(Copyright
+-- | Directory where tersus data is saved in the fileystem, DEPRECATE for tersusDir
+tersus_dir :: String
+tersus_dir = unsafePerformIO $ getAppUserDataDirectory "tersus-data"
+apps_dir :: Text
+apps_dir = "apps"
+users_dir :: Text
+users_dir = "users"
+
 -- | Creates necessary directories in the filesystem for the given file path
 makeDir :: Path -> IO ()
-makeDir path = createDirectoryIfMissing createParents (T.unpack dir)
-                 where
-                   createParents = True
-		   init' [x] = []
-		   init' (x:xs) =  x : init' xs
-		   init' [] =  error "ERROR: mkDirsFor init"
-                   dir = pathToText (init' path)
-
-
-
--- | Writes a file to the filesystem
-writeFileContents :: Path -> Text -> IO ()
-writeFileContents path content = makeDir path >>= \_ -> Prelude.writeFile (T.unpack . pathToText $ path) (T.unpack content)
+makeDir path = createDirectoryIfMissing create_parents parent_dir
+  where
+    create_parents = True
+    parent_dir = (fullStrPath . Prelude.init $ path) 
 
 -- | Converts a list of path components into a Text by interacalating a "/"
 pathToText :: Path -> Text
@@ -66,16 +84,11 @@ textToByteString = encodeUtf8
 
 -- | Returns the user directory in the filesystem
 userDirPath :: Username -> Path
-userDirPath uname = T.pack localDataDir : [T.pack "users", uname]
-
--- | Directory where tersus data is saved in the fileystem, DEPRECATE for tersusDir
-localDataDir :: String
-localDataDir = unsafePerformIO $ getAppUserDataDirectory "tersus-data"
-tersusDir = unsafePerformIO $ getAppUserDataDirectory "tersus-data"
+userDirPath uname = T.pack tersus_dir : [T.pack "users", uname]
 
 -- | Given an applications identifier, returns a full path for it in the filesystem
 tAppDirPath :: ApplicationIdentifier -> Path
-tAppDirPath appIdentifier = T.pack localDataDir : [T.pack "apps", appIdentifier]
+tAppDirPath appIdentifier = T.pack tersus_dir : [apps_dir, appIdentifier]
   
 -- | Given a file's path and a user, returns a full path in the filesystem
 fullPathForUser :: Path -> Username -> Path
@@ -84,3 +97,50 @@ fullPathForUser filePath username =
     userDirPath' = userDirPath username
   in userDirPath' ++ filePath
 
+-- | Writes a file to the filesystem, creates necessary directories
+writePathContents :: Path -> Text -> IO ()
+writePathContents path content = do
+  makeDir path
+  Prelude.writeFile (T.unpack . pathToText $ path) (T.unpack content)
+
+-- | Gets a list of file names, Path must be a directory
+getPathContents :: Path -> IO [String]
+getPathContents path = do
+  filenames <- getDirectoryContents . fullStrPath $ path
+  return $ Prelude.filter notDots filenames
+
+pathIsDir :: Path -> IO Bool
+pathIsDir = doesDirectoryExist . fullStrPath 
+
+existsPath :: Path -> IO Bool
+existsPath = doesFileExist . fullStrPath 
+
+notDots :: String -> Bool
+notDots ('.':_) = False
+notDots ('.':'.':_) = False
+notDots _ = True
+
+fullPath :: Path -> Path
+fullPath p = (T.pack tersus_dir):p
+
+fullStrPath :: Path -> String
+fullStrPath = pathToString . fullPath
+
+-- | Matches a resource given as name and path with the mime type
+-- of the resource. The mime type is matched using the extension
+-- of the file.
+-- TODO: Change signature to Maybe ContentType
+pathContentType :: Path -> ContentType
+pathContentType = filenameContentType . T.unpack . Prelude.last
+
+-- | Finds an appropiate mime-type given a filename (or path to filename) with an extension. Returns "text/plain" as default.
+-- TODO: Change signature to Maybe ContentType
+filenameContentType :: FilePath -> ContentType
+filenameContentType f = let
+  ext :: Maybe String
+  ext = f =~~ ("\\.[a-zA-Z0-9]+$" :: String)
+  in case ext of
+    Just ".html" -> "text/html"
+    Just ".js" -> "text/javascript"
+    Just ".css" -> "text/css"
+    _ -> "text/plain"

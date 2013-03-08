@@ -21,39 +21,36 @@
 module Handler.Files where
 
 
-import           Control.Exception.Extensible hiding (Handler, handle)
-import           Data.Aeson                   as J
-import           Data.ByteString              (ByteString)
-import           Data.Maybe
-import           Data.Text                    as T
-import           Handler.User                 (verifyUserKeyM)
-import           Import                       hiding (catch)
-import           Prelude
-import           Tersus.Database
-import           Tersus.TFiles
-import           Text.Regex.TDFA
-import           Yesod.Json                   (Value (..))
+import Control.Exception.Extensible hiding (Handler, handle)
+import Data.Aeson                   as J
+import Data.ByteString              (ByteString)
+import Data.Maybe
+import Data.Text                    as T
+import Handler.User                 (verifyUserKeyM)
+import Import                       hiding (catch)
+import Prelude
+import Tersus.TFiles
+import Yesod.Json                   (Value (..))
 --OS file system
-import           System.Directory             (doesDirectoryExist,
+import System.Directory             (doesDirectoryExist,
                                                doesFileExist)
-import           Tersus.AccessKeys            (requireAccessKey)
-import           Tersus.Filesystem            (byteStringToText,
-                                               fullPathForUser, pathToString,
-                                               pathToText, userDirPath,
-                                               writeFileContents)
-import           Tersus.Global                (accessKeyParameterName)
+import Tersus.AccessKeys            (requireAccessKey)
+import Tersus.Filesystem            (pathToString, pathToText, 
+                                     users_dir,
+                                     existsPath, pathIsDir, fullStrPath,
+                                     getPathContents, writePathContents,
+                                     pathContentType, filenameContentType)
+import Tersus.Global                (accessKeyParameterName)
 
 -- Control
-import           Control.Monad                (when)
-import           Control.Monad.Trans.Maybe
+import Control.Monad                (when)
+import Control.Monad.Trans.Maybe
 
 -- Tersus
-import           Control.Monad.Trans.Either
-import           Handler.Permission
-import           Tersus.AccessKeys
-import           Tersus.DataTypes
-import           Tersus.Responses
-import           Tersus.Yesod.Handler
+import Control.Monad.Trans.Either
+import Handler.Permission
+import Tersus.HandlerMachinery
+import Tersus.Yesod.Handler
 
 -- A way to convert between urls and a file path.
 -- See: Dynamic multi in http://www.yesodweb.com/book/routing-and-handlers
@@ -66,25 +63,6 @@ instance PathMultiPiece TFilePath where
 -- | Returns the json content type according to RFC 4627
 jsonContentType :: ContentType
 jsonContentType = "application/json"
-
--- | Finds an appropiate mime-type given a filename (or path to filename) with an extension. Returns "text/plain" as default.
--- TODO: Change signature to Maybe ContentType
-filenameContentType :: FilePath -> ContentType
-filenameContentType f = let
-  ext :: Maybe String
-  ext = f =~~ ("\\.[a-zA-Z0-9]+$" :: String)
-  in case ext of
-    Just ".html" -> "text/html"
-    Just ".js" -> "text/javascript"
-    Just ".css" -> "text/css"
-    _ -> "text/plain"
-
--- | Matches a resource given as name and path with the mime type
--- of the resource. The mime type is matched using the extension
--- of the file.
--- TODO: Change signature to Maybe ContentType
-pathContentType :: Path -> ContentType
-pathContentType = filenameContentType . T.unpack . Prelude.last
 
 newtype JsonFileList = FileList [FilePath]
 
@@ -103,16 +81,15 @@ getFileR username' path = do
   maybeValidUser <- accessKey `verifyUserKeyM` username'
   case maybeValidUser of
     Just username'' -> do
-      let fsPath = path `fullPathForUser` username''
-      let fsPathStr = pathToString fsPath
-
-      liftIO $ putStrLn $ "Looking: " ++ show fsPath
-      isDirectory <- liftIO $ doesDirectoryExist fsPathStr
-      fileExists <- liftIO $ doesFileExist fsPathStr
-      if isDirectory
-      then liftIO $ directoryContents fsPathStr >>= \fs -> return $ (jsonContentType, toContent $ fs)
+      isDir <- io $ pathIsDir path
+      fileExists <- io $ existsPath path
+      
+      if isDir then
+        io (getPathContents path) >>= \filenames -> 
+        return $ (jsonContentType, toContent . FileList $ filenames)
       else if fileExists
-      then return $ (filenameContentType fsPathStr, ContentFile fsPathStr Nothing)
+      then let fullpath = fullStrPath path
+           in return $ (filenameContentType fullpath, ContentFile fullpath Nothing)
       else fileDoesNotExistErrorResponse
     _ -> return $ (typeJson, toContent ("todo: error, invalid access key for user" :: String))
     where
@@ -127,7 +104,7 @@ getFileR username' path = do
 --   * The user has permissions iff he's the owner/has write permissions to the folder or file
 -- Expected GET Parameters: "access_key" and content", the content of the file to write.
 putFileR :: Username -> Path -> Handler RepJson
-putFileR username' filePath = do
+putFileR username' file_path = do
   -- the request must contain an access key
   accessKey <- requireAccessKey
 
@@ -135,37 +112,34 @@ putFileR username' filePath = do
   (user,tapplication) <- requireValidAuthPair accessKey --
 
   --get content parameter
-  fileContent <- "content" `requireParameterOr` (MissingParameter "content" $ "The contents of the file you are writing in " `T.append` (pathToText filePath))
+  content <- "content" `requireParameterOr` (MissingParameter "content" $ "The contents of the file you are writing in " `T.append` (pathToText file_path))
 
-  master <- getYesod
+  conn <- getConn
   let
     -- path to file
-    userLocalPath = userDirPath username'
-    fsPath = filePath `fullPathForUser` username'
-    rawFilePath = pathToText filePath
+--    userLocalPath = userDirPath username'
+--    fsPath = filePath `fullPathForUser` username'
+--    rawFilePath = pathToText filePath
     -- get the connection to the db
-    conn = redisConnection master
+    
 
   -- find the file id based on its path
-  eFileIdTError <- io $ getFileId conn filePath  -- Either TError FileID
+  eFileIdTError <- io $ getFileId conn file_path  -- Either TError FileID
 
   -- if we have the id, then try to fetch a TFile with it.
   -- if we don't have the id, insert a new TFile
   eTFileTError <- io $ case eFileIdTError of
     Right fid -> getFile conn fid
-    Left err -> let
-      filename' = Prelude.last filePath
-      contentType' = pathContentType filePath
-      in do
-        eFileIdTError' <- insertNewFile conn (uid user) filePath filename' contentType' AFile []
-        case eFileIdTError' of
-          Left err -> return . Left $ err
-          Right fid' -> getFile conn fid'
+    Left err -> do
+      eFileIdTError' <- insertNewFile conn (Left $ uid user) file_path AFile []
+      case eFileIdTError' of
+        Left err -> return . Left $ err
+        Right fid' -> getFile conn fid'
 
-  io $ writeFileContents fsPath fileContent
+  io $ writePathContents (users_dir:file_path) content
 
   case eTFileTError of
-    Right tfile -> jsonToRepJson $ (show "Wrote file "++(T.unpack $ pathToText fsPath))
+    Right tfile -> jsonToRepJson $ (show "Wrote file "++ (pathToString $ users_dir:file_path))
     Left err -> tError err
 
   {-case maybeUsername of

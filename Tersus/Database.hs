@@ -28,6 +28,9 @@ sep = '$'
 (<.>) :: String -> String -> ByteString
 (<.>) s s' = Char8.pack $ s ++ sep:s'
 
+(<+>) :: ByteString -> ByteString -> ByteString
+(<+>) b b' = b `B.append` Char8.pack [sep] `B.append` b'
+
 foldEitherToMaybe :: Either a b -> Maybe b
 foldEitherToMaybe (Left _) = Nothing
 foldEitherToMaybe (Right b') = Just b'

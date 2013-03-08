@@ -15,7 +15,6 @@ import qualified Data.Text                       as T
 import           Data.Time.Clock                 (getCurrentTime)
 import           Handler.Messages                (initApplication)
 import           Handler.TApplication.Git        (pullChanges)
-import           Handler.Files                   (filenameContentType,pathContentType)
 import           Import
 import           Prelude                         (last)
 import           Tersus.AccessKeys               (newAccessKey, newRandomKey)
@@ -34,12 +33,13 @@ import           Control.Monad.Trans.Maybe
 import           Database.Redis
 import           Handler.Admin                   (getTApplicationsAdminR)
 import           Handler.User                    (requireAdminFor,requireSuperAdmin)
-import           Tersus.Filesystem               (pathToString, tAppDirPath)
+import           Tersus.Filesystem               (pathToString)
 import           Tersus.Filesystem.Resources
 import           Tersus.Global
 import           Tersus.HandlerMachinery
 import           Tersus.Yesod.Handler(requireGetParameter)
 -- Temporary fix of a yesod bug
+import           Tersus.Filesystem(apps_dir, pathContentType, filenameContentType, fullStrPath)
 import           Text.Julius
 instance ToJavascript String where
          toJavascript = toJavascript . rawJS
@@ -215,7 +215,7 @@ getTAppHomeR identifier = do
     (Left _,_,_) -> notFound
     (Right _,_,Nothing) -> userNotLogged identifier
     (Right _,Just k,_) -> redirectToIndex k argv
-    (Right a,_,Just user) -> (liftIO $ pullChanges a) >>= \_ -> redirectToApplication user argv
+    (Right a,_,Just user) -> pullChanges a >>= \_ -> redirectToApplication user argv
     _ -> notFound
       
   where
@@ -248,10 +248,10 @@ getTAppResourceR appname path@[] = do
   RepHtml content <- defaultLayout $(widgetFile "r/list_files")
   returnHtml content
 --  return $ ("text/plain",toContent ("TODO: error, invalid resource " :: String))
-getTAppResourceR identifier resourcePath = do
-  return $ (pathContentType resourcePath, contentFile Nothing)
+getTAppResourceR app_name path = do
+  return $ (pathContentType path, contentFile Nothing)
   where
-    contentFile = ContentFile $ pathToString $ tAppDirPath identifier ++ resourcePath
+    contentFile = ContentFile $ fullStrPath $ apps_dir:(app_name:path)
 
 -- | Request that deploys an application (it pulls from its repository)
 postDeployTAppR :: ApplicationIdentifier -> Handler RepHtml

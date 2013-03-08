@@ -15,11 +15,13 @@ import           System.Directory     (doesDirectoryExist)
 import           System.IO
 
 --os filesystem
+import           Tersus.DataTypes.TApplication
+import           Tersus.DataTypes.TFile
+import           Tersus.HandlerMachinery
 import           Tersus.Filesystem
 
-import           Tersus.DataTypes.TApplication
 tApplicationDirectory :: TApplication -> String
-tApplicationDirectory = pathToString . tAppDirPath . identifier
+tApplicationDirectory tapp = fullStrPath $ [apps_dir,identifier tapp]
 
 -- TODO: implement
 repositoryExists :: TApplication -> IO Bool
@@ -30,26 +32,30 @@ repositoryExists tapp = do
   return exists
 
 -- TODO: implemento
-pullChanges :: TApplication -> IO()
+pullChanges :: TApplication -> GHandler s Tersus ()
 pullChanges tapp = do
 --  $(logDebug) "Pulling changes.."
-  repoExists <- repositoryExists tapp
+  repoExists <- io $ repositoryExists tapp
   when (not repoExists) $ clone tapp
   when (repoExists) $ pull tapp
   return ()
 
 -- TODO: implement
-clone :: TApplication -> IO ()
-clone tapp = C.runResourceT $ do
---  liftIO $(logDebug) "Cloning repository.."
-  let
-    (repoUrl',repoName) = (T.unpack . repositoryUrl $ tapp, T.unpack . identifier $ tapp)
-    cloneCmd = "git clone --quiet " ++ repoUrl' ++ " " ++ tApplicationDirectory tapp
+clone :: TApplication -> GHandler s Tersus ()
+clone tapp = do
+  conn <- getConn
+  C.runResourceT $ do
+    --  liftIO $(logDebug) "Cloning repository.."
+    let
+      (repoUrl',repoName) = (T.unpack . repositoryUrl $ tapp, T.unpack . identifier $ tapp)
+      cloneCmd = "git clone --quiet " ++ repoUrl' ++ " " ++ tApplicationDirectory tapp
 --  $(logDebug) "Spawning: " ++ cloneCmd
-  sourceCmd cloneCmd C.$$ CB.sinkHandle stdout
+    sourceCmd cloneCmd C.$$ CB.sinkHandle stdout
+  io $ mkTFileFromPath conn (apps_dir:[identifier tapp])
+  return ()
 
-pull :: TApplication -> IO ()
-pull tapp = C.runResourceT $ do
+pull :: TApplication -> GHandler s Tersus ()
+pull tapp = io $ C.runResourceT $ do
   let
     repoName = T.unpack . identifier $ tapp
     pullCmd = "cd "++ tApplicationDirectory tapp ++ " git pull"

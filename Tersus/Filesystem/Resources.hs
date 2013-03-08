@@ -12,7 +12,7 @@ import           Tersus.Filesystem
 -- | Returns a list of resources contained in the applications source code
 listAppResources :: Connection -> Path -> IO [TFile]
 listAppResources conn parent_dir = do
-  filenames <- getDirectoryContents (tersusDir ++ pathToString ("apps":parent_dir))
+  filenames <- getPathContents (apps_dir:parent_dir)
   eithers <- mapM tFileFromPath' filenames 
   return . rights $ eithers
   where
