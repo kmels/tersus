@@ -33,7 +33,7 @@ import           Control.Monad.Trans.Maybe
 import           Database.Redis (Connection)
 import           Handler.Admin                   (getTApplicationsAdminR)
 import           Handler.User                    (requireAdminFor,requireSuperAdmin)
-import           Tersus.Filesystem               (pathToString)
+import           Tersus.Filesystem               (pathToString,deletePath)
 import           Tersus.Filesystem.Resources
 import           Tersus.Global
 import           Tersus.HandlerMachinery
@@ -110,6 +110,7 @@ deleteTApplicationR identifier = do
   superAdmin <- requireSuperAdmin
   conn <- getConn
   e_delete <- io $ deleteApplicationByName conn identifier
+  io . deletePath $ apps_dir:[identifier]
   either returnTError return_ok e_delete
   where
     return_ok _ = return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ (Message $ identifier `T.append` T.pack " deleted")

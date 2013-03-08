@@ -21,7 +21,7 @@ module Tersus.Filesystem(
   -- full paths
   fullStrPath,  
   --fs actions
-  getPathContents, writePathContents,
+  getPathContents, writePathContents, deletePath, 
   pathIsDir, existsPath,
   -- content type
   pathContentType, filenameContentType,
@@ -33,8 +33,10 @@ import Prelude
 --os
 import System.IO.Unsafe
 import System.Directory(getAppUserDataDirectory)
-import System.Directory             (createDirectoryIfMissing,getDirectoryContents,doesDirectoryExist,doesFileExist)
+import System.Directory             (createDirectoryIfMissing,getDirectoryContents,doesDirectoryExist,doesFileExist, removeFile, removeDirectory)
 
+-- control
+import Control.Monad(when)
 --types
 import Data.ByteString
 import Data.Text                    as T
@@ -42,11 +44,10 @@ import Data.Text.Encoding
 
 -- tersus
 import Tersus.DataTypes.TypeSynonyms
-
+import Tersus.Debug
 -- content types
 import Text.Regex.TDFA
-import Yesod
-
+import Yesod.Content
 -- yesod
 --import Yesod.Content(Copyright
 -- | Directory where tersus data is saved in the fileystem, DEPRECATE for tersusDir
@@ -116,8 +117,8 @@ existsPath :: Path -> IO Bool
 existsPath = doesFileExist . fullStrPath 
 
 notDots :: String -> Bool
-notDots ('.':_) = False
-notDots ('.':'.':_) = False
+notDots "." = False
+notDots ".." = False
 notDots _ = True
 
 fullPath :: Path -> Path
@@ -144,3 +145,16 @@ filenameContentType f = let
     Just ".js" -> "text/javascript"
     Just ".css" -> "text/css"
     _ -> "text/plain"
+
+-- | Deletes a file, a directory with its contents too.
+deletePath :: Path -> IO ()
+deletePath p = do
+  debugM $ "Deleting path " ++ show p
+  is_dir <- pathIsDir p
+  when (is_dir) $ do
+    children <- getPathContents p
+    mapM_ (\fn -> deletePath $ p++[T.pack fn]) children
+    removeDirectory $ fullStrPath p
+  debugM $ "Deleting file " ++ fullStrPath p
+  (when $ not is_dir) $ 
+    removeFile $ fullStrPath p

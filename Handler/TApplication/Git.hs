@@ -20,6 +20,7 @@ import           Tersus.DataTypes.TFile
 import           Tersus.HandlerMachinery
 import           Tersus.Filesystem
 
+import           Tersus.Debug
 tApplicationDirectory :: TApplication -> String
 tApplicationDirectory tapp = fullStrPath $ [apps_dir,identifier tapp]
 
@@ -51,7 +52,8 @@ clone tapp = do
       cloneCmd = "git clone --quiet " ++ repoUrl' ++ " " ++ tApplicationDirectory tapp
 --  $(logDebug) "Spawning: " ++ cloneCmd
     sourceCmd cloneCmd C.$$ CB.sinkHandle stdout
-  io $ mkTFileFromPath conn (apps_dir:[identifier tapp])
+  fid <- io $ mkTFileFromPath conn (apps_dir:[identifier tapp])
+  io . debugM $ " Created file id " ++ show fid
   return ()
 
 pull :: TApplication -> GHandler s Tersus ()
