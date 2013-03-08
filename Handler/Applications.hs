@@ -34,12 +34,10 @@ import           Control.Monad.Trans.Maybe
 import           Database.Redis
 import           Handler.Admin                   (getTApplicationsAdminR)
 import           Handler.User                    (requireAdminFor,requireSuperAdmin)
-import           Tersus.AccessKeys(maybeAccessKey)
-import           Tersus.Auth
-import           Tersus.DataTypes
 import           Tersus.Filesystem               (pathToString, tAppDirPath)
+import           Tersus.Filesystem.Resources
 import           Tersus.Global
-import           Tersus.Responses
+import           Tersus.HandlerMachinery
 import           Tersus.Yesod.Handler(requireGetParameter)
 -- Temporary fix of a yesod bug
 import           Text.Julius
@@ -242,9 +240,14 @@ fsResourcePrefix = T.concat [fsResourceSep,"tmp",fsResourceSep]
 
 -- | Request that delivers a resource belonging to a particular application. Resource means
 -- any file in the application's repository
-getTAppResourceR :: ApplicationIdentifier -> [T.Text] -> Handler (ContentType,Content)
-getTAppResourceR _ [] = do
-  return $ ("text/plain",toContent ("TODO: error, invalid resource " :: String))
+getTAppResourceR :: ApplicationIdentifier -> Path -> Handler (ContentType,Content)
+getTAppResourceR appname path@[] = do  
+  conn <- getConn
+  tapp <- requireTApplication conn appname
+  files <- io $ listAppResources conn (appname:path)
+  RepHtml content <- defaultLayout $(widgetFile "r/list_files")
+  returnHtml content
+--  return $ ("text/plain",toContent ("TODO: error, invalid resource " :: String))
 getTAppResourceR identifier resourcePath = do
   return $ (pathContentType resourcePath, contentFile Nothing)
   where
@@ -266,26 +269,25 @@ postDeployTAppR identifier  = do
 -- | Adds an admin to an application
 putTApplicationAdminR :: ApplicationIdentifier -> Handler RepJson
 putTApplicationAdminR identifier = do
-{-  _ <- requireAdminFor $ identifier
-  Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ identifier
+  -- _ <- requireAdminFor $ identifier
+  -- Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ identifier
 
-  --get new user (does it exist?)
-  maybeNewAdmin <- runMaybeT $ do
-    adminNickname <- MaybeT $ lookupPostParam "newAdminNickname"
-    MaybeT $ runDB $ getBy $ UniqueNickname adminNickname
+  -- --get new user (does it exist?)
+  -- maybeNewAdmin <- runMaybeT $ do
+  --   adminNickname <- MaybeT $ lookupPostParam "newAdminNickname"
+  --   MaybeT $ runDB $ getBy $ UniqueNickname adminNickname
 
-  case maybeNewAdmin of
-      Just (Entity userkey user ) -> do -- insert new admin
-        --exists?
-        existing <- runDB $ selectFirst [UserApplicationApplication ==. tappkey, UserApplicationUser ==. userkey, UserApplicationIsAdmin ==. True] []
-        case existing of
-          Just _ -> entityExists user
-          _ -> do
-            _ <- runDB $ insert $ UserApplication userkey tappkey True
-            entityCreated user
-      Nothing -> invalidArguments "User doesnt exist"-}
+  -- case maybeNewAdmin of
+  --     Just (Entity userkey user ) -> do -- insert new admin
+  --       --exists?
+  --       existing <- runDB $ selectFirst [UserApplicationApplication ==. tappkey, UserApplicationUser ==. userkey, UserApplicationIsAdmin ==. True] []
+  --       case existing of
+  --         Just _ -> entityExists user
+  --         _ -> do
+  --           _ <- runDB $ insert $ UserApplication userkey tappkey True
+  --           entityCreated user
+  --     Nothing -> invalidArguments "User doesnt exist"
   permissionDenied "TODO"
-  
 -- | Deletes an admin from an application
 deleteTApplicationAdminR :: ApplicationIdentifier -> Handler RepJson
 deleteTApplicationAdminR identifier = do

@@ -11,13 +11,17 @@
 -- Helper functions for request responses
 -----------------------------------------------------------------------------
 
-module Tersus.Responses where
+module Tersus.Responses(  
+  fileDoesNotExistError, fileDoesNotExistErrorResponse,
+  tError,
+  returnHtml, returnTError
+) where
 
 --json
 import           Data.Aeson                 (toJSON)
 import           Data.Aeson                 (ToJSON)
 --yesod
-import           Import
+--import           Import
 import           Prelude
 import           Yesod.Content
 import           Yesod.Handler
@@ -30,16 +34,16 @@ import           Data.Text
 import qualified Data.Text                  as T
 import           Tersus.DataTypes.TError
 
-invalidArguments :: Text -> Handler RepJson
+invalidArguments :: Text -> GHandler s m RepJson
 invalidArguments t = jsonToRepJson $ TRequestResponse RequestError (Message t)
 
-entityCreated :: (ToJSON val) => val -> Handler RepJson
+entityCreated :: (ToJSON val) => val -> GHandler s m RepJson
 entityCreated e = jsonToRepJson $ TRequestResponse Success (JsonResult $ toJSON e)
 
-entityExists :: (ToJSON val) => val -> Handler RepJson
+entityExists :: (ToJSON val) => val -> GHandler s m RepJson
 entityExists e = jsonToRepJson $ TRequestResponse SuccessDontUpdate (JsonResult $ toJSON e)
 
-entityDeleted :: (ToJSON val) => val -> Handler RepJson
+entityDeleted :: (ToJSON val) => val -> GHandler s m RepJson
 entityDeleted e = jsonToRepJson $ TRequestResponse Success (JsonResult $ toJSON e)
 
 
@@ -58,3 +62,6 @@ returnTError e = permissionDenied $ T.pack . show $ e
 -- | Return a 403 permission denied page.
 tError :: TError -> GHandler sub master RepJson
 tError terr = jsonToRepJson $ show terr
+
+returnHtml :: Content -> GHandler s m (ContentType,Content)
+returnHtml c = return ("text/html",c)

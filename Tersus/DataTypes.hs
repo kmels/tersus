@@ -10,10 +10,10 @@ module Tersus.DataTypes(
   ) where
   
 import Tersus.DataTypes.User
-import Tersus.DataTypes.TApplication
+import Tersus.DataTypes.TApplication hiding (setProperty)
 import Tersus.DataTypes.Messaging
 import Tersus.DataTypes.TypeSynonyms
 import Tersus.DataTypes.TError
 import Tersus.DataTypes.Permission
-import Tersus.DataTypes.TFile
+import Tersus.DataTypes.TFile hiding (setProperty)
 import Tersus.DataTypes.Responses

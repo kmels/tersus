@@ -1,3 +1,4 @@
+{-# LANGUAGE ImplicitParams #-}
 module Tersus.DataTypes.TFile where
 
 import           Control.Applicative
@@ -25,11 +26,15 @@ data TFile = File {
     fileId        :: FileId
     , owner       :: UserId
     , rawpath     :: Text -- this one is meant to be unique in the db, should contain the owner preceded
-    , filename    :: Text -- can be extracted from rawpath too
+    , filename    :: Text -- could be extracted from rawpath too
     , contentType :: Text
     , fileType    :: FileType
     , permissions :: [Permission]
   }
+
+-- | Gets a TFile from a raw path. Remember, it must be preceded by the owner (e.g. appname or userid
+tFileFromPath :: Connection -> Path -> IO (Either TError TFile)
+tFileFromPath conn path = getFileId conn path >>= either (return . Left) (getFile conn)
 
 -- | Returns invalidPath if no file under that path exists
 redisGetFileId :: Connection -> Path -> IO (Either Reply (Maybe ByteString))
@@ -101,12 +106,20 @@ insertNewFile conn ownerID rawPath filename' contentType' fileType' permissions 
       Left _ -> return . Left . RedisTError $ "Could not create index (id) for a new file"
       Right fileid ->
         let
-          fid = integerToByteString fileid
+          ?fid = integerToByteString fileid
         in do
-          set ("tfile" .> fid <. "owner") oidb
-          set ("tfile" .> fid <. "rawpath") rp
-          set ("tfile" .> fid <. "filename") fn
-          set ("tfile" .> fid <. "contentType") ct
-          set ("tfile" .> fid <. "fileType") ft
+          setProperty tFileOwner oidb
+          setProperty tFileRawPath rp
+          setProperty tFileFilename fn
+          setProperty tFileContentType ct
+          setProperty tFileFileType ft
           return . Right $ fileid
 
+setProperty :: (?fid :: ByteString, RedisCtx m f) => (ByteString -> ByteString) -> ByteString -> m (f Status)
+setProperty f p = set (f ?fid) p
+
+tFileOwner fid  = ("tfile" .> fid <. "owner")
+tFileRawPath fid =  ("tfile" .> fid <. "rawpath")
+tFileFilename fid = ("tfile" .> fid <. "filename")
+tFileContentType fid = ("tfile" .> fid <. "contentType")
+tFileFileType fid = ("tfile" .> fid <. "fileType")

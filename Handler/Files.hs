@@ -18,8 +18,6 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
-
-
 module Handler.Files where
 
 
@@ -56,6 +54,7 @@ import           Tersus.AccessKeys
 import           Tersus.DataTypes
 import           Tersus.Responses
 import           Tersus.Yesod.Handler
+
 -- A way to convert between urls and a file path.
 -- See: Dynamic multi in http://www.yesodweb.com/book/routing-and-handlers
 data TFilePath = TFilePath [Text]  -- 2 or more
@@ -168,7 +167,6 @@ putFileR username' filePath = do
   case eTFileTError of
     Right tfile -> jsonToRepJson $ (show "Wrote file "++(T.unpack $ pathToText fsPath))
     Left err -> tError err
-
 
   {-case maybeUsername of
     Just username -> case content of

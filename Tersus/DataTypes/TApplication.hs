@@ -12,7 +12,7 @@ import           Data.Time.Clock
 import           Prelude
 import           Tersus.DataTypes.Messaging.Util
 
-
+import Yesod.Handler
 import           Control.Applicative
 import           Control.Monad.IO.Class
 import           Data.ByteString
@@ -27,7 +27,7 @@ import           Tersus.DataTypes.TypeSynonyms
 import           Tersus.Database
 import           Tersus.Debug
 import           Tersus.Filesystem
-
+import           Tersus.Responses
 data TApplication = TApp { 
   -- identifier
   aid :: AppId
@@ -67,7 +67,7 @@ getApplications conn = do
   either fail getTApplications app_ids
   where
     fail :: a -> IO [TApplication]
-    fail _ = debugM "getApplications#fail" >> return []
+    fail _ = return []
     
     getTApplications :: [ByteString] -> IO [TApplication]
     getTApplications [] = return []
@@ -83,9 +83,13 @@ getTApplicationByName conn appName = do
   appid <- getAppId conn appName
   either (return . fail) (getApplication conn) appid
   where
-    fail :: TError -> Either TError TApplication
     fail terror = Left terror
-    
+
+requireTApplication :: Connection -> ApplicationIdentifier -> GHandler s m TApplication
+requireTApplication conn app_name = do
+  eTApp <- io $ getTApplicationByName conn app_name
+  either returnTError return eTApp 
+     
 -- | Gets an application id given an application identifier.
 getAppId :: Connection -> ApplicationIdentifier -> IO (Either TError AppId)
 getAppId conn identifier = runRedis conn $ do

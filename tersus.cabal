@@ -60,6 +60,7 @@ library
                      Tersus.HandlerMachinery
                      Tersus.TApplications
                      Tersus.Filesystem
+                     Tersus.Filesystem.Resources
                      Tersus.Global
                      Tersus.TFiles
                      Tersus.Responses

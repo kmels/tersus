@@ -68,9 +68,10 @@ textToByteString = encodeUtf8
 userDirPath :: Username -> Path
 userDirPath uname = T.pack localDataDir : [T.pack "users", uname]
 
--- | Directory where tersus data is saved in the fileystem
+-- | Directory where tersus data is saved in the fileystem, DEPRECATE for tersusDir
 localDataDir :: String
 localDataDir = unsafePerformIO $ getAppUserDataDirectory "tersus-data"
+tersusDir = unsafePerformIO $ getAppUserDataDirectory "tersus-data"
 
 -- | Given an applications identifier, returns a full path for it in the filesystem
 tAppDirPath :: ApplicationIdentifier -> Path
@@ -82,4 +83,4 @@ fullPathForUser filePath username =
   let 
     userDirPath' = userDirPath username
   in userDirPath' ++ filePath
-  
+
