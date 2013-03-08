@@ -20,9 +20,11 @@ import           Tersus.DataTypes.TypeSynonyms
 import           Tersus.Filesystem
 --import Tersus.Responses(errorResponse)
 --yesod
+import           Control.Concurrent
+import           Tersus.Debug
 import           Yesod.Content
 import           Yesod.Handler
-data FileType = AFile | ADirectory deriving Show
+data FileType = AFile | ADirectory deriving (Show,Eq)
 
 data TFile = File {
     fileId        :: FileId
@@ -111,16 +113,24 @@ tFileFromRedis fileid (Just ot) (Just o) (Just rp) (Just fn) (Just ct) (Just ft)
 tFileFromRedis _ _ _ _ _ _ _ = Nothing
 
 insertNewFile :: Connection -> Either UserId AppId -> Path -> FileType -> [Permission] -> IO (Either TError FileId)
-insertNewFile conn owner' path file_type' permissions =
-  let
-    -- encode fields to utf8, in a bytestring    
-    oidb = integerToByteString (either id id owner')
-    rp   = encodeUtf8 . pathToText $ path
-    fn   = encodeUtf8 (Prelude.last path)
-    ct   = pathContentType path
-    ft   = Char8.pack . show $ file_type'    
-    owt  = either (\_ -> Char8.pack "usr") (\_ -> "app") owner'
-  in runRedis conn $ do
+insertNewFile conn owner' path file_type permissions = do
+  debugM $ "Inserting new file " ++ pathToString path
+  -- #TODO #CRITICAL
+  -- this fork IO must really be converted to something else
+  -- including the connection passed
+  when (file_type == ADirectory) $ do
+    filenames <- getPathContents path
+    let fork fn = forkIO $ do
+          let file_path = path++[T.pack fn]
+          is_dir <- pathIsDir file_path
+          let file_type = if is_dir then ADirectory else AFile
+          _ <- insertNewFile conn owner' file_path file_type permissions
+          return ()
+        create fn = fork fn >>= \_ -> return ()
+                
+    mapM_ create filenames
+    
+  runRedis conn $ do
     fileID <- incr "files:max_id"
     case fileID of
       Left _ -> return . Left . RedisTError $ "Could not create index (id) for a new file"
@@ -135,7 +145,14 @@ insertNewFile conn owner' path file_type' permissions =
           setProperty tFileFilename fn
           setProperty tFileContentType ct
           setProperty tFileFileType ft
-          return . Right $ fileid
+          return $ Right $ fileid
+  where 
+    oidb = integerToByteString (either id id owner')
+    rp   = encodeUtf8 . pathToText $ path
+    fn   = encodeUtf8 (Prelude.last path)
+    ct   = pathContentType path
+    owt  = either (\_ -> Char8.pack "usr") (\_ -> "app") owner'
+    ft   = Char8.pack . show $ file_type
 
 
 mkTFileFromPath :: Connection -> Path -> IO FileId
@@ -148,6 +165,7 @@ mkTFileFromPath conn fp@(d:id:path) | d == apps_dir = do
   user_id <- getUserId conn id >>= either fail return
   e_tfile <- insertNewFile conn (Left user_id) path ADirectory []
   either fail return e_tfile
- --                                 | otherwise = 
+                                 | otherwise = error $ "Path is not unique: " ++
+                                               pathToString fp
   where 
     fail = error . show
