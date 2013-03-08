@@ -30,7 +30,7 @@ import           Data.Aeson                      (toJSON)
 import           Control.Monad.Trans.Maybe
 
 --tersus
-import           Database.Redis
+import           Database.Redis (Connection)
 import           Handler.Admin                   (getTApplicationsAdminR)
 import           Handler.User                    (requireAdminFor,requireSuperAdmin)
 import           Tersus.Filesystem               (pathToString)
@@ -104,22 +104,15 @@ getRegisterTAppR = do
   (formWidget, enctype) <- generateFormPost $ tAppForm [] Nothing
   defaultLayout $(widgetFile "TApplication/register")
 
-deleteTApplicationR :: ApplicationIdentifier -> Handler RepJson
+deleteTApplicationR :: ApplicationIdentifier -> GHandler s Tersus RepJson
 deleteTApplicationR identifier = do
   --check for permissions
-  {-superAdmin <- requireSuperAdmin
-  case superAdmin of
-    Just _ -> do
-      Entity tappkey _ <- runDB $ getBy404 $ UniqueIdentifier $ identifier
-
-      --delete administrators (or users) first (foreign keys)
-      runDB $ deleteWhere [UserApplicationApplication ==. tappkey]
-      --delete app
-      runDB $ delete tappkey
-
-      return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ (Message $ identifier `T.append` T.pack " deleted")
-    _ -> permissionDenied "Permission denied " --return $ toContent .toJSON $ TRequestError NotEnoughPrivileges "Permission denied. You are not administrator of this application"-}
-  permissionDenied "TODO"
+  superAdmin <- requireSuperAdmin
+  conn <- getConn
+  e_delete <- io $ deleteApplicationByName conn identifier
+  either returnTError return_ok e_delete
+  where
+    return_ok _ = return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ (Message $ identifier `T.append` T.pack " deleted")
 
 -- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml

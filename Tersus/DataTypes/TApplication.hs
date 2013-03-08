@@ -85,6 +85,11 @@ getTApplicationByName conn appName = do
   where
     fail terror = Left terror
 
+deleteApplicationByName :: Connection -> ApplicationIdentifier -> IO (Either TError ())
+deleteApplicationByName conn app_name = do
+  app_id <- getAppId conn app_name
+  either (return . Left) (deleteApplication conn app_name) app_id
+
 requireTApplication :: Connection -> ApplicationIdentifier -> GHandler s m TApplication
 requireTApplication conn app_name = do
   eTApp <- io $ getTApplicationByName conn app_name
@@ -121,6 +126,21 @@ getApplication conn tAppID = runRedis conn $ do
     TxAborted -> Left . RedisTError $ "TxAborted"
     TxError msg -> Left . RedisTError . T.pack $ msg 
 
+-- | Deletes an application in the database
+deleteApplication :: Connection -> ApplicationIdentifier -> AppId -> IO (Either TError ())
+deleteApplication conn app_name app_id' = runRedis conn $ do
+  let app_id = integerToByteString app_id'
+  transaction_result <- multiExec $ do
+    dels [tAppName, tAppIdentifier, tAppDescription, 
+               tAppRepositoryUrl, tAppContactEmail, tAppCreationDate,
+               tAppKey, tAppOwners] app_id
+    del [(tAppId app_name)]
+    zrem tAppIds [app_id]
+  return $ case transaction_result of 
+    TxSuccess a -> Right ()
+    TxAborted -> Left . RedisTError $ "TxAborted"
+    TxError msg -> Left . RedisTError . T.pack $ msg 
+    
 -- | This should be used outside this module
 
 tAppFromRedis :: ByteString -> MaybeBS -> MaybeBS -> MaybeBS -> MaybeBS -> MaybeBS -> MaybeBS -> MaybeBS -> [ByteString] -> Maybe TApplication
@@ -163,6 +183,9 @@ setProperty f p = set (f ?app_id) (encodeUtf8 p)
 
 gets :: (?app_id :: ByteString, RedisCtx m f) => (ByteString -> ByteString) -> m (f (Maybe ByteString))
 gets f = get (f ?app_id)
+
+dels :: (RedisCtx m f) => [(ByteString -> ByteString)] -> ByteString -> m (f Integer)
+dels ps id = del (Prelude.map (\f -> f id) ps)
 
 tAppIds = "apps" <.> "ids"
 tAppId identifier = "tapp" .> (encodeUtf8 identifier) <. "id"
