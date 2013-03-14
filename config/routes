@@ -11,6 +11,7 @@
 /admin/application/edit/#ApplicationIdentifier     TApplicationEditR             GET POST 
 /admin/application/#ApplicationIdentifier          TApplicationR                 DELETE
 /user/preferences                        UserPreferencesR              GET
+/help/support                            UserSupportR                  GET
 
 -- AJAX
 /ajax/user/search/#Query                           UsernameSearchR        GET        

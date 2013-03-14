@@ -29,3 +29,7 @@ getAboutR = defaultLayout $ do
   aDomId <- lift newIdent
   setTitle "About!"
   $(widgetFile "about")
+
+-- | Contact support form
+getUserSupportR :: GHandler s Tersus RepHtml
+getUserSupportR = defaultLayout $(widgetFile "help/support")
