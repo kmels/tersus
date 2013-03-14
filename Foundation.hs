@@ -17,6 +17,7 @@ import           Yesod.Static
 import           Yesod.Auth
 import           Yesod.Auth.BrowserId
 import           Yesod.Auth.GoogleEmail
+import           qualified Yesod.Auth.GoogleEmail as GoogleEmail
 import           Yesod.Default.Config
 import           Yesod.Default.Util (addStaticContentExternal)
 --import Yesod.Logger (Logger, logMsg, formatLogText)
@@ -93,11 +94,15 @@ instance Yesod Tersus where
         return . Just $ clientSessionBackend key 120
 
     defaultLayout widget = do
-        master <- getYesod        
+        master <- getYesod
         loggedUser <- TersusAuth.maybeLoggedUser (redisConnection master)
+        
         io . putStrLn $ "Logged user: " ++ show loggedUser
         mmsg <- getMessage
 
+        -- auth links        
+--        tm <- getRouteToMaster
+--        let googleAuth = GoogleEmail.forwardUrl
         -- Returns a list of tersus applications owned by the logged user
         maybeUserTApps <- maybeUserTApps 
         

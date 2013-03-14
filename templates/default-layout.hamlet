@@ -12,8 +12,9 @@
                         <ul class="nav">
 
                           <li class="active"><a href="/">About</a>
+                          <li class="divider-vertical"></li>
 
-                          <li class="dropdown">
+                          <li class="dropdown" id="developers-dd-menu">
                             <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Developers <b class="caret"></b></a>
                             <ul class="dropdown-menu">
                                 <li><a href="@{RegisterTAppR}">Register Application</a>
@@ -28,26 +29,42 @@
                                         <li><a href="@{TApplicationEditR $ identifier tapp}">#{name tapp}</a>
     
                 
-                            $maybe u <- loggedUser
-                                $if isSuperAdmin u
-                                    <li class="dropdown">
-                                        <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Manage <b class="caret"></b></a>
-                                        <ul class="dropdown-menu">
-                                            <li><a href="@{TApplicationsAdminR}">Applications</a>
+                          <!-- </li> developers-dd-menu -->
+                          $maybe u <- loggedUser
+                            $if isSuperAdmin u
+                                <li id="manage-dd-menu" class="dropdown">
+                                    <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Manage <b class="caret"></b></a>
+                                    <ul class="dropdown-menu">
+                                        <li><a href="@{TApplicationsAdminR}">Applications</a>
+                          
+                            
+                          <!-- </li> manage-dd-menu -->
+                        <ul class="nav pull-right">
+                              $maybe u <- loggedUser
+                                <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">_{MsgUserWelcome}, #{nickname u} <b class="caret"></b></a>
+                                    <ul class="dropdown-menu">
+                                        <li><a href="/user/preferences"><i class="icon-cog"></i> Preferences</a></li>
+                                        <li><a href="/help/support"><i class="icon-envelope"></i> Contact Support</a></li>
+                                        <li class="divider"></li>
+                                        <li><a href=@{AuthR LogoutR}><i class="icon-off"></i> _{MsgUserLogout}</a></li>
 
-                            $maybe u <- loggedUser
-                              <li><a href=@{AuthR LogoutR}>_{MsgUserLogout}</a>
-
-                        $maybe u <- loggedUser                          
-                             <p class="navbar-text pull-right">_{MsgUserWelcome}
-                                <a class="navbar-link" href="user-edit">#{nickname u} / 
-                            
-                
-                        $nothing
-                            <p class="navbar-text pull-right">_{MsgUserLoginText}
-                                <a class="navbar-link" href=@{AuthR LoginR}>_{MsgUserLogin}?
-                            
-                            
+                              $nothing
+                                <li><a href="/signup">_{MsgUserSignUp}</a></li>
+                                <li class="divider-vertical"></li>
+                                <li class="dropdown">
+                                    <a class="dropdown-toggle" href="#" data-toggle="dropdown">_{MsgUserLogin}<strong class="caret"></strong></a>
+                                    <div class="dropdown-menu" style="padding: 15px; padding-bottom: 0px;">
+                                        <form method="post" action="login" accept-charset="UTF-8">
+                                            <input style="margin-bottom: 15px;" type="text" placeholder="Username" id="username" name="username">
+                                            <input style="margin-bottom: 15px;" type="password" placeholder="Password" id="password" name="password">
+                                            <input style="float: left; margin-right: 10px;" type="checkbox" name="remember-me" id="remember-me" value="1">
+                                            <label class="string optional" for="user_remember_me"> Remember me</label>
+                                            <input class="btn btn-primary btn-block" type="submit" id="sign-in" value="Sign In">                                        
+                                        <label style="text-align:center;margin-top:5px">or</label>
+                                        <a href="/auth/page/googleemail/forward" class="btn btn-primary btn-block">Sign In with Google
+<!--                                        <a href="@{AuthR LoginR}" class="btn btn-primary btn-block">Sign In with Twitter --!>
+                                        <!--<button href="@{AuthR LoginR}" class="btn btn-primary btn-block" id="sign-in-google">Sign In with Google</button>
+                                        <input href="@{AuthR LoginR}" class="btn btn-primary btn-block" type="button" id="sign-in-twitter" value="Sign In with Twitter">-->
 <div class="container">
     ^{widget}
 
