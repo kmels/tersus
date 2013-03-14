@@ -38,3 +38,4 @@ getTApplicationsAdminR = do
   conn <- getConn
   tapps <- io $ getApplications conn
   defaultLayout $(widgetFile "admin/applications")
+

@@ -10,6 +10,7 @@
 /admin/applications/manage                         TApplicationsAdminR           GET
 /admin/application/edit/#ApplicationIdentifier     TApplicationEditR             GET POST 
 /admin/application/#ApplicationIdentifier          TApplicationR                 DELETE
+/user/preferences                        UserPreferencesR              GET
 
 -- AJAX
 /ajax/user/search/#Query                           UsernameSearchR        GET        

@@ -18,6 +18,7 @@ module Handler.User(
   getUserAccessKeyR, --(request) plain access key request for given username,appkey
   --Handlers
   getUsernameSearchR,
+  getUserPreferencesR,
   --GHandler function helpers  
   requireSuperAdmin, --get a superadmin user
   requireAdminFor,
@@ -133,3 +134,6 @@ requireValidAccessKey = requireAccessKey >>= decomposeM
 verifyUserKeyM :: AccessKey -> Username -> GHandler s m (Maybe Username)
 verifyUserKeyM ak u = return $ ak `verifyUserKey` u
 
+-- | Handler for /user/preferences, returns a form where the user can modify its preferences
+getUserPreferencesR :: GHandler s Tersus RepHtml
+getUserPreferencesR = defaultLayout $(widgetFile "user/preferences")
