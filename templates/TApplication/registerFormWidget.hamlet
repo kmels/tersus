@@ -1,5 +1,5 @@
-<!--EXTRA:
-#{extra} -->
+<!-- token against CSRF attacks -->
+#{extra} 
 $if length errormessages > 0
     $forall message <- errormessages
         <span class="error">#{message}

@@ -135,11 +135,13 @@ postRegisterTAppR = do
       t <- getYesod
       let conn = redisConnection t
       _ <- io $ insertNewTApp conn appName identifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey [uid user]
-
+      io $ putStrLn "HEY BUD"
       defaultLayout $(widgetFile "TApplication/created")
 
     --form isn't success
     FormFailure errorMessages -> do
+      io $ putStrLn "HEY BUD!"
+      io $ putStrLn $ show errorMessages
       (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages Nothing
       defaultLayout $(widgetFile "TApplication/register")
     -- form missing
