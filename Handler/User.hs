@@ -47,14 +47,14 @@ import           Control.Monad.Trans.Maybe
 import           Yesod.Json(jsonToRepJson)
 import           Yesod.Auth
 
+import           Tersus.Database
 import           Tersus.Global(accessKeyParameterName)
-
 -- | Returns a JSON representation of the logged user. Returns a 412 status code (Precondition failed) with an empty string
 getLoggedUserR :: Handler RepJson
 getLoggedUserR = do
   tersus <- getYesod
-  eitherUser <- maybeLoggedUser $ redisConnection tersus
-  case eitherUser of
+  maybeUser <- maybeLoggedUser
+  case maybeUser of
     Nothing -> permissionDenied $ "User not logged in"
     Just user -> jsonToRepJson user
 
@@ -92,8 +92,7 @@ verifyUserKey key uname = decompose key >>= \(u',_) -> if (u'==uname)
 -- | A method wrapped in the GHandler monad, returning a Maybe u iff the logged user `u` has super admin rights
 requireSuperAdmin :: GHandler s Tersus User
 requireSuperAdmin = do
-  conn <- getConn
-  user <- requireLogin conn
+  user <- requireLogin
   case (isSuperAdmin user) of
     True -> return user
     _ -> permissionDenied "Requires super admin powers"
@@ -101,9 +100,8 @@ requireSuperAdmin = do
 -- | A method that returns Just the logged user if it has admin permissions over an application, Nothing otherwise
 requireAdminFor :: ApplicationIdentifier -> GHandler s Tersus User
 requireAdminFor appIdentifier = do 
-  m <- getYesod 
-  let conn = redisConnection m
-  user <- requireLogin conn
+  user <- requireLogin
+  conn <- getConn
   tapp <- io $ getTApplicationByName conn appIdentifier  
   either returnTError (checkAdmin user) tapp
   where
@@ -137,3 +135,4 @@ verifyUserKeyM ak u = return $ ak `verifyUserKey` u
 -- | Handler for /user/preferences, returns a form where the user can modify its preferences
 getUserPreferencesR :: GHandler s Tersus RepHtml
 getUserPreferencesR = defaultLayout $(widgetFile "user/preferences")
+

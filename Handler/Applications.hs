@@ -14,7 +14,7 @@ import           Data.Maybe                      (isJust,fromMaybe)
 import qualified Data.Text                       as T
 import           Data.Time.Clock                 (getCurrentTime)
 import           Handler.Messages                (initApplication)
-import           Handler.TApplication.Git        (pullChanges)
+import qualified Handler.TApplication.Git       as Git
 import           Import
 import           Prelude                         (last)
 import           Tersus.AccessKeys               (newAccessKey, newRandomKey)
@@ -39,6 +39,7 @@ import           Tersus.Global
 import           Tersus.HandlerMachinery
 import           Tersus.Yesod.Handler(requireGetParameter)
 -- Temporary fix of a yesod bug
+import           Tersus.Database
 import           Tersus.Filesystem(apps_dir, pathContentType, filenameContentType, fullStrPath)
 import           Text.Julius
 instance ToJavascript String where
@@ -64,7 +65,7 @@ tAppForm :: [ErrorMessage] -> Maybe TApplication -> Html -> MForm Tersus Tersus 
 tAppForm errormessages defaultValues extra = do
   m <- lift getYesod
   let conn = redisConnection m  
-  user <- lift . requireLogin $ conn
+  user <- lift requireLogin
   let user = User 0 "todo" "todo" Nothing False
   
   (nameRes, nameView) <- mreq textField FieldSettings { fsId = Just "TAppNameField", fsLabel = "Application name", fsName = Just "TAppName", fsAttrs = [("placeholder","Turbo app")] } (name <$> defaultValues)
@@ -99,8 +100,8 @@ tAppForm errormessages defaultValues extra = do
     
 getRegisterTAppR :: Handler RepHtml
 getRegisterTAppR = do
-  t <- getYesod
-  user <- requireLogin (redisConnection t)
+--  conn <- getConn
+  user <- requireLogin
   (formWidget, enctype) <- generateFormPost $ tAppForm [] Nothing
   defaultLayout $(widgetFile "TApplication/register")
 
@@ -118,7 +119,7 @@ deleteTApplicationR identifier = do
 -- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml
 postRegisterTAppR = do  
-  user <- getYesod >>= requireLogin . redisConnection 
+  user <- requireLogin  
   
   ((result, _), _) <- runFormPost $ tAppForm [] Nothing
   case result of
@@ -134,13 +135,14 @@ postRegisterTAppR = do
       --insert in database
       t <- getYesod
       let conn = redisConnection t
-      _ <- io $ insertNewTApp conn appName identifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey [uid user]
-      io $ putStrLn "HEY BUD"
+      tappid <- io $ insertNewTApp conn appName identifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey [uid user]
+      tapp <- either returnTError (io . getApplication conn) tappid
+      either returnTError Git.clone tapp
+      
       defaultLayout $(widgetFile "TApplication/created")
 
     --form isn't success
     FormFailure errorMessages -> do
-      io $ putStrLn "HEY BUD!"
       io $ putStrLn $ show errorMessages
       (formWidget, enctype) <- generateFormPost $ tAppForm errorMessages Nothing
       defaultLayout $(widgetFile "TApplication/register")
@@ -206,12 +208,12 @@ getTAppHomeR identifier = do
   maybeArgv <- lookupGetParam argvParam
   let
     argv = fromMaybe "" $ maybeArgv >>= \a -> return $ T.concat ["&",argvParam,"=",a]
-  mUser <- maybeLoggedUser con
+  mUser <- maybeLoggedUser
   case (app,maybeKey,mUser) of
     (Left _,_,_) -> notFound
     (Right _,_,Nothing) -> userNotLogged identifier
     (Right _,Just k,_) -> redirectToIndex k argv
-    (Right a,_,Just user) -> pullChanges a >>= \_ -> redirectToApplication user argv
+    (Right a,_,Just user) -> Git.pullChanges a >>= \_ -> redirectToApplication user argv
     _ -> notFound
       
   where

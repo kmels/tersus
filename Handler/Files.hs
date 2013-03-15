@@ -51,7 +51,7 @@ import Control.Monad.Trans.Either
 import Handler.Permission
 import Tersus.HandlerMachinery
 import Tersus.Yesod.Handler
-
+import Tersus.Database
 -- A way to convert between urls and a file path.
 -- See: Dynamic multi in http://www.yesodweb.com/book/routing-and-handlers
 data TFilePath = TFilePath [Text]  -- 2 or more

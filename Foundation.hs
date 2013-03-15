@@ -17,7 +17,7 @@ import           Yesod.Static
 import           Yesod.Auth
 import           Yesod.Auth.BrowserId
 import           Yesod.Auth.GoogleEmail
-import           qualified Yesod.Auth.GoogleEmail as GoogleEmail
+import qualified Yesod.Auth.GoogleEmail as GoogleEmail
 import           Yesod.Default.Config
 import           Yesod.Default.Util (addStaticContentExternal)
 --import Yesod.Logger (Logger, logMsg, formatLogText)
@@ -30,21 +30,18 @@ import           Web.ClientSession (getKey)
 import           Text.Hamlet (hamletFile)
 import           Control.Monad.Maybe
 --Tersus
+
+import qualified Tersus.Auth as TersusAuth
 import           Tersus.Cluster.Types
 import           Tersus.DataTypes
 import           Tersus.DataTypes.User
-import           qualified Tersus.Auth as TersusAuth
 -- Hedis
 import           Database.Redis
 -- Text
 import           Data.Text.Encoding
 -- Cloud Haskell
-import Control.Distributed.Process.Binder (ProcessBinder)
+import           Control.Distributed.Process.Binder (ProcessBinder)
 
--- | The site argument for your application. This can be a good place to
--- keep settings and values requiring initialization before your application
--- starts running, such as database connections. Every handler will have
--- access to the data present here.
 data Tersus = Tersus
     { settings :: AppConfig DefaultEnv Extra
     , getStatic :: Static -- ^ Settings for static file serving.

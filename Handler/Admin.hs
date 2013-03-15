@@ -24,8 +24,8 @@ import Control.Arrow            ((&&&))
 import Handler.User(requireSuperAdmin)
 import Model
 import Tersus.DataTypes.User
+import Tersus.Database
 import Tersus.HandlerMachinery
-
 getAdminR :: Handler RepHtml
 getAdminR = do
   admin <- requireSuperAdmin

@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Tersus.Database where
 
+--import           Tersus
 import           Control.Monad.IO.Class
 import           Data.ByteString
 import qualified Data.ByteString as B
@@ -48,4 +49,3 @@ getRedisResponse (Right me) = me
 
 io = liftIO
 uio = unsafePerformIO
-
