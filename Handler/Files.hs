@@ -78,21 +78,20 @@ getFileR username' path = do
   accessKey <- requireAccessKey
 
   -- the access key must be well encoded, and valid
-  maybeValidUser <- accessKey `verifyUserKeyM` username'
-  case maybeValidUser of
-    Just username'' -> do
-      isDir <- io $ pathIsDir path
-      fileExists <- io $ existsPath path
+  (user,tapplication) <- requireValidAuthPair accessKey --
+  
+  isDir <- io $ pathIsDir path
+  fileExists <- io $ existsPath path
       
-      if isDir then
-        io (getPathContents path) >>= \filenames -> 
-        return $ (jsonContentType, toContent . FileList $ filenames)
-      else if fileExists
-      then let fullpath = fullStrPath path
-           in return $ (filenameContentType fullpath, ContentFile fullpath Nothing)
-      else fileDoesNotExistErrorResponse
-    _ -> return $ (typeJson, toContent ("todo: error, invalid access key for user" :: String))
-    where
+  if isDir 
+  then do
+    filenames <- io (getPathContents path)
+    return $ (jsonContentType, toContent . FileList $ filenames)
+  else if fileExists
+       then let fullpath = fullStrPath path
+            in return $ (filenameContentType fullpath, ContentFile fullpath Nothing)
+       else reply fileDoesNotExist
+  where
         addUserPath (Resource n _ t) = return $ Resource n (pathToText path) t
         directoryContents fsPath = do
            files <- getDirectoryContentsTyped fsPath -- IO [Resource]
@@ -105,14 +104,17 @@ getFileR username' path = do
 -- Expected GET Parameters: "access_key" and content", the content of the file to write.
 putFileR :: Username -> Path -> Handler RepJson
 putFileR username' file_path = do
+  io $ putStrLn $ "------------------------------------------putfileR"
   -- the request must contain an access key
-  accessKey <- requireAccessKey
+  accessKey <- requirePOSTAccessKey
 
-  -- it must be well encoded, and be valid
+  -- it must be well encoded, and be valid  
   (user,tapplication) <- requireValidAuthPair accessKey --
 
   --get content parameter
-  content <- "content" `requireParameterOr` (MissingParameter "content" $ "The contents of the file you are writing in " `T.append` (pathToText file_path))
+  mc <- lookupGetParam "content"
+  io $ putStrLn $ show $ mc
+  content <- "content" `requirePOSTParameter` (MissingParameter "content" $ "The contents of the file you are writing in " `T.append` (pathToText file_path))
 
   conn <- getConn
   let
@@ -136,7 +138,7 @@ putFileR username' file_path = do
         Left err -> return . Left $ err
         Right fid' -> getFile conn fid'
 
-  io $ writePathContents (users_dir:file_path) content
+  io $ writePathContents (users_dir:(nickname user):file_path) content
 
   case eTFileTError of
     Right tfile -> jsonToRepJson $ (show "Wrote file "++ (pathToString $ users_dir:file_path))

@@ -6,21 +6,21 @@ import qualified Data.ByteString            as B
 import           Data.ByteString.Base64.URL as Base64
 import           Data.Char                  (chr, ord)
 import           Data.List.Split            (splitOn)
+import           Data.Maybe(fromJust)
 import           Data.Text                  as T
 import qualified Data.Text.Encoding         as TE
 import           Data.Time.Clock            (UTCTime, getCurrentTime)
 import           Data.Word                  (Word8)
 import           Import
 import           System.Random              (newStdGen, randomRs)
-import Data.Maybe(fromJust)
-
-import Tersus.Global(accessKeyParameterName)
+import           Tersus.Global(accessKeyParameterName)
+import           Tersus.Responses(returnTError)
 
 --models
-import Tersus.DataTypes
+import           Tersus.DataTypes
 
 --monads/control
-import Control.Monad.Trans.Maybe
+import           Control.Monad.Trans.Maybe
 
 --types
 type AuthPair = (Username,ApplicationIdentifier)
@@ -111,6 +111,10 @@ newRandomKey n = do
 -- | GHandler helper that gets the access key from the GET request parameters. If it is missing, returns an invalid arguments response.
 requireAccessKey :: GHandler s m AccessKey
 requireAccessKey = lookupGetParam accessKeyParameterName >>= maybe accessKeyRequired return
+requirePOSTAccessKey = do
+  ac <- lookupPostParam accessKeyParameterName 
+  liftIO $ putStrLn $ show ac
+  maybe accessKeyRequired return ac
 
 -- | GHandler helper that gets the access key from the GET request parameters.
 maybeAccessKey :: GHandler s m (Maybe AccessKey)
@@ -126,18 +130,14 @@ invalidAccessKey = invalidArgs $ [accessKeyParameterName]
 -- | Returns an invalidAccessKey response if it can't deduce a tuple (user,application) from a given access key
 requireValidAuthPair :: AccessKey -> GHandler s Tersus (User, TApplication)
 requireValidAuthPair ak = do
-  accessKey <- requireAccessKey
-  authPair <- reqValidAuthPair accessKey 
+  authPair <- reqValidAuthPair ak
   master <- getYesod
   let conn = redisConnection master
   
   eitherUser <- liftIO $ getUserByNickname conn $ fst authPair
   eitherTApp <- liftIO $ getTApplicationByName conn $ snd authPair
-    
-  -- TODO : \todo -> invaliAccessKey should be replaced by a function
-  -- of type TError -> GHandler s m RepJson 
-  
-  user <- either (\todo -> invalidAccessKey) return eitherUser
-  tapp <- either (\todo -> invalidAccessKey) return eitherTApp
+      
+  user <- either returnTError return eitherUser
+  tapp <- either returnTError return eitherTApp
   return $ (user,tapp)
 

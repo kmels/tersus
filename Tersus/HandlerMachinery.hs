@@ -2,6 +2,7 @@ module Tersus.HandlerMachinery(
   getConn,
 --  module Tersus.Auth,
   requireLogin,
+  redirectLogin,
   maybeLoggedUser,
   module Tersus.DataTypes,
   module Tersus.AccessKeys,
@@ -27,3 +28,5 @@ requireLogin = getConn >>= Auth.requireLogin
 
 maybeLoggedUser :: GHandler s Tersus (Maybe User)
 maybeLoggedUser = getConn >>= Auth.maybeLoggedUser
+
+redirectLogin = Auth.redirectLogin

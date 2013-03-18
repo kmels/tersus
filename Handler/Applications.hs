@@ -37,16 +37,16 @@ import           Tersus.Filesystem               (pathToString,deletePath)
 import           Tersus.Filesystem.Resources
 import           Tersus.Global
 import           Tersus.HandlerMachinery
-import           Tersus.Yesod.Handler(requireGetParameter)
 -- Temporary fix of a yesod bug
 import           Tersus.Database
 import           Tersus.Filesystem(apps_dir, pathContentType, filenameContentType, fullStrPath)
 import           Text.Julius
-instance ToJavascript String where
-         toJavascript = toJavascript . rawJS
+
+--instance ToJavascript String where
+--         toJavascript = toJavascript . rawJS
 
 --
-data Hole = Hole
+--data Hole = Hole
 -- The data type that is expected from registerAppForm
 data AppLike = AppLike {
   appLikeName            :: Text
@@ -105,16 +105,19 @@ getRegisterTAppR = do
   (formWidget, enctype) <- generateFormPost $ tAppForm [] Nothing
   defaultLayout $(widgetFile "TApplication/register")
 
-deleteTApplicationR :: ApplicationIdentifier -> GHandler s Tersus RepJson
+deleteTApplicationR :: ApplicationIdentifier -> GHandler s Tersus (ContentType, Content)
 deleteTApplicationR identifier = do
   --check for permissions
   superAdmin <- requireSuperAdmin
-  conn <- getConn
-  e_delete <- io $ deleteApplicationByName conn identifier
+--  conn <- getConn
+  e_delete <- getConn >>= io . flip deleteApplicationByName identifier
   io . deletePath $ apps_dir:[identifier]
-  either returnTError return_ok e_delete
+  either returnTError returnResponse e_delete
   where
-    return_ok _ = return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ (Message $ identifier `T.append` T.pack " deleted")
+    returnResponse :: () -> GHandler s Tersus (ContentType, Content)
+    returnResponse _ = reply (TResponse Success "Application was deleted")
+    
+--    return_ok _ = return $ RepJson $ toContent . toJSON $ TRequestResponse Success $ (Message $ identifier `T.append` T.pack " deleted")
 
 -- | Handles the form that registers a new TApplication
 postRegisterTAppR :: Handler RepHtml
@@ -133,8 +136,7 @@ postRegisterTAppR = do
 
       io $ putStrLn " Inserting "
       --insert in database
-      t <- getYesod
-      let conn = redisConnection t
+      conn <- getConn
       tappid <- io $ insertNewTApp conn appName identifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey [uid user]
       tapp <- either returnTError (io . getApplication conn) tappid
       either returnTError Git.clone tapp
@@ -200,10 +202,8 @@ argvParam = "argv"
 -- gets redirected to the index.html of the application.
 getTAppHomeR :: ApplicationIdentifier -> Handler RepHtml
 getTAppHomeR identifier = do
-  tersus <- getYesod
-  let
-    con = redisConnection tersus
-  app <- liftIO $ getTApplicationByName con identifier
+  conn <- getConn
+  app <- getConn >>= io . flip getTApplicationByName identifier
   maybeKey <- maybeAccessKey
   maybeArgv <- lookupGetParam argvParam
   let
@@ -211,7 +211,7 @@ getTAppHomeR identifier = do
   mUser <- maybeLoggedUser
   case (app,maybeKey,mUser) of
     (Left _,_,_) -> notFound
-    (Right _,_,Nothing) -> userNotLogged identifier
+    (Right _,_,Nothing) -> redirectLogin --userNotLogged identifier
     (Right _,Just k,_) -> redirectToIndex k argv
     (Right a,_,Just user) -> Git.pullChanges a >>= \_ -> redirectToApplication user argv
     _ -> notFound

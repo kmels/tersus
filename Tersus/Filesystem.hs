@@ -38,7 +38,7 @@ import System.Directory             (createDirectoryIfMissing,getDirectoryConten
 -- control
 import Control.Monad(when)
 --types
-import Data.ByteString
+import Data.ByteString hiding (putStrLn)
 import Data.Text                    as T
 import Data.Text.Encoding
 
@@ -60,7 +60,9 @@ users_dir = "users"
 
 -- | Creates necessary directories in the filesystem for the given file path
 makeDir :: Path -> IO ()
-makeDir path = createDirectoryIfMissing create_parents parent_dir
+makeDir path = do
+  putStrLn $ "Creating dir " ++ parent_dir
+  createDirectoryIfMissing create_parents parent_dir
   where
     create_parents = True
     parent_dir = (fullStrPath . Prelude.init $ path) 
@@ -102,7 +104,7 @@ fullPathForUser filePath username =
 writePathContents :: Path -> Text -> IO ()
 writePathContents path content = do
   makeDir path
-  Prelude.writeFile (T.unpack . pathToText $ path) (T.unpack content)
+  Prelude.writeFile (fullStrPath path) (T.unpack content)
 
 -- | Gets a list of file names, Path must be a directory
 getPathContents :: Path -> IO [String]

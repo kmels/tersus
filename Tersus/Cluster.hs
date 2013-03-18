@@ -12,10 +12,10 @@ import           Control.Distributed.Process.Binder
 import           Control.Distributed.Process                 hiding (newChan)
 import           Control.Distributed.Process.Backend.SimpleLocalnet
 import           Control.Distributed.Process.Node                   (initRemoteTable,
-                                                                     runProcess,LocalNode)
+                                                                     runProcess)
 -- import           Control.Monad.Trans                                (liftIO)
 import           Data.HashTable.IO                                     as H
-import           Data.SafeCopy                                       (SafeCopy)
+import           Data.SafeCopy()                                     
 import           Network.Wai.Handler.Warp                          
                                                                      (defaultSettings,
                                                                      runSettings,
