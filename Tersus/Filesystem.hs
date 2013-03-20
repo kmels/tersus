@@ -16,7 +16,7 @@ module Tersus.Filesystem(
   --constants
   tersus_dir, apps_dir, users_dir,
   --path
-  pathToString, pathToText, pathToByteString,
+  pathToString, pathToText, pathToByteString, pathFilename, 
   --path creators
   -- full paths
   fullStrPath,  
@@ -128,6 +128,10 @@ fullPath p = (T.pack tersus_dir):p
 
 fullStrPath :: Path -> String
 fullStrPath = pathToString . fullPath
+
+pathFilename :: Path -> String
+pathFilename [] = ""
+pathFilename p = T.unpack . Prelude.last $ p
 
 -- | Matches a resource given as name and path with the mime type
 -- of the resource. The mime type is matched using the extension

@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 ----------------------------------------------------------------------------
 -- |
 -- Module      :  Tersus.Yesod.Responses
@@ -12,7 +13,7 @@
 -----------------------------------------------------------------------------
 
 module Tersus.Responses(  
-  reply,
+  reply, replyJsonContent,
   fileDoesNotExist,
   tError,
   returnHtml, returnTError
@@ -21,6 +22,7 @@ module Tersus.Responses(
 --json
 import           Data.Aeson                 (toJSON)
 import           Data.Aeson                 (ToJSON)
+--import Yesod.Json                   (Value (..))
 --yesod
 --import           Import
 import           Prelude
@@ -52,11 +54,19 @@ entityDeleted e = jsonToRepJson $ TRequestResponse Success (JsonResult $ toJSON 
 --errorResponse e = jsonToRepJson $ TRequestResponse RequestError (JsonResult $ toJSON e)
 
 -- files
+
+-- | Returns the json content type according to RFC 4627
+jsonContentType :: ContentType
+jsonContentType = "application/json"
+  
 fileDoesNotExist :: TResponse
 fileDoesNotExist = TResult InexistentFile 
 
 reply :: TResponse -> GHandler s m (ContentType,Content) 
 reply (TResult result) = sendResponseStatus (mkResultStatus result) (typeJson, toContent . toJSON $ result)
+
+replyJsonContent :: (ToContent c) => c -> GHandler s m (ContentType,Content)
+replyJsonContent c = return (jsonContentType, toContent c)
 
 --fileDoesNotExistError = TersusErrorResult InexistentFile "File does not exist"
 
