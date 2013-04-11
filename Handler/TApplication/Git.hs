@@ -19,7 +19,7 @@ import           Tersus.DataTypes.TApplication
 import           Tersus.DataTypes.TFile
 import           Tersus.HandlerMachinery
 import           Tersus.Filesystem
-
+import Tersus.Database
 import           Tersus.Debug
 tApplicationDirectory :: TApplication -> String
 tApplicationDirectory tapp = fullStrPath $ [apps_dir,identifier tapp]

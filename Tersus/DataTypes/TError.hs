@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
 module Tersus.DataTypes.TError where
@@ -8,6 +9,8 @@ import Data.Typeable
 import Prelude
 import Tersus.DataTypes.TypeSynonyms
 import Yesod.Handler
+import GHC.Generics (Generic)
+import Data.Aeson (FromJSON, ToJSON, decode, encode)
 
 data TError = 
   --General errors
@@ -22,6 +25,7 @@ data TError =
   | TUserNicknameNotFound Username
   | TAppIdNotFound ApplicationIdentifier
   | TFileIdNotFound FileId  
-  | TFilePathNotFound Path deriving (Show,Typeable)
+  | TFilePathNotFound Path deriving (Eq,Show,Typeable,Generic)
   
+instance ToJSON TError 
 instance Exception TError

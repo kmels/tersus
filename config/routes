@@ -10,6 +10,8 @@
 /admin/applications/manage                         TApplicationsAdminR           GET
 /admin/application/edit/#ApplicationIdentifier     TApplicationEditR             GET POST 
 /admin/application/#ApplicationIdentifier          TApplicationR                 DELETE
+/user/preferences                        UserPreferencesR              GET
+/help/support                            UserSupportR                  GET
 
 -- AJAX
 /ajax/user/search/#Query                           UsernameSearchR        GET        
@@ -28,6 +30,7 @@
 
 -- FILES
 /file/#Username/*Texts                   FileR                         GET PUT
+
 -- permissions
 /permission/file/READ/#Username/*Texts   ReadFilePermissionForUserR PUT DELETE
 /permission/file/WRITE/#Username/*Texts  WriteFilePermissionForUserR PUT DELETE

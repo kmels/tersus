@@ -10,7 +10,7 @@ import           Data.HashTable.IO            as HT
 import           Data.Text                    as T
 import           Data.Typeable.Internal       (Typeable)
 import           Prelude
-import Tersus.DataTypes
+import Tersus.DataTypes.Messaging
 
 type THashCode = String
 

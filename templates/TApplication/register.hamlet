@@ -1,8 +1,8 @@
-<h1>Register your app:
-<form class="form-horizontal" method=post action=@{RegisterTAppR} enctype=#{enctype}>
-    ^{formWidget}
-    <div class="control-group">
-        <div class="controls">
-            <label class="checkbox">
-                <input type="checkbox"> I've read the Terms and conditions
-            <button type="submit" class="btn">Register and deploy</button>
+<div class="span6 offset3">
+    <form class="form-horizontal" method=post action=@{RegisterTAppR} enctype=#{enctype}>
+        ^{formWidget}
+        <div class="control-group">
+            <div class="controls">
+                <label class="checkbox">
+                    <input type="checkbox"> I've read the Terms and conditions
+                <button type="submit" class="btn">Register and deploy</button>

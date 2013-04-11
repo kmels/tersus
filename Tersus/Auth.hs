@@ -2,14 +2,13 @@ module Tersus.Auth where
 
 import Database.Redis
 import Prelude
-import Tersus.DataTypes.User
 import Tersus.DataTypes.TypeSynonyms
+import Tersus.DataTypes.User
 import Yesod
-import           Yesod.Auth
-
+import Yesod.Auth
 maybeLoggedUser :: (YesodAuth m, UserId ~ AuthId m) => Connection -> GHandler s m (Maybe User)
 maybeLoggedUser conn = do
-  maid <- maybeAuthId
+  maid <- maybeAuthId  
   maybeUser <- io $ runRedis conn $ do
     case maid of
       Nothing -> return Nothing
@@ -25,7 +24,7 @@ maybeLoggedUser conn = do
 io = liftIO
 
 requireLogin :: (YesodAuth m, UserId ~ AuthId m) => Connection -> GHandler s m User
-requireLogin conn = maybeLoggedUser conn >>= maybe redirectLogin return
+requireLogin conn = maybeLoggedUser conn >>= maybe redirectLogin return 
 
 redirectLogin :: Yesod master => GHandler sub master a
 redirectLogin = do

@@ -17,6 +17,7 @@ import           Yesod.Static
 import           Yesod.Auth
 import           Yesod.Auth.BrowserId
 import           Yesod.Auth.GoogleEmail
+import qualified Yesod.Auth.GoogleEmail as GoogleEmail
 import           Yesod.Default.Config
 import           Yesod.Default.Util (addStaticContentExternal)
 --import Yesod.Logger (Logger, logMsg, formatLogText)
@@ -29,21 +30,18 @@ import           Web.ClientSession (getKey)
 import           Text.Hamlet (hamletFile)
 import           Control.Monad.Maybe
 --Tersus
+
+import qualified Tersus.Auth as TersusAuth
 import           Tersus.Cluster.Types
 import           Tersus.DataTypes
 import           Tersus.DataTypes.User
-import           qualified Tersus.Auth as TersusAuth
 -- Hedis
 import           Database.Redis
 -- Text
 import           Data.Text.Encoding
 -- Cloud Haskell
-import Control.Distributed.Process.Binder (ProcessBinder)
+import           Control.Distributed.Process.Binder (ProcessBinder)
 
--- | The site argument for your application. This can be a good place to
--- keep settings and values requiring initialization before your application
--- starts running, such as database connections. Every handler will have
--- access to the data present here.
 data Tersus = Tersus
     { settings :: AppConfig DefaultEnv Extra
     , getStatic :: Static -- ^ Settings for static file serving.
@@ -93,13 +91,17 @@ instance Yesod Tersus where
         return . Just $ clientSessionBackend key 120
 
     defaultLayout widget = do
-        master <- getYesod        
+        master <- getYesod
         loggedUser <- TersusAuth.maybeLoggedUser (redisConnection master)
+        
         io . putStrLn $ "Logged user: " ++ show loggedUser
         mmsg <- getMessage
 
+        -- auth links        
+--        tm <- getRouteToMaster
+--        let googleAuth = GoogleEmail.forwardUrl
         -- Returns a list of tersus applications owned by the logged user
-        maybeUserTApps <- maybeUserTApps 
+        userApps <- maybeUserTApps 
         
         -- We break up the default layout into two components:
         -- default-layout is the contents of the body tag, and
@@ -171,9 +173,19 @@ instance RenderMessage Tersus FormMessage where
 --
 -- https://github.com/yesodweb/yesod/wiki/Sending-email
 
-maybeUserTApps :: GHandler s m [Maybe TApplication]
-maybeUserTApps = return []
-
+maybeUserTApps :: GHandler s Tersus [TApplication]
+maybeUserTApps = do
+  m <- getYesod
+  let conn = redisConnection m
+  maybeUser <- TersusAuth.maybeLoggedUser conn
+  maybe (return []) (io . findApps conn) maybeUser
+  where    
+    isOwner :: UserId -> TApplication -> Bool
+    isOwner uid tapp = uid `elem` owners tapp 
+    
+    findApps :: Connection -> User -> IO [TApplication]
+    findApps conn u = getApplications conn >>= return . filter (isOwner $ uid u)
+  
 {-
 maybeUserTApps = do
   auth <- maybeAuth

@@ -30,12 +30,11 @@ import Handler.User                 (verifyUserKeyM)
 import Import                       hiding (catch)
 import Prelude
 import Tersus.TFiles
-import Yesod.Json                   (Value (..))
 --OS file system
 import System.Directory             (doesDirectoryExist,
                                                doesFileExist)
 import Tersus.AccessKeys            (requireAccessKey)
-import Tersus.Filesystem            (pathToString, pathToText, 
+import Tersus.Filesystem            (pathToString, pathToText, pathFilename,
                                      users_dir,
                                      existsPath, pathIsDir, fullStrPath,
                                      getPathContents, writePathContents,
@@ -51,7 +50,7 @@ import Control.Monad.Trans.Either
 import Handler.Permission
 import Tersus.HandlerMachinery
 import Tersus.Yesod.Handler
-
+import Tersus.Database
 -- A way to convert between urls and a file path.
 -- See: Dynamic multi in http://www.yesodweb.com/book/routing-and-handlers
 data TFilePath = TFilePath [Text]  -- 2 or more
@@ -60,43 +59,94 @@ instance PathMultiPiece TFilePath where
     fromPathMultiPiece (p:ps) = Just $ TFilePath ([p] ++ ps)
     fromPathMultiPiece _ = Nothing
 
--- | Returns the json content type according to RFC 4627
-jsonContentType :: ContentType
-jsonContentType = "application/json"
+data JsonFile = JFile {
+  filename :: FilePath,
+  fullpath :: FilePath,
+  is_directory :: Bool
+  }
+  
+mkJFile :: (Path,Bool) -> JsonFile
+mkJFile (fp,is_directory) = JFile filename fullpath is_directory
+  where     
+    filename :: FilePath
+    filename = if (is_directory)
+               then (T.unpack $ Prelude.last fp) ++ "/"
+               else (T.unpack $ Prelude.last fp)
+               
+    fullpath :: FilePath
+    fullpath = if is_directory
+               then (pathToString fp) ++ "/"
+               else (pathToString fp)
 
-newtype JsonFileList = FileList [FilePath]
+instance ToJSON JsonFile where
+  toJSON (JFile filename fullpath is_directory) = J.object[
+    "filename" .= filename,
+    "path" .= fullpath,
+    "is_directory" .= is_directory
+    ]
+    
+data JsonDirectory = JDirectory {
+  path :: Path,
+  directory_name :: String, 
+  contents :: [JsonFile] -- (filename,is_directory)
+  }
 
-instance ToJSON JsonFileList where
-  toJSON (FileList fs) = array (Import.filter (\f -> f /= "." && f /= "..") fs) -- drop the "." and ".."
+instance ToJSON JsonDirectory where
+  toJSON (JDirectory path directory_name contents) = J.object[
+    "filename" .= directory_name
+    , "path" .= pathToString path
+    , "is_directory" .= ("true" :: String)
+    , "contents" .= array contents
+    ]
 
-instance ToContent JsonFileList where
+instance ToContent JsonDirectory  where
   toContent = toContent . toJSON
 
+
+-- | Returns the file metadata (JSON) for `filepath`  
 getFileR :: Text -> Path -> Handler (ContentType,Content)
-getFileR username' path = do
+getFileR username' filepath = do
   -- the request must contain an access key
   accessKey <- requireAccessKey
 
   -- the access key must be well encoded, and valid
-  maybeValidUser <- accessKey `verifyUserKeyM` username'
-  case maybeValidUser of
-    Just username'' -> do
-      isDir <- io $ pathIsDir path
-      fileExists <- io $ existsPath path
+  (user,tapplication) <- requireValidAuthPair accessKey --
+  
+  let path = users_dir:(username':filepath)
+      fullpath = fullStrPath path 
       
-      if isDir then
-        io (getPathContents path) >>= \filenames -> 
-        return $ (jsonContentType, toContent . FileList $ filenames)
-      else if fileExists
-      then let fullpath = fullStrPath path
-           in return $ (filenameContentType fullpath, ContentFile fullpath Nothing)
-      else fileDoesNotExistErrorResponse
-    _ -> return $ (typeJson, toContent ("todo: error, invalid access key for user" :: String))
-    where
-        addUserPath (Resource n _ t) = return $ Resource n (pathToText path) t
-        directoryContents fsPath = do
-           files <- getDirectoryContentsTyped fsPath -- IO [Resource]
-           mapM addUserPath files -- IO [Resource]
+  isDir <- io $ pathIsDir path
+  fileExists <- io $ existsPath path
+        
+  if isDir 
+  then do
+    -- get filenames
+    filenames <- io (getPathContents path)
+    
+    -- get is_directory property
+    let 
+      prepend :: Path -> String -> Path
+      path `prepend` filename = path ++ [T.pack filename]
+      
+      filepaths :: [Path]
+      filepaths = Prelude.map (prepend filepath) filenames
+
+    is_directory <- io $ mapM (pathIsDir . prepend path) filenames    
+    
+    -- construct a JDirectory
+    let jfiles = Prelude.map mkJFile $ filepaths `Prelude.zip` is_directory
+    replyJsonContent $ JDirectory filepath (pathFilename filepath) jfiles
+    
+  else if fileExists
+       then return $ (filenameContentType fullpath, ContentFile fullpath Nothing)
+       --replyJsonContent $ J
+       --return $ (filenameContentType fullpath, ContentFile fullpath Nothing)
+       else reply fileDoesNotExist
+--  where
+        --addUserPath (Resource n _ t) = return $ Resource n (pathToText path) t
+        --directoryContents fsPath = do
+         --  files <- getDirectoryContentsTyped fsPath -- IO [Resource]
+         --  mapM addUserPath files -- IO [Resource]
 
 -- | Handler that writes a new file, if successful
 -- It is successful if and only if:
@@ -105,14 +155,17 @@ getFileR username' path = do
 -- Expected GET Parameters: "access_key" and content", the content of the file to write.
 putFileR :: Username -> Path -> Handler RepJson
 putFileR username' file_path = do
+  io $ putStrLn $ "------------------------------------------putfileR"
   -- the request must contain an access key
-  accessKey <- requireAccessKey
+  accessKey <- requirePOSTAccessKey
 
-  -- it must be well encoded, and be valid
+  -- it must be well encoded, and be valid  
   (user,tapplication) <- requireValidAuthPair accessKey --
 
   --get content parameter
-  content <- "content" `requireParameterOr` (MissingParameter "content" $ "The contents of the file you are writing in " `T.append` (pathToText file_path))
+  mc <- lookupGetParam "content"
+  io $ putStrLn $ show $ mc
+  content <- "content" `requirePOSTParameter` (MissingParameter "content" $ "The contents of the file you are writing in " `T.append` (pathToText file_path))
 
   conn <- getConn
   let
@@ -136,7 +189,7 @@ putFileR username' file_path = do
         Left err -> return . Left $ err
         Right fid' -> getFile conn fid'
 
-  io $ writePathContents (users_dir:file_path) content
+  io $ writePathContents (users_dir:(nickname user):file_path) content
 
   case eTFileTError of
     Right tfile -> jsonToRepJson $ (show "Wrote file "++ (pathToString $ users_dir:file_path))
