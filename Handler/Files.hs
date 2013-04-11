@@ -101,7 +101,9 @@ instance ToJSON JsonDirectory where
 
 instance ToContent JsonDirectory  where
   toContent = toContent . toJSON
-  
+
+
+-- | Returns the file metadata (JSON) for `filepath`  
 getFileR :: Text -> Path -> Handler (ContentType,Content)
 getFileR username' filepath = do
   -- the request must contain an access key
@@ -137,6 +139,8 @@ getFileR username' filepath = do
     
   else if fileExists
        then return $ (filenameContentType fullpath, ContentFile fullpath Nothing)
+       --replyJsonContent $ J
+       --return $ (filenameContentType fullpath, ContentFile fullpath Nothing)
        else reply fileDoesNotExist
 --  where
         --addUserPath (Resource n _ t) = return $ Resource n (pathToText path) t

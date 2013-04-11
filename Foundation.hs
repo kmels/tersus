@@ -101,7 +101,7 @@ instance Yesod Tersus where
 --        tm <- getRouteToMaster
 --        let googleAuth = GoogleEmail.forwardUrl
         -- Returns a list of tersus applications owned by the logged user
-        maybeUserTApps <- maybeUserTApps 
+        userApps <- maybeUserTApps 
         
         -- We break up the default layout into two components:
         -- default-layout is the contents of the body tag, and
@@ -173,9 +173,19 @@ instance RenderMessage Tersus FormMessage where
 --
 -- https://github.com/yesodweb/yesod/wiki/Sending-email
 
-maybeUserTApps :: GHandler s m [Maybe TApplication]
-maybeUserTApps = return []
-
+maybeUserTApps :: GHandler s Tersus [TApplication]
+maybeUserTApps = do
+  m <- getYesod
+  let conn = redisConnection m
+  maybeUser <- TersusAuth.maybeLoggedUser conn
+  maybe (return []) (io . findApps conn) maybeUser
+  where    
+    isOwner :: UserId -> TApplication -> Bool
+    isOwner uid tapp = uid `elem` owners tapp 
+    
+    findApps :: Connection -> User -> IO [TApplication]
+    findApps conn u = getApplications conn >>= return . filter (isOwner $ uid u)
+  
 {-
 maybeUserTApps = do
   auth <- maybeAuth

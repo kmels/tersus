@@ -19,13 +19,13 @@
                             <ul class="dropdown-menu">
                                 <li><a href="@{RegisterTAppR}">Register Application</a>
                                 <li><a href="#TODO">API Usage</a>
-                                $if length maybeUserTApps > 0
+                                $if length userApps > 0
                                     <li class="divider">
                                     <li class="nav-header">Deploy
-                                    $forall Just tapp <- maybeUserTApps
+                                    $forall tapp <- userApps
                                         <li><a onClick="javascript:deploy('#{name tapp}');">#{name tapp}</a>
                                     <li class="nav-header">Edit
-                                    $forall Just tapp <- maybeUserTApps
+                                    $forall tapp <- userApps
                                         <li><a href="@{TApplicationEditR $ identifier tapp}">#{name tapp}</a>
     
                 
