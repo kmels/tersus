@@ -61,8 +61,9 @@ clone conn tapp  = do
   return ()
 
 pull :: TApplication -> IO ()
-pull tapp = C.runResourceT $ do
-  let
+pull tapp = do
+  debugM $ pullCmd
+  C.runResourceT $ sourceCmd pullCmd C.$$ CB.sinkHandle stdout
+  where
     repoName = T.unpack . identifier $ tapp
     pullCmd = "cd "++ tApplicationDirectory tapp ++ "; git pull"  
-  sourceCmd pullCmd C.$$ CB.sinkHandle stdout
