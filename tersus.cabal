@@ -41,7 +41,7 @@ library
                      Tersus.Cluster.Types
                      Tersus.Cluster.MessageBackend
                      Tersus.Cluster.MessageFrontend
---                     Tersus.Cluster.TersusService
+                     Tersus.Cluster.TersusService
 --                     Tersus.Cluster.TersusServiceApp
 --                     Tersus.Cluster.TersusNotificationsApp
                      Tersus.DataTypes
