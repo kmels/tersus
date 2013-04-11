@@ -1,7 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 ----------------------------------------------------------------------------
 -- |
--- Module      :  Tersus.Yesod.Responses
+-- Module      :  Tersus.Responses
 -- Copyright   :  (c) Carlos López-Camey, Ernesto Rodriguez
 -- License     :
 --
@@ -13,7 +13,7 @@
 -----------------------------------------------------------------------------
 
 module Tersus.Responses(  
-  reply, replyJsonContent,
+  reply, replyResult, replyJsonContent,
   fileDoesNotExist,
   tError,
   returnHtml, returnTError
@@ -64,6 +64,11 @@ fileDoesNotExist = TResult InexistentFile
 
 reply :: TResponse -> GHandler s m (ContentType,Content) 
 reply (TResult result) = sendResponseStatus (mkResultStatus result) (typeJson, toContent . toJSON $ result)
+reply r@(TResponse result text) = sendResponseStatus (mkResultStatus result) (typeJson, toContent . toJSON $ r)
+
+
+replyResult :: TResult -> GHandler s m (ContentType,Content) 
+replyResult = reply . TResult
 
 replyJsonContent :: (ToContent c) => c -> GHandler s m (ContentType,Content)
 replyJsonContent c = return (jsonContentType, toContent c)
@@ -74,6 +79,7 @@ fileDoesNotExistErrorResponse = reply fileDoesNotExist
 
 returnTError :: TError -> GHandler s m a
 returnTError e = sendResponseStatus (mkResultStatus . TError $ e) (typeJson, toContent . toJSON $ e)
+
 --reply . TResult . TError
 
 --liftIO . throwIO

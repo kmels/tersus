@@ -7,6 +7,7 @@ import qualified Data.Text as T
 import           Network.HTTP.Types.Status
 import           Prelude
 import           Tersus.DataTypes.TError
+
 data TResponse = TResult TResult
                  | TResponse TResult Text --TResultBody 
 
@@ -21,6 +22,17 @@ data TResult = TError TError
                | DirectoryNotEmpty 
                | OutOfRange deriving (Show, Eq)
 
+instance ToJSON TResult where
+  toJSON (TError terror) = J.object [ T.pack "result" .= (show terror)]
+  toJSON result = J.object [ T.pack "result" .= (show result)]
+
+instance ToJSON TResponse where
+  toJSON (TResult result) = toJSON result
+  toJSON (TResponse result text) = J.object [ 
+    T.pack "result" .= (toJSON result), 
+    T.pack "message" .= text
+    ]
+  
 --data TResultBody = Message Text -- | JsonResult Value
 
 mkResultStatus :: TResult -> Status
@@ -45,11 +57,7 @@ mkResponseStatus (TResponse result result_body) = mkResultStatus result
 --instance T
 -- instance ToJSON TersusResultCode where
 --          toJSON resultCode = (J.String (T.pack (show resultCode)))
-
-instance ToJSON TResult where
-  toJSON (TError terror) = J.object [ T.pack "result" .= (show terror)]
-  toJSON result = J.object [ T.pack "result" .= (show result)]
-  
+    
          -- toJSON (TersusResult httpStatusCode tersusResultCode) = J.object [(T.pack "httpStatusCode") .= httpStatusCode, (T.pack "response") .= tersusResultCode]
          -- toJSON (TersusErrorResult tersusResultCode errorMessage) = J.object [(T.pack "response") .= tersusResultCode, (T.pack "message") .= errorMessage]
 

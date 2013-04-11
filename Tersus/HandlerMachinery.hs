@@ -4,10 +4,11 @@ module Tersus.HandlerMachinery(
   requireLogin,
   redirectLogin,
   maybeLoggedUser,
+  TersusResponse,
   module Tersus.DataTypes,
   module Tersus.AccessKeys,
   module Tersus.Responses,
-  module Yesod.Json  
+  module Yesod.Json
 ) where
 
 import Database.Redis
@@ -17,6 +18,8 @@ import qualified Tersus.Auth as Auth
 import Tersus.DataTypes
 import Tersus.Responses
 import Yesod.Json
+
+type TersusResponse = Handler (ContentType, Content)
 
 getConn :: GHandler s Tersus Connection
 getConn = do

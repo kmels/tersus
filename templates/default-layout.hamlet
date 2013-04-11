@@ -23,7 +23,7 @@
                                     <li class="divider">
                                     <li class="nav-header">Deploy
                                     $forall tapp <- userApps
-                                        <li><a onClick="javascript:deploy('#{name tapp}');">#{name tapp}</a>
+                                        <li><a onClick="javascript:deploy('#{identifier tapp}');">#{name tapp}</a>
                                     <li class="nav-header">Edit
                                     $forall tapp <- userApps
                                         <li><a href="@{TApplicationEditR $ identifier tapp}">#{name tapp}</a>
