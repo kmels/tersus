@@ -147,6 +147,8 @@ recvFunction f (msg,ackwPort) = do
 
 -- getMessages = TersusServiceM getMessages'
 
+liftProcess :: Process a -> TersusServiceM a
+liftProcess p = TersusServiceM $ \ts -> p >>= \r -> return (ts,r)
 
 
 -- getMessage' :: TersusService -> Process (TersusService,TMessageEnvelope)
