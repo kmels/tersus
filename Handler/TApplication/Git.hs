@@ -64,6 +64,5 @@ pull :: TApplication -> IO ()
 pull tapp = C.runResourceT $ do
   let
     repoName = T.unpack . identifier $ tapp
-    pullCmd = "cd "++ tApplicationDirectory tapp ++ "; git pull"
-  debugM $ pullCmd
+    pullCmd = "cd "++ tApplicationDirectory tapp ++ "; git pull"  
   sourceCmd pullCmd C.$$ CB.sinkHandle stdout
