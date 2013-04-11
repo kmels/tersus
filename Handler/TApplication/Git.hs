@@ -36,10 +36,14 @@ repositoryExists tapp = do
 -- TODO: implemento
 pullChanges :: Connection -> TApplication -> IO ()
 pullChanges conn tapp = do
---  $(logDebug) "Pulling changes.."
-  repoExists <- io $ repositoryExists tapp
-  when (not repoExists) $ clone conn tapp
-  when (repoExists) $ pull tapp
+  debugM $ "Pulling changes.."  
+  repoExists <- repositoryExists tapp  
+  when (not repoExists) $ do
+    verboseM "Repository doesn't exist, cloning.."
+    clone conn tapp
+  when (repoExists) $ do
+    verboseM "Repository exists, pulling.."
+    pull tapp
   return ()
 
 -- TODO: implement
@@ -60,5 +64,6 @@ pull :: TApplication -> IO ()
 pull tapp = C.runResourceT $ do
   let
     repoName = T.unpack . identifier $ tapp
-    pullCmd = "cd "++ tApplicationDirectory tapp ++ " git pull"
+    pullCmd = "cd "++ tApplicationDirectory tapp ++ "; git pull"
+  debugM $ pullCmd
   sourceCmd pullCmd C.$$ CB.sinkHandle stdout
