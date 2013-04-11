@@ -139,7 +139,7 @@ postRegisterTAppR = do
       conn <- getConn
       tappid <- io $ insertNewTApp conn appName identifier (unTextarea appDescription) appRepositoryUrl appContactEmail creationDate appKey [uid user]
       tapp <- either returnTError (io . getApplication conn) tappid
-      either returnTError Git.clone tapp
+      either returnTError (io . Git.clone conn) tapp
       
       defaultLayout $(widgetFile "TApplication/created")
 
@@ -213,7 +213,7 @@ getTAppHomeR identifier = do
     (Left _,_,_) -> notFound
     (Right _,_,Nothing) -> redirectLogin --userNotLogged identifier
     (Right _,Just k,_) -> redirectToIndex k argv
-    (Right a,_,Just user) -> Git.pullChanges a >>= \_ -> redirectToApplication user argv
+    (Right a,_,Just user) -> io (Git.pullChanges conn a) >> redirectToApplication user argv
     _ -> notFound
       
   where
@@ -252,13 +252,17 @@ getTAppResourceR app_name path = do
     contentFile = ContentFile $ fullStrPath $ apps_dir:(app_name:path)
 
 -- | Request that deploys an application (it pulls from its repository)
-postDeployTAppR :: ApplicationIdentifier -> Handler RepHtml
+postDeployTAppR :: ApplicationIdentifier -> TersusResponse
 postDeployTAppR identifier  = do
-  {-Entity _ tapp <- runDB $ getBy404 $ UniqueIdentifier $ identifier
-  liftIO $ pullChanges tapp-}
-  defaultLayout $ [whamlet||]
-  
-
+  conn <- getConn
+  either_error_tapp <- io $ getTApplicationByName conn identifier
+  io $ putStrLn $ "EITHER: " ++ show either_error_tapp
+  either returnTError (deploy conn) either_error_tapp
+  where
+    deploy :: Connection -> TApplication -> TersusResponse
+    deploy conn tapp = do
+      io $ Git.pullChanges conn tapp
+      reply (TResponse Success "Application deployed")
 
 ----------------------------------------
 -- Ajax calls

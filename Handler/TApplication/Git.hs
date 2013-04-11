@@ -15,12 +15,13 @@ import           System.Directory     (doesDirectoryExist)
 import           System.IO
 
 --os filesystem
+import           Database.Redis
 import           Tersus.DataTypes.TApplication
-import           Tersus.DataTypes.TFile
-import           Tersus.HandlerMachinery
-import           Tersus.Filesystem
-import Tersus.Database
+import           Tersus.DataTypes.TFile(mkTFileFromPath)
+import           Tersus.Database
 import           Tersus.Debug
+import           Tersus.Filesystem
+import           Tersus.HandlerMachinery
 tApplicationDirectory :: TApplication -> String
 tApplicationDirectory tapp = fullStrPath $ [apps_dir,identifier tapp]
 
@@ -33,31 +34,30 @@ repositoryExists tapp = do
   return exists
 
 -- TODO: implemento
-pullChanges :: TApplication -> GHandler s Tersus ()
-pullChanges tapp = do
+pullChanges :: Connection -> TApplication -> IO ()
+pullChanges conn tapp = do
 --  $(logDebug) "Pulling changes.."
   repoExists <- io $ repositoryExists tapp
-  when (not repoExists) $ clone tapp
+  when (not repoExists) $ clone conn tapp
   when (repoExists) $ pull tapp
   return ()
 
 -- TODO: implement
-clone :: TApplication -> GHandler s Tersus ()
-clone tapp = do
-  conn <- getConn
+clone :: Connection -> TApplication -> IO ()
+clone conn tapp  = do
   C.runResourceT $ do
     --  liftIO $(logDebug) "Cloning repository.."
     let
-      (repoUrl',repoName) = (T.unpack . repositoryUrl $ tapp, T.unpack . identifier $ tapp)
+      repoUrl' = T.unpack . repositoryUrl $ tapp
       cloneCmd = "git clone --quiet " ++ repoUrl' ++ " " ++ tApplicationDirectory tapp
 --  $(logDebug) "Spawning: " ++ cloneCmd
     sourceCmd cloneCmd C.$$ CB.sinkHandle stdout
-  fid <- io $ mkTFileFromPath conn (apps_dir:[identifier tapp])
-  io . debugM $ " Created file id " ++ show fid
+  fid <- mkTFileFromPath conn (apps_dir:[identifier tapp])
+  debugM $ " Created file id " ++ show fid
   return ()
 
-pull :: TApplication -> GHandler s Tersus ()
-pull tapp = io $ C.runResourceT $ do
+pull :: TApplication -> IO ()
+pull tapp = C.runResourceT $ do
   let
     repoName = T.unpack . identifier $ tapp
     pullCmd = "cd "++ tApplicationDirectory tapp ++ " git pull"
