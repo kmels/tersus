@@ -26,10 +26,12 @@ tersusServiceUsername = "tersus"
 
 tersusServiceUser :: User
 tersusServiceUser = User 0 "tersus@tersusland.com" tersusServiceUsername (Just "") False                      
+
 -- | Function that processes a message sent to the tersus service application. It will query
 -- the database for all users and return the list of the users
 tersusServiceRecv :: TMessage -> TersusServiceM AppInstance ()
 tersusServiceRecv (TMessage uSender uReceiver aSender aReceiver _ _) = do
+  
     {-currTime <- liftIO $ getCurrentTime
     users <- runQuery $ getAppUsersQuery aSender --selectList [] []) :: TersusServiceM [Entity User]
     sendMessage $ TMessage uReceiver uSender aReceiver aSender (encodeAsText users) currTime-}

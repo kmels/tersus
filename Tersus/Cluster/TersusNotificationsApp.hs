@@ -15,13 +15,10 @@ import           Data.Typeable.Internal (Typeable)
 import qualified Control.Monad.State as S
 import qualified Control.Monad.Reader as R
 import           Data.Aeson (ToJSON,FromJSON,toJSON,parseJSON,object,(.:),(.:?),fromJSON)
-import           Data.Acid
 import qualified Data.Aeson.Types as A
-import           Data.Acid.Advanced (update',query')
 import           Control.Monad (mzero)
 import           Tersus.Cluster.TersusService
 import           Tersus.Global
-import           Safe (readMay)
 
 import           Control.Applicative
 import           Prelude
@@ -48,14 +45,6 @@ data TopicSubscription = TopicSubscription {subscriber :: AppInstance,topic :: T
 
 -- | A datatype to index the topics in the topics database
 newtype Topic = Topic Text deriving (Typeable,Ord,SafeCopy,Eq)
-
-instance Indexable TopicSubscription where
-  empty = ixSet [ixFun $ \ts -> [subscriber ts],
-                 ixFun $ \ts -> [Topic $ topic ts]
-                ]
-
--- | Datatype for the in memory database of topic subscribers
-data TopicsDb = TopicsDb (IxSet TopicSubscription) deriving (Typeable)
 
 -- | The possible requests that can be done to the Notifications app
 -- Subscribe: subscribe to a topic
@@ -125,46 +114,10 @@ instance ToJSON Operation where
 
 instance FromJSON Operation where
   parseJSON (A.Object operation) = Operation <$>
-                                 operation .: "action" <*>
-                                 operation .: "topic" <*>
-                                 operation .:? "notification"
+                                   operation .: "action" <*>
+                                   operation .: "topic" <*>
+                                   operation .:? "notification"
   parseJSON _ = mzero
-
--- | Add a subscription to the topics database
-addSubscription :: TopicSubscription -> Update TopicsDb ()
-addSubscription selTopic = do
-  TopicsDb db <- S.get
-  S.put $ TopicsDb $ insert selTopic db
-
--- | Remove the given subscription from the topics database
-rmSubscription :: TopicSubscription -> Update TopicsDb ()
-rmSubscription selTopic = do
-  TopicsDb db <- S.get
-  S.put $ TopicsDb $ delete selTopic db
-
--- | Get all topics to which the given app instance is subscribed
-getSubscriptions :: AppInstance -> Query TopicsDb (IxSet TopicSubscription)
-getSubscriptions subAppInstance = do
-  TopicsDb db <- R.ask
-  return $ getEQ subAppInstance db
-
--- | Remove the given subscriptions from the subscription database
-rmSubscriptions :: IxSet TopicSubscription -> Update TopicsDb ()
-rmSubscriptions subscriptions = do
-  TopicsDb db <- S.get
-  let
-    updatedDb = foldl (\x y->delete y x) db $ toList subscriptions
-  S.put $ TopicsDb updatedDb
-
--- | Query the topics database for all subscribers of the given topic
-getSubscribers :: Text -> Query TopicsDb (IxSet TopicSubscription)
-getSubscribers selTopic = do
-  TopicsDb db <- R.ask
-  return $ getEQ (Topic selTopic) db    
-
-$(deriveSafeCopy 0 'base ''TopicSubscription)
-$(deriveSafeCopy 0 'base ''TopicsDb)
-$(makeAcidic ''TopicsDb ['addSubscription,'rmSubscription,'getSubscriptions,'rmSubscriptions,'getSubscribers])
 
 -- | Function that processes the incoming messages. The message can have a request
 -- to subscribe to a topic, to unsubscribe to a topic or to send a message to everyone subscribed to

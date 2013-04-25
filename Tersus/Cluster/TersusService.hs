@@ -21,7 +21,7 @@ import Data.Binary (Binary)
 
 -- tersus
 import Tersus.Cluster.Types
-import Tersus.Cluster.MessageFrontend
+import Tersus.Cluster.MessageFrontend (broadcastNotificationsProcess)
 import Tersus.DataTypes
 
 -- | Exceptions that can result from server side applications
@@ -125,9 +125,12 @@ makeTersusService tersusServerApp conn server sSendChannels sRecvChannels = do
 
 recvFunction :: (TMessage -> TersusServiceM ()) -> TMessageEnvelope -> TersusServiceM ()
 recvFunction f (msg,ackwPort) = do
+  ts <- getTersusService
+--  liftProcess $ sendChan ackwPort $ (
   f $ msg
     
-  
+getTersusService :: TersusServiceM (TersusService)
+getTersusService = TersusServiceM $ \ts -> return (ts,ts)
 
 -- Default acknowledgement function ignores the message
 -- acknowledgement
@@ -149,6 +152,7 @@ recvFunction f (msg,ackwPort) = do
 
 liftProcess :: Process a -> TersusServiceM a
 liftProcess p = TersusServiceM $ \ts -> p >>= \r -> return (ts,r)
+
 
 
 -- getMessage' :: TersusService -> Process (TersusService,TMessageEnvelope)
