@@ -1,16 +1,16 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Tersus.DataTypes.Messaging where
 
 import           Control.Applicative
 import           Control.Monad (mzero)
 import           Data.Aeson as J
 import qualified Data.Binary            as B
-import           Data.ByteString
-import qualified Data.ByteString  as BS
+import           Data.ByteString        as BS
 import           Data.Data (Data)
-import           Data.IxSet (Indexable(..),ixSet,ixFun)
 import           Data.List
 import           Data.Maybe(fromJust)
-import           Data.SafeCopy (deriveSafeCopy,base,SafeCopy)
 import           Data.Text
 import qualified Data.Text as T
 import           Data.Time.Clock
@@ -63,7 +63,7 @@ appInstanceAsText (AppInstance u a) = T.concat [u,a]
 
 instance B.Binary AppInstance where
     put (AppInstance username' app') = B.put (username',app')
-    get = do B.get >>= \(username,app) -> return $ AppInstance username app
+    get = B.get >>= \(username,app) -> return $ AppInstance username app
     
 instance Addressable AppInstance where
          getAppInstance a = a
@@ -134,14 +134,8 @@ msgResultsNums :: [(Int,MessageResult)]
 msgResultsNums = [(1,Delivered),(2,ENoAppInstance),(3,EInvalidAppKey),(4,EBufferFull),(5,EInvalidHashCode),(6,InvalidMsgFormat)]
 
 
-newtype AUserId = AUserId Text deriving (Eq,Ord,Data,Typeable,SafeCopy)
-newtype AAppId = AAppId Text deriving (Eq,Ord,Data,Typeable,SafeCopy)
-
-instance Indexable AppInstance where
-  empty = ixSet [ ixFun $ \ai -> [AUserId $ username ai]
-                ,ixFun $ \ai -> [AAppId $ application ai]
-                ,ixFun $ \ai -> [ai]
-                ]
+newtype AUserId = AUserId Text deriving (Eq,Ord,Data,Typeable)--,SafeCopy)
+newtype AAppId = AAppId Text deriving (Eq,Ord,Data,Typeable)--,SafeCopy)
 
 -- | Represents a mailbox address of an application instance
 -- mostly used by server side apps
@@ -190,7 +184,7 @@ instance B.Binary MessageResult where
          put msg = B.put $ getMsgResultNum msg
          get = B.get >>= \num -> return $ getNumMsgResult num
 
-$(deriveSafeCopy 0 'base ''AppInstance)
+-- $(deriveSafeCopy 0 'base ''AppInstance)
 
 
 instance FromJSON AuthMessage where

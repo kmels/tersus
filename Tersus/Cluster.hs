@@ -13,9 +13,7 @@ import           Control.Distributed.Process                 hiding (newChan)
 import           Control.Distributed.Process.Backend.SimpleLocalnet
 import           Control.Distributed.Process.Node                   (initRemoteTable,
                                                                      runProcess)
--- import           Control.Monad.Trans                                (liftIO)
 import           Data.HashTable.IO                                     as H
-import           Data.SafeCopy()                                     
 import           Network.Wai.Handler.Warp                          
                                                                      (defaultSettings,
                                                                      runSettings,
@@ -31,7 +29,6 @@ import           System.Posix.Process
 import           System.Posix.Signals                               (sigTERM,
                                                                      signalProcess)
 import           Tersus.Cluster.MessageBackend
--- import           Tersus.Cluster.TersusService                      
 --                                                                      (makeTersusService,TersusServerApp)
 -- import           Tersus.Cluster.TersusServiceApp                   
 --                                                                     (tersusServiceApp)
